@@ -17,6 +17,16 @@ const nextConfig = {
         hostname: "media.kitsu.io",
         pathname: "/anime/poster_images/**",
       },
+      {
+        protocol: "https",
+        hostname: "media.kitsu.app",
+        pathname: "/anime/**",
+      },
+      {
+        protocol: "https",
+        hostname: "kitsu-production-media.s3.us-west-002.backblazeb2.com",
+        pathname: "/anime/**",
+      },
     ],
   },
 };
