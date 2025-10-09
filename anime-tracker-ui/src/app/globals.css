@@ -1,0 +1,39 @@
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+/* ====== Design tokens (Tailwind v4) ====== */
+@theme {
+  /* Paleta principal */
+  --color-background: hsl(222 14% 8%);        /* gris oscuro */
+  --color-foreground: hsl(0 0% 100%);
+  --color-card: hsl(222 14% 10%);
+  --color-card-foreground: hsl(0 0% 100%);
+  --color-muted: hsl(222 10% 14%);            /* superficie secundaria */
+  --color-muted-foreground: hsl(0 0% 70%);
+
+  /* Acento verde */
+  --color-primary: hsl(142 72% 45%);          /* verde “bonito” */
+  --color-primary-foreground: hsl(144 100% 6%);
+
+  /* Colores de marca (providers) */
+  --color-brand-netflix: #E50914;
+  --color-brand-max: #6D4AFF;                 /* morado Max/HBO */
+  --color-brand-prime: #00A8E1;               /* azul Prime */
+  --color-brand-disney: #0EA5A5;              /* azul verdoso Disney */
+  --color-brand-crunchy: #F47521;             /* naranja Crunchyroll */
+
+  /* Radii y fuentes */
+  --radius: 1rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+               Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/* ====== Base ====== */
+@layer base {
+  :root { color-scheme: dark; }
+  * { @apply border-neutral-800; }
+  html, body { height: 100%; }
+  body { @apply bg-background text-foreground antialiased; }
+}
