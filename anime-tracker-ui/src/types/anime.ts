@@ -17,6 +17,14 @@ export interface AnimeItem {
   meta?: AnimeMeta;
 }
 
+export type ProviderLabel =
+  | "Crunchyroll"
+  | "Netflix"
+  | "HBO Max"
+  | "Amazon"
+  | "Disney+"
+  | "Pirata";
+
 export interface SeasonResponse {
   meta: {
     country: string;
@@ -27,3 +35,36 @@ export interface SeasonResponse {
   };
   data: AnimeItem[];
 }
+export interface SearchResult {
+  data?: {
+    ids: {
+      tmdb: number;
+      anilist?: number;
+    };
+    title: string;
+    poster: string;
+    providers: string[];
+  };
+  meta: {
+    query: string;
+  };
+}
+
+export type SearchItem = {
+  ids: { tmdb: number | null; mal?: number | null; kitsu?: string | null };
+  title: string;
+  poster: string | null;
+  providers: string[];
+  meta?: {
+    genres?: string[];
+    rating?: number | null;
+    synopsis?: string | null;
+    episodes?: number | null;
+    startDate?: string | null;
+  };
+};
+
+export type SearchListResponse = {
+  meta: { country: string; query: string; total: number; source: string };
+  data: SearchItem[];
+};
