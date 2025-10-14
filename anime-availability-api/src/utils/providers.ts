@@ -6,7 +6,7 @@ export function normalizeProviderNames(raw: string[]): string[] {
     "HBO Max": "HBO Max",
     "HBO Max Amazon Channel": "HBO Max",
     "Netflix Standard with Ads": "Netflix",
-    "Crunchyroll Amazon Channel": "Crunchyroll"
+    "Crunchyroll Amazon Channel": "Crunchyroll",
     // agrega aquí más equivalencias si te aparecen otras variantes
   };
 
@@ -26,7 +26,23 @@ export function flattenProviders(input?: {
   const merged = [
     ...(input?.flatrate ?? []).map((x) => x.provider_name),
     ...(input?.rent ?? []).map((x) => x.provider_name),
-    ...(input?.buy ?? []).map((x) => x.provider_name)
+    ...(input?.buy ?? []).map((x) => x.provider_name),
   ];
   return normalizeProviderNames(merged);
+}
+
+export function mergeProviders(
+  primary?: string[] | null,
+  extras?: string[] | null
+): string[] {
+  const combined = [...(primary ?? []), ...(extras ?? [])];
+  return normalizeProviderNames(combined);
+}
+
+/**
+ * (Opcional) Si en algún punto quieres deduplicar una lista ya normalizada
+ * o deduplicar por "label normalizado" a partir de una lista cruda:
+ */
+export function dedupeNormalizedProviders(list: string[]): string[] {
+  return normalizeProviderNames(list);
 }

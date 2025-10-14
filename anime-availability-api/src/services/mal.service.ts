@@ -1,47 +1,43 @@
-import axios from "axios";
+import { memoryCache } from "../utils/cache.js";
+import type { AiringStatus, BaseAnimeInfo } from "../types/types.js";
 
-const MAL = "https://api.myanimelist.net/v2";
+const MAL_BASE = "https://api.jikan.moe/v4";
 
-export type MalAnimeNode = {
-  id: number;
-  title: string;
-  main_picture?: { medium?: string; large?: string };
-  mean?: number | null;     // rating promedio
-  media_type?: string | null;
-  status?: string | null;
-  start_date?: string | null;
-  num_episodes?: number | null;
-  genres?: { id: number; name: string }[];
-};
-
-export async function malSearchAnime(
-  title: string,
-  opts?: { limit?: number; fields?: string }
-): Promise<MalAnimeNode | null> {
-  if (!process.env.MAL_CLIENT_ID) return null; // si no hay credencial, salimos silencioso
-  const limit = opts?.limit ?? 1;
-  const fields =
-    opts?.fields ??
-    "id,title,main_picture,mean,media_type,status,start_date,num_episodes,genres";
-
-  const { data } = await axios.get(`${MAL}/anime`, {
-    params: { q: title, limit, fields },
-    headers: { "X-MAL-CLIENT-ID": process.env.MAL_CLIENT_ID }
-  });
-
-  const first = data?.data?.[0]?.node;
-  if (!first) return null;
-  return first as MalAnimeNode;
+function normalizeStatus(status?: string): AiringStatus | undefined {
+  if (!status) return undefined;
+  const map: Record<string, AiringStatus> = {
+    airing: "ongoing",
+    complete: "finished",
+    finished: "finished",
+    upcoming: "announced",
+  };
+  return map[status.toLowerCase()] ?? undefined;
 }
 
-export async function malGetAnimeById(
-  id: number,
-  fields = "id,title,main_picture,mean,media_type,status,start_date,num_episodes,genres"
-): Promise<MalAnimeNode | null> {
-  if (!process.env.MAL_CLIENT_ID) return null;
-  const { data } = await axios.get(`${MAL}/anime/${id}`, {
-    params: { fields },
-    headers: { "X-MAL-CLIENT-ID": process.env.MAL_CLIENT_ID }
-  });
-  return (data as any) ?? null;
+export async function malSearchAnime(title: string): Promise<BaseAnimeInfo | null> {
+  const cacheKey = `mal:${title.toLowerCase()}`;
+  const cached = memoryCache.get(cacheKey);
+  if (cached) return cached as BaseAnimeInfo;
+
+  const url = new URL(`${MAL_BASE}/anime`);
+  url.searchParams.set("q", title);
+  url.searchParams.set("limit", "1");
+
+  const res = await fetch(url.toString());
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  const result = data?.data?.[0];
+  if (!result) return null;
+
+  const info: BaseAnimeInfo = {
+    id: result.mal_id,
+    title: result.title,
+    airingStatus: normalizeStatus(result.status),
+    score: result.score ? result.score / 10 : undefined,
+    poster: result.images?.jpg?.large_image_url,
+  };
+
+  memoryCache.set(cacheKey, info);
+  return info;
 }

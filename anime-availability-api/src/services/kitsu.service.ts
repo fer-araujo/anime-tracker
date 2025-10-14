@@ -1,42 +1,44 @@
-import axios from "axios";
+import { memoryCache } from "../utils/cache.js";
+import type { AiringStatus, BaseAnimeInfo } from "../types/types.js";
 
-const KITSU = "https://kitsu.io/api/edge";
+const KITSU_BASE = "https://kitsu.io/api/edge";
 
-export type KitsuAnime = {
-  id: string;
-  attributes: {
-    canonicalTitle?: string;
-    slug?: string;
-    synopsis?: string | null;
-    averageRating?: string | null; // string numérica
-    startDate?: string | null;
-    episodeCount?: number | null;
-    subtype?: string | null; // TV, movie, etc.
-    posterImage?: {
-      tiny?: string; small?: string; medium?: string;
-      large?: string; original?: string;
-    } | null;
+function normalizeStatus(status?: string): AiringStatus | undefined {
+  if (!status) return undefined;
+  const map: Record<string, AiringStatus> = {
+    current: "ongoing",
+    finished: "finished",
+    upcoming: "announced",
+    tba: "announced",
   };
-};
+  return map[status.toLowerCase()] ?? undefined;
+}
 
-export async function kitsuSearchAnime(
-  title: string,
-  limit = 1
-): Promise<KitsuAnime | null> {
-  if (!title?.trim()) return null;
+export async function kitsuSearchAnime(title: string): Promise<BaseAnimeInfo | null> {
+  const cacheKey = `kitsu:${title.toLowerCase()}`;
+  const cached = memoryCache.get(cacheKey);
+  if (cached) return cached as BaseAnimeInfo;
 
-  const fields =
-    "canonicalTitle,slug,synopsis,averageRating,startDate,episodeCount,subtype,posterImage";
+  const url = new URL(`${KITSU_BASE}/anime`);
+  url.searchParams.set("filter[text]", title);
+  url.searchParams.set("page[limit]", "1");
 
-  const { data } = await axios.get(`${KITSU}/anime`, {
-    params: {
-      "filter[text]": title,
-      "page[limit]": limit,
-      "fields[anime]": fields
-    }
-  });
+  const res = await fetch(url.toString());
+  if (!res.ok) return null;
 
-  const first = data?.data?.[0];
-  if (!first) return null;
-  return first as KitsuAnime;
+  const data = await res.json();
+  const result = data?.data?.[0];
+  if (!result) return null;
+
+  const attrs = result.attributes ?? {};
+  const info: BaseAnimeInfo = {
+    id: result.id,
+    title: attrs.titles?.en ?? attrs.titles?.en_jp ?? attrs.titles?.ja_jp ?? title,
+    airingStatus: normalizeStatus(attrs.status),
+    score: attrs.averageRating ? parseFloat(attrs.averageRating) / 10 : undefined,
+    poster: attrs.posterImage?.large ?? attrs.posterImage?.original,
+  };
+
+  memoryCache.set(cacheKey, info);
+  return info;
 }

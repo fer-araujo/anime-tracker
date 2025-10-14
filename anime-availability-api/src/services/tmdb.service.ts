@@ -1,49 +1,50 @@
-import axios from "axios";
-import { ENV } from "../config/env.js";
+import { memoryCache } from "../utils/cache.js";
+import type { ProviderInfo, TMDBProvidersResponse, TMDBSearchTVItem } from "../types/types.js";
 
-const TMDB = "https://api.themoviedb.org/3";
+const TMDB_BASE = "https://api.themoviedb.org/3";
+const TMDB_API_KEY = process.env.TMDB_KEY ?? "";
 
-// src/services/tmdb.service.ts
-export type TMDBSearchTVItem = {
-  id: number;
-  name?: string;
-  original_name?: string;
-  poster_path?: string | null;
-  first_air_date?: string | null;
-  genre_ids?: number[];
-  original_language?: string;
-  origin_country?: string[];
-};
-
-
-export type TMDBProviders = {
-  flatrate?: { provider_name: string }[];
-  rent?: { provider_name: string }[];
-  buy?: { provider_name: string }[];
-};
+export const tmdbPosterUrl = (path?: string | null, size = "w342") =>
+  path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined;
 
 export async function tmdbSearchTV(query: string): Promise<TMDBSearchTVItem[]> {
-  if (!query?.trim()) return [];
-  const { data } = await axios.get(`${TMDB}/search/tv`, {
-    params: {
-      api_key: ENV.TMDB_KEY,
-      query,
-      include_adult: false,
-      language: "en-US"
-    }
+  const url = new URL(`${TMDB_BASE}/search/tv`);
+  url.searchParams.set("query", query);
+  url.searchParams.set("include_adult", "false");
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
   });
-  return data?.results ?? [];
+
+  if (!res.ok) throw new Error(`TMDB search error: ${res.status}`);
+  const data = await res.json();
+  return (data?.results ?? []) as TMDBSearchTVItem[];
 }
 
+export async function tmdbTVProviders(tvId: number, region = "MX"): Promise<ProviderInfo[]> {
+  const cacheKey = `providers:${tvId}:${region}`;
+  const cached = memoryCache.get(cacheKey);
+  if (cached) return cached as ProviderInfo[];
 
-export async function tmdbTVProviders(tvId: number, country: string): Promise<TMDBProviders | null> {
-  const { data } = await axios.get(`${TMDB}/tv/${tvId}/watch/providers`, {
-    params: { api_key: ENV.TMDB_KEY }
+  const url = `${TMDB_BASE}/tv/${tvId}/watch/providers`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
   });
-  return data?.results?.[country] ?? null;
-}
+  if (!res.ok) return [];
 
-export function tmdbPosterUrl(path?: string | null, size: "w185" | "w342" | "w500" = "w500"): string | null {
-  if (!path) return null;
-  return `https://image.tmdb.org/t/p/${size}${path}`;
+  const data = (await res.json()) as TMDBProvidersResponse;
+  const regionData = data.results[region];
+  const providers =
+    regionData?.flatrate ??
+    regionData?.buy ??
+    regionData?.rent ??
+    regionData?.free ??
+    [];
+
+  const normalized = [
+    ...new Map(providers.map((p) => [p.provider_name, { id: p.provider_id, name: p.provider_name }])).values(),
+  ];
+
+  memoryCache.set(cacheKey, normalized);
+  return normalized;
 }
