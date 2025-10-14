@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import Header from "@/components/Header";
 import "./globals.css";
 
 export const metadata = {
@@ -11,12 +12,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
       <body className={cn("min-h-screen bg-background text-foreground")}>
-        <header className="sticky top-0 z-40 backdrop-blur border-b border-neutral-800 bg-background/70">
-          <div className="mx-auto max-w-2/3 px-4 py-3 flex items-center gap-4">
-            <div className="w-1 h-6 rounded-full bg-primary" />
-            <h1 className="text-xl font-semibold tracking-tight">Anime Tracker</h1>
-          </div>
-        </header>
+        <Header />
         <main className="mx-auto max-w-2/3 px-4 py-6">{children}</main>
       </body>
     </html>

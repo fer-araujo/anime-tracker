@@ -56,9 +56,6 @@ export default function HomePage() {
           títulos
         </p>
       </div>
-      <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1">
-        <SearchBar />
-      </div>
       <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         {season.data.map((anime) => (
           <AnimeCard key={anime.id.anilist} anime={anime} />
