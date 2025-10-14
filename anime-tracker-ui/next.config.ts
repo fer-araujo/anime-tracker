@@ -27,6 +27,11 @@ const nextConfig = {
         hostname: "kitsu-production-media.s3.us-west-002.backblazeb2.com",
         pathname: "/anime/**",
       },
+      {
+        protocol: "https",
+        hostname: "s4.anilist.co",
+        pathname: "/file/anilistcdn/media/anime/**",
+      },
     ],
   },
 };

@@ -1,24 +1,22 @@
-type Entry<T> = { value: T; expiresAt: number };
+export type TTLValue<T> = { value: T; expiresAt: number };
 
-export class MemoryCache {
-  private map = new Map<string, Entry<any>>();
+export class TTLCache<K, V> {
+  private store = new Map<K, TTLValue<V>>();
+  constructor(private defaultTtlMs = 1000 * 60 * 60) {}
 
-  constructor(private defaultTtlMs = 1000 * 60 * 60) {} // 1h
-
-  get<T>(key: string): T | null {
-    const e = this.map.get(key);
-    if (!e) return null;
-    if (Date.now() > e.expiresAt) {
-      this.map.delete(key);
-      return null;
-    }
-    return e.value as T;
+  set(key: K, value: V, ttlMs = this.defaultTtlMs) {
+    this.store.set(key, { value, expiresAt: Date.now() + ttlMs });
   }
 
-  set<T>(key: string, value: T, ttlMs?: number): void {
-    const t = ttlMs ?? this.defaultTtlMs;
-    this.map.set(key, { value, expiresAt: Date.now() + t });
+  get(key: K): V | undefined {
+    const item = this.store.get(key);
+    if (!item) return undefined;
+    if (Date.now() > item.expiresAt) {
+      this.store.delete(key);
+      return undefined;
+    }
+    return item.value;
   }
 }
 
-export const cache = new MemoryCache();
+export const memoryCache = new TTLCache<string, unknown>(1000 * 60 * 60 * 12);

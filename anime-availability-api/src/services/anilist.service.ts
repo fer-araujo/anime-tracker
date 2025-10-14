@@ -1,80 +1,61 @@
-import axios from "axios";
-import { ENV } from "../config/env.js";
+import { memoryCache } from "../utils/cache.js";
+import type { AiringStatus, AniListMedia, BaseAnimeInfo } from "../types/types.js";
 
-export type AniListTitle = {
-  romaji?: string | null;
-  english?: string | null;
-  native?: string | null;
-};
-export type AniListAnime = {
-  id: number;
-  title: {
-    romaji?: string | null;
-    english?: string | null;
-    native?: string | null;
+const ANILIST_ENDPOINT = "https://graphql.anilist.co";
+
+function normalizeStatus(status?: string): AiringStatus | undefined {
+  if (!status) return undefined;
+  const map: Record<string, AiringStatus> = {
+    RELEASING: "ongoing",
+    FINISHED: "finished",
+    NOT_YET_RELEASED: "announced",
   };
-  season?: "WINTER" | "SPRING" | "SUMMER" | "FALL" | null;
-  seasonYear?: number | null;
-  episodes?: number | null;
-  coverImage?: { large?: string | null; extraLarge?: string | null } | null;
-};
-
-export type SeasonName = "WINTER" | "SPRING" | "SUMMER" | "FALL";
-
-export function getCurrentSeasonYear(date = new Date()): {
-  season: SeasonName;
-  year: number;
-} {
-  const month = date.getUTCMonth() + 1; // 1-12
-  const year = date.getUTCFullYear();
-  if (month <= 3) return { season: "WINTER", year };
-  if (month <= 6) return { season: "SPRING", year };
-  if (month <= 9) return { season: "SUMMER", year };
-  return { season: "FALL", year };
+  return map[status] ?? undefined;
 }
 
-export async function fetchSeasonAnime(params?: {
-  season?: SeasonName;
-  year?: number;
-  page?: number;
-  perPage?: number;
-}): Promise<AniListAnime[]> {
-  const { season, year } = params ?? {};
-  const { season: fallbackSeason, year: fallbackYear } = getCurrentSeasonYear();
+export async function fetchAniListBySearch(title: string): Promise<BaseAnimeInfo | null> {
+  const cacheKey = `anilist:${title.toLowerCase()}`;
+  const cached = memoryCache.get(cacheKey);
+  if (cached) return cached as BaseAnimeInfo;
 
   const query = `
-     query ($page:Int=1,$perPage:Int=50,$season:MediaSeason,$seasonYear:Int){
-    Page(page:$page, perPage:$perPage){
-      media(
-        type: ANIME
-        season: $season
-        seasonYear: $seasonYear
-        format_in:[TV,TV_SHORT]
-        sort: POPULARITY_DESC
-      ){
+    query ($search: String) {
+      Media(search: $search, type: ANIME) {
         id
-        title { romaji english native }
+        title { english native romaji }
+        episodes
+        status
         season
         seasonYear
-        episodes
-        coverImage { large extraLarge }
+        coverImage { large medium }
+        averageScore
       }
     }
-  }`;
+  `;
 
-  const variables = {
-    page: params?.page ?? 1,
-    perPage: params?.perPage ?? 50,
-    season: season ?? fallbackSeason,
-    seasonYear: year ?? fallbackYear,
+  const res = await fetch(ANILIST_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, variables: { search: title } }),
+  });
+
+  if (!res.ok) return null;
+
+  const json = await res.json();
+  const m = json?.data?.Media as AniListMedia | undefined;
+  if (!m) return null;
+
+  const info: BaseAnimeInfo = {
+    id: m.id,
+    title: m.title.english ??  m.title.romaji ?? m.title.native ?? title,
+    episodes: m.episodes,
+    year: m.seasonYear,
+    season: m.season,
+    airingStatus: normalizeStatus(m.status),
+    poster: m.coverImage?.large ?? m.coverImage?.medium,
+    score: m.averageScore ? m.averageScore / 10 : undefined,
   };
 
-  const { data } = await axios.post(
-    ENV.ANILIST_URL,
-    { query, variables },
-    { headers: { "Content-Type": "application/json" } }
-  );
-
-  const list: AniListAnime[] = data?.data?.Page?.media ?? [];
-  return list;
+  memoryCache.set(cacheKey, info);
+  return info;
 }
