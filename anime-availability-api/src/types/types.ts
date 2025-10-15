@@ -14,7 +14,7 @@ export interface BaseAnimeInfo {
   airingStatus?: AiringStatus;
   poster?: string;
   providers?: ProviderInfo[];
-  score?: number;
+  score?: number; // 0..10
 }
 
 export interface TMDBSearchTVItem {
@@ -39,6 +39,7 @@ export interface TMDBProvidersResponse {
       buy?: Array<{ provider_id: number; provider_name: string }>;
       rent?: Array<{ provider_id: number; provider_name: string }>;
       free?: Array<{ provider_id: number; provider_name: string }>;
+      ads?: Array<{ provider_id: number; provider_name: string }>;
     }
   >;
 }
@@ -47,19 +48,24 @@ export interface AniListMedia {
   id: number;
   title: { romaji?: string; english?: string; native?: string };
   episodes?: number;
-  status?: string;
-  season?: string;
+  status?: string; // RELEASING | FINISHED | NOT_YET_RELEASED...
+  season?: string; // WINTER | SPRING | SUMMER | FALL
   seasonYear?: number;
   coverImage?: { large?: string; medium?: string };
-  averageScore?: number;
+  averageScore?: number; // 0..100
+  genres?: string[];
+  description?: string | null;
+  isAdult?: boolean;
+  startDate?: { year?: number; month?: number; day?: number } | null;
+  nextAiringEpisode?: { episode?: number; airingAt?: number } | null;
 }
 
 export interface SearchOptions {
   query: string;
-  region?: string; // affects providers only
+  region?: string;
   limit?: number; // 5..15
-  cursor?: string; // opaque cursor for "ver más"
-  providersForTop?: number; // default 3 in first page
+  cursor?: string;
+  providersForTop?: number;
 }
 
 export type AniTitle = { romaji?: string; english?: string; native?: string };
@@ -68,11 +74,18 @@ export interface AniMedia {
   id: number;
   title: AniTitle;
   episodes?: number;
-  status?: string; // RELEASING | FINISHED | NOT_YET_RELEASED | ...
-  season?: string; // WINTER | SPRING | SUMMER | FALL
+  status?: string;
+  season?: string;
   seasonYear?: number;
   coverImage?: { large?: string; medium?: string };
-  averageScore?: number; // 0..100
+  averageScore?: number;
+  genres?: string[];
+  description?: string | null;
+  isAdult?: boolean;
+  startDate?: { year?: number; month?: number; day?: number } | null;
+  nextAiringEpisode?: { episode?: number; airingAt?: number } | null;
+  // campo auxiliar opcional para fallback TMDB en search
+  __tmdb__?: TMDBSearchTVItem;
 }
 
 export interface AniPage {
@@ -88,6 +101,12 @@ export interface SearchResultItem extends BaseAnimeInfo {
     kitsu?: string;
   };
   titles: AniTitle;
+  genres?: string[];
+  synopsis?: string | null;
+  startDateISO?: string | null;
+  isAdult?: boolean;
+  nextEpisode?: number;
+  nextEpisodeAtISO?: string | null;
 }
 
 export interface SearchResponse {
@@ -99,14 +118,13 @@ export interface SearchResponse {
 
 export type Enrichment = {
   synopsis?: string | null;
-  rating?: number | null; // 0..10 (preferimos MAL.score; luego Kitsu.score)
-  genres?: string[]; // (no disponible en nuestros services actuales)
-  episodes?: number | null; // si algún service lo trae
-  startDate?: string | null; // (no disponible ahora)
-  posterAlt?: string | null; // poster alterno si no hay TMDB
+  rating?: number | null; // 0..10
+  genres?: string[];
+  episodes?: number | null;
+  startDate?: string | null;
+  posterAlt?: string | null;
   sources: {
     mal?: { id?: number | string; title?: string } | null;
     kitsu?: { id?: string | number; title?: string } | null;
   };
 };
-

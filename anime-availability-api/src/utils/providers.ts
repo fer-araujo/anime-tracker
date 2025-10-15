@@ -1,13 +1,41 @@
 export function normalizeProviderNames(raw: string[]): string[] {
   // Mapeo sencillo de alias -> nombre limpio
   const aliasMap: Record<string, string> = {
+    // ——— Amazon / Prime ———
     "Amazon Prime Video": "Prime Video",
     "Amazon Prime Video with Ads": "Prime Video",
-    "HBO Max": "HBO Max",
-    "HBO Max Amazon Channel": "HBO Max",
+    "Amazon Prime": "Prime Video",
+    "Prime Video": "Prime Video",
+
+    // ——— Netflix ———
+    Netflix: "Netflix",
+    "Netflix (Basic)": "Netflix",
     "Netflix Standard with Ads": "Netflix",
+
+    // ——— Crunchyroll ———
     "Crunchyroll Amazon Channel": "Crunchyroll",
-    // agrega aquí más equivalencias si te aparecen otras variantes
+    Crunchyroll: "Crunchyroll",
+    CR: "Crunchyroll",
+
+    // ——— Disney / Star / Hulu ———
+    Disney: "Disney+",
+    "Disney+": "Disney+",
+    "Disney Plus": "Disney+",
+    "Disney Plus (Bundle)": "Disney+",
+    "Star+": "Disney+",
+    "Star Plus": "Disney+",
+    "Star+ (LatAm)": "Disney+",
+    Hulu: "Disney+",
+    "Hulu (Bundle)": "Disney+",
+
+    // ——— Max / HBO ———
+    "HBO Max": "Max",
+    Max: "Max",
+    HBO: "Max",
+
+    // ——— Otros (ajustes menores) ———
+    "Apple TV": "Apple TV+",
+    "Apple TV+": "Apple TV+",
   };
 
   // 1) reemplazar alias
@@ -22,11 +50,15 @@ export function flattenProviders(input?: {
   flatrate?: { provider_name: string }[];
   rent?: { provider_name: string }[];
   buy?: { provider_name: string }[];
+  free?: { provider_name: string }[];
+  ads?: { provider_name: string }[];
 }): string[] {
   const merged = [
     ...(input?.flatrate ?? []).map((x) => x.provider_name),
-    ...(input?.rent ?? []).map((x) => x.provider_name),
     ...(input?.buy ?? []).map((x) => x.provider_name),
+    ...(input?.rent ?? []).map((x) => x.provider_name),
+    ...(input?.free ?? []).map((x) => x.provider_name),
+    ...(input?.ads ?? []).map((x) => x.provider_name), 
   ];
   return normalizeProviderNames(merged);
 }

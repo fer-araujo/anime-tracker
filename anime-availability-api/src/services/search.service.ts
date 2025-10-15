@@ -1,19 +1,7 @@
-// src/services/search.service.ts
-// High-level search service that orchestrates AniList (primary), TMDB (posters/providers),
-// and optionally MAL/Kitsu (fallback for status/score) to return 5–15 suggestions
-// with pagination ("ver más"). TypeScript + minimal external deps.
-
 import { memoryCache } from "../utils/cache.js";
-import type {
-  AiringStatus,
-  ProviderInfo,
-  TMDBSearchTVItem,
-} from "../types/types.js";
-import {
-  tmdbPosterUrl,
-  tmdbSearchTV,
-  tmdbTVProviders,
-} from "./tmdb.service.js";
+import type { AiringStatus, ProviderInfo, TMDBSearchTVItem } from "../types/types.js";
+import { tmdbPosterUrl, tmdbSearchTV } from "./tmdb.service.js";
+import { fetchProvidersUnified } from "./provider.service.js";
 import {
   AniMedia,
   AniPage,
@@ -23,18 +11,15 @@ import {
   SearchResultItem,
 } from "../types/types.js";
 
-// --- Local helpers -----------------------------------------------------------
-
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
 function normalizeStatus(status?: string): AiringStatus | undefined {
-  if (!status) return undefined;
   const map: Record<string, AiringStatus> = {
     RELEASING: "ongoing",
     FINISHED: "finished",
     NOT_YET_RELEASED: "announced",
   };
-  return map[status] ?? undefined;
+  return status ? map[status] : undefined;
 }
 
 function preferTitle(t: AniTitle): string | undefined {
@@ -44,6 +29,7 @@ function preferTitle(t: AniTitle): string | undefined {
 function encodeCursor(obj: unknown): string {
   return Buffer.from(JSON.stringify(obj), "utf8").toString("base64");
 }
+
 function decodeCursor<T = any>(cursor?: string): T | undefined {
   if (!cursor) return undefined;
   try {
@@ -55,31 +41,77 @@ function decodeCursor<T = any>(cursor?: string): T | undefined {
 
 async function runWithConcurrency<T, R>(
   items: T[],
-  limit: number,
+  concurrency: number,
   task: (item: T, index: number) => Promise<R>
 ): Promise<R[]> {
   const results: R[] = new Array(items.length) as R[];
-  let i = 0;
+  let index = 0;
   const workers: Promise<void>[] = [];
   const worker = async () => {
-    while (i < items.length) {
-      const idx = i++;
+    while (index < items.length) {
+      const idx = index++;
       results[idx] = await task(items[idx], idx);
     }
   };
-  for (let k = 0; k < Math.max(1, Math.min(limit, items.length)); k++)
-    workers.push(worker());
+  for (let k = 0; k < Math.max(1, Math.min(concurrency, items.length)); k++) workers.push(worker());
   await Promise.all(workers);
   return results;
 }
 
-// --- AniList paginated search -----------------------------------------------
+function normalizeText(text?: string | null) {
+  return (text ?? "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-async function anilistSearchPage(
-  query: string,
-  page: number,
-  perPage: number
-): Promise<AniPage> {
+function baseTitleCandidate(title: string) {
+  return title
+    .replace(/\b(vol(ume)?|season|part)\s*\d+\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function fuzzyDateToISO(fd?: { year?: number; month?: number; day?: number } | null): string | null {
+  if (!fd?.year) return null;
+  const y = fd.year;
+  const m = fd.month ?? 1;
+  const d = fd.day ?? 1;
+  // normaliza a YYYY-MM-DD
+  const mm = String(m).padStart(2, "0");
+  const dd = String(d).padStart(2, "0");
+  return `${y}-${mm}-${dd}`;
+}
+
+function pickBestTmdbMatch(title: string, year: number | undefined, items: TMDBSearchTVItem[]) {
+  const t = title.toLowerCase();
+  const tBase = baseTitleCandidate(title).toLowerCase();
+
+  const starts = items.filter(
+    (i) => i.name?.toLowerCase()?.startsWith(t) || i.name?.toLowerCase()?.startsWith(tBase)
+  );
+  const contains = items.filter(
+    (i) =>
+      (i.name?.toLowerCase()?.includes(t) || i.name?.toLowerCase()?.includes(tBase)) &&
+      !starts.includes(i)
+  );
+
+  const ordered = [...starts, ...contains];
+  if (year) {
+    const byYear = ordered.find(
+      (i) =>
+        typeof i.first_air_date === "string" &&
+        i.first_air_date.slice(0, 4) === String(year)
+    );
+    if (byYear) return byYear;
+  }
+  return ordered[0] ?? items[0];
+}
+
+async function anilistSearchPage(query: string, page: number, perPage: number): Promise<AniPage> {
   const cacheKey = `anilist:page:${query.toLowerCase()}:${page}:${perPage}`;
   const cached = memoryCache.get(cacheKey) as AniPage | undefined;
   if (cached) return cached;
@@ -97,6 +129,11 @@ async function anilistSearchPage(
           seasonYear
           coverImage { large medium }
           averageScore
+          genres
+          description
+          isAdult
+          startDate { year month day }
+          nextAiringEpisode { episode airingAt }
         }
       }
     }
@@ -105,51 +142,19 @@ async function anilistSearchPage(
   const res = await fetch(ANILIST_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      query: gql,
-      variables: { search: query, page, perPage },
-    }),
+    body: JSON.stringify({ query: gql, variables: { search: query, page, perPage } }),
   });
   if (!res.ok) throw new Error(`AniList search error: ${res.status}`);
+
   const json = await res.json();
   const pageData = json?.data?.Page as AniPage | undefined;
   if (!pageData)
     return { pageInfo: { hasNextPage: false, currentPage: page }, media: [] };
-  memoryCache.set(cacheKey, pageData, 1000 * 60 * 10); // 10 min
+  memoryCache.set(cacheKey, pageData, 1000 * 60 * 10);
   return pageData;
 }
 
-// --- TMDB enrichment ---------------------------------------------------------
-
-function pickBestTmdbMatch(
-  title: string,
-  year: number | undefined,
-  items: TMDBSearchTVItem[]
-): TMDBSearchTVItem | undefined {
-  const t = title.toLowerCase();
-  const starts = items.filter((i) => i.name?.toLowerCase()?.startsWith(t));
-  const contains = items.filter(
-    (i) =>
-      i.name?.toLowerCase()?.includes(t) &&
-      !i.name?.toLowerCase()?.startsWith(t)
-  );
-  const ordered = [...starts, ...contains];
-  if (year) {
-    const withYear = ordered.find(
-      (i) =>
-        typeof i.first_air_date === "string" &&
-        i.first_air_date.slice(0, 4) === String(year)
-    );
-    if (withYear) return withYear;
-  }
-  return ordered[0] ?? items[0];
-}
-
-// --- Main search orchestrator ------------------------------------------------
-
-export async function searchAnime(
-  options: SearchOptions
-): Promise<SearchResponse> {
+export async function searchAnime(options: SearchOptions): Promise<SearchResponse> {
   const query = options.query?.trim();
   if (!query)
     return {
@@ -160,139 +165,74 @@ export async function searchAnime(
     };
 
   const region = options.region ?? "MX";
-  const perPage = Math.max(5, Math.min(options.limit ?? 12, 15)); // clamp to 5..15
+  const perPage = Math.max(5, Math.min(options.limit ?? 12, 15));
 
-  const fromCursor = decodeCursor<{ page: number; perPage: number; q: string }>(
-    options.cursor
-  );
-  const page = fromCursor?.page && fromCursor.q === query ? fromCursor.page : 1;
+  const cursorData = decodeCursor<{ page: number; perPage: number; q: string }>(options.cursor);
+  const page = cursorData?.page && cursorData.q === query ? cursorData.page : 1;
 
   const ani = await anilistSearchPage(query, page, perPage);
 
-  function norm(s?: string | null) {
-    return (s ?? "")
-      .toLowerCase()
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "") // quita diacríticos
-      .replace(/[^a-z0-9\s]/g, " ") // quita símbolos raros
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function matchesQuery(q: string, t: AniTitle) {
-    const nq = norm(q);
+  const matchesQuery = (q: string, t: AniTitle) => {
+    const nq = normalizeText(q);
     if (!nq) return false;
-    const pool = [t.english, t.romaji, t.native].map(norm);
+    const pool = [t.english, t.romaji, t.native].map(normalizeText);
     return pool.some((s) => s.includes(nq));
-  }
-  // Filter to ensure substring match in any title variation (strict UX requirement)
-  const filtered = ani.media.filter((m) => matchesQuery(query, m.title));
+  };
 
-  // Order: prefix first, then substring, then tie-break by averageScore desc, then year desc
   const isPrefix = (q: string, t: AniTitle) => {
-    const nq = norm(q);
-    const pool = [t.english, t.romaji, t.native].map(norm);
+    const nq = normalizeText(q);
+    const pool = [t.english, t.romaji, t.native].map(normalizeText);
     return pool.some((s) => s.startsWith(nq));
   };
 
-  const pref = filtered.filter((m) => isPrefix(query, m.title));
-  const rest = filtered.filter((m) => !isPrefix(query, m.title));
+  const filtered = ani.media.filter((m) => matchesQuery(query, m.title));
+  const prefixMatches = filtered.filter((m) => isPrefix(query, m.title));
+  const otherMatches = filtered.filter((m) => !isPrefix(query, m.title));
 
   const rank = (m: AniMedia) => m.averageScore ?? -1;
   const yearOf = (m: AniMedia) => m.seasonYear ?? 0;
   const ordered = [
-    ...pref.sort((a, b) => rank(b) - rank(a) || yearOf(b) - yearOf(a)),
-    ...rest.sort((a, b) => rank(b) - rank(a) || yearOf(b) - yearOf(a)),
+    ...prefixMatches.sort((a, b) => rank(b) - rank(a) || yearOf(b) - yearOf(a)),
+    ...otherMatches.sort((a, b) => rank(b) - rank(a) || yearOf(b) - yearOf(a)),
   ];
 
-  // ——— Fallback: completar con TMDB si AniList no trae suficientes ———
-  const keyOf = (title?: string) => norm(title ?? "");
-
-  let base: AniMedia[] = ordered;
-
-  if (base.length < perPage) {
-    try {
-      const tmdbList = await tmdbSearchTV(query);
-      // Solo series de animación (genre 16)
-      const animeOnly = tmdbList.filter((i) => i.genre_ids?.includes(16));
-
-      // Mapear a un shape similar a AniMedia (sintético) y marcar el TMDB asociado
-      const synth: AniMedia[] = animeOnly.map((i) => {
-        const english = i.name ?? i.original_name ?? "";
-        const native = i.original_name ?? i.name ?? "";
-        const year = i.first_air_date
-          ? Number(i.first_air_date.slice(0, 4))
-          : undefined;
-        return {
-          // id negativo para no colisionar con AniList
-          id: -Math.abs(i.id),
-          title: { english, romaji: english, native },
-          episodes: undefined,
-          status: undefined,
-          season: undefined,
-          seasonYear: Number.isFinite(year as number)
-            ? (year as number)
-            : undefined,
-          coverImage: undefined,
-          averageScore: undefined,
-          __tmdb__: i as TMDBSearchTVItem,
-        } as AniMedia;
-      });
-
-      // Dedupe por título normalizado (preferimos mantener los de AniList)
-      const seen = new Set(base.map((m) => keyOf(preferTitle(m.title))));
-      for (const m of synth) {
-        const k = keyOf(preferTitle(m.title));
-        if (!k || seen.has(k)) continue;
-        seen.add(k);
-        base.push(m);
-        if (base.length >= perPage) break;
-      }
-    } catch {
-      // Silencioso: si TMDB falla, nos quedamos con lo de AniList
-    }
-  }
-
-  // Enrich with TMDB poster + (for top few) providers
-  const providersForTop =
-    typeof options.providersForTop === "number"
-      ? Math.max(0, options.providersForTop)
-      : 3;
-
-  const enriched = await runWithConcurrency(base, 6, async (m, idx) => {
+  const enriched = await runWithConcurrency(ordered, 6, async (m, idx) => {
     const title = preferTitle(m.title) ?? "";
-
-    // Si venimos del fallback, ya traemos un TMDB asociado
+    let usedBaseTitle = false;
     let tmdbItem: TMDBSearchTVItem | undefined = (m as any).__tmdb__;
 
-    // Si no hay TMDB preasignado, busca por título como antes
     if (!tmdbItem) {
       try {
-        const tmdbList = await tmdbSearchTV(title);
-        tmdbItem = pickBestTmdbMatch(title, m.seasonYear, tmdbList);
-      } catch {
-        /* ignore TMDB errors for resiliency */
-      }
+        let tmdbList = await tmdbSearchTV(title);
+        if (!tmdbList?.length) {
+          const base = baseTitleCandidate(title);
+          if (base && base !== title) {
+            usedBaseTitle = true;
+            tmdbList = await tmdbSearchTV(base);
+          }
+        }
+        tmdbItem = pickBestTmdbMatch(title, m.seasonYear, tmdbList || []);
+      } catch {}
     }
 
-    // Providers solo para los primeros N
     let providers: ProviderInfo[] = [];
-    if (tmdbItem && idx < providersForTop) {
-      try {
-        providers = await tmdbTVProviders(tmdbItem.id, region);
-      } catch {
-        providers = [];
-      }
+    if (tmdbItem && idx < (options.providersForTop ?? 3)) {
+      providers = await fetchProvidersUnified(tmdbItem.id, region);
     }
 
-    const poster = tmdbItem?.poster_path
-      ? tmdbPosterUrl(tmdbItem.poster_path, "w342")
-      : m.coverImage?.large ?? m.coverImage?.medium;
+    const poster = usedBaseTitle
+      ? m.coverImage?.large ?? m.coverImage?.medium ?? (tmdbItem?.poster_path ? tmdbPosterUrl(tmdbItem.poster_path, "w342") : undefined)
+      : (tmdbItem?.poster_path ? tmdbPosterUrl(tmdbItem.poster_path, "w342") : m.coverImage?.large ?? m.coverImage?.medium);
 
-    const item: SearchResultItem = {
+    const nextAtISO =
+      typeof m.nextAiringEpisode?.airingAt === "number"
+        ? new Date(m.nextAiringEpisode.airingAt * 1000).toISOString()
+        : null;
+
+    return {
       id: m.id,
       idMap: { tmdb: tmdbItem?.id, anilist: m.id > 0 ? m.id : undefined },
-      title, // ← inglés primero gracias a preferTitle
+      title,
       titles: m.title,
       episodes: m.episodes,
       year: m.seasonYear,
@@ -300,10 +240,14 @@ export async function searchAnime(
       airingStatus: normalizeStatus(m.status),
       poster,
       providers,
-      score:
-        typeof m.averageScore === "number" ? m.averageScore / 10 : undefined,
-    };
-    return item;
+      score: typeof m.averageScore === "number" ? m.averageScore / 10 : undefined,
+      genres: m.genres ?? [],
+      synopsis: m.description ?? null,
+      startDateISO: fuzzyDateToISO(m.startDate),
+      isAdult: Boolean(m.isAdult),
+      nextEpisode: m.nextAiringEpisode?.episode ?? undefined,
+      nextEpisodeAtISO: nextAtISO,
+    } as SearchResultItem;
   });
 
   const hasNext = ani.pageInfo.hasNextPage;
