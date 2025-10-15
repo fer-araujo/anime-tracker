@@ -1,25 +1,29 @@
 import type { Request, Response, NextFunction } from "express";
 import { ENV } from "../config/env.js";
 import { SearchQuery } from "../models/schema.js";
-
-// ✅ Usa el orquestador
 import { searchAnime } from "../services/search.service.js";
 
-// (Opcional) Si quieres normalizar provider names (Netflix vs Netflix Basic)
 const NAME_ALIASES: Record<string, string> = {
-  Netflix: "Netflix",
+  "Disney": "Disney+",
+  "Disney+": "Disney+",
+  "Disney Plus": "Disney+",
+  "Star+": "Disney+",
+  "Star Plus": "Disney+",
+  "Hulu": "Disney+",
   "Netflix (Basic)": "Netflix",
-  Crunchyroll: "Crunchyroll",
-  CR: "Crunchyroll",
-  "Prime Video": "Amazon Prime Video",
   "Amazon Prime": "Amazon Prime Video",
+  "Prime Video": "Amazon Prime Video",
+  "HBO Max": "Max",
+  "HBO": "Max",
+  "Crunchyroll Amazon Channel": "Crunchyroll",
+  "CR": "Crunchyroll",
 };
-const normalizeProviderNames = (names: string[]) =>
-  Array.from(
-    new Map(
-      names.map((n) => [NAME_ALIASES[n] ?? n, NAME_ALIASES[n] ?? n])
-    ).keys()
+
+function normalizeProviderNames(names: string[]) {
+  return Array.from(
+    new Map(names.map((n) => [NAME_ALIASES[n] ?? n, NAME_ALIASES[n] ?? n])).keys()
   ).sort((a, b) => a.localeCompare(b));
+}
 
 export async function searchTitle(
   req: Request & { validated?: SearchQuery },
@@ -27,65 +31,62 @@ export async function searchTitle(
   next: NextFunction
 ) {
   try {
-    // 1) Entrada y defaults
-    const { title, country } = ((req.validated || req.body) ??
-      {}) as SearchQuery & { country?: string };
+    const { title, country } = ((req.validated || req.body) ?? {}) as SearchQuery & { country?: string };
     if (!title || title.trim().length < 1) {
       return res.status(400).json({ error: "Missing title" });
     }
 
-    const resolvedCountry = (
-      country ||
-      ENV.DEFAULT_COUNTRY ||
-      "MX"
-    ).toUpperCase();
+    const resolvedCountry = (country || ENV.DEFAULT_COUNTRY || "MX").toUpperCase();
     const limitParam = Number(req.query.limit ?? 12);
-    const limit = Math.max(5, Math.min(limitParam, 15)); // 5..15
-    const onlyAnime = String(req.query.onlyAnime ?? "1") === "1"; // compat (no se usa, AniList ya es ANIME)
+    const limit = Math.max(5, Math.min(limitParam, 15));
 
-    // 2) Búsqueda orquestada (AniList + TMDB posters/providers para top N)
     const result = await searchAnime({
       query: title,
       region: resolvedCountry,
       limit,
-      // providersForTop: 3 // (default en service)
     });
 
-    // 3) Mapeo a tu shape `{ meta, data }`
-    //    - providers en el service son objetos { id, name }, aquí retornamos solo nombres (string[])
-    const data = result.results.map((r) => ({
-      ids: {
-        tmdb: r.idMap.tmdb ?? null,
-        anilist: r.idMap.anilist ?? null,
-        mal: r.idMap.mal ?? null,
-        kitsu: r.idMap.kitsu ?? null,
-      },
-      title: r.title,
-      poster: r.poster ?? null,
-      providers: normalizeProviderNames((r.providers ?? []).map((p) => p.name)),
-      meta: {
-        year: r.year ?? null,
-        season: r.season ?? null,
-        episodes: r.episodes ?? null,
-        airingStatus: r.airingStatus ?? null, // ongoing|finished|announced
-        score: r.score ?? null, // 0..10 si viene de AniList
-      },
-    }));
+    const data = result.results.map((r) => {
+      const providerNames = (r.providers ?? [])
+        .map((p: any) => (typeof p === "string" ? p : p?.name))
+        .filter((x: any): x is string => Boolean(x));
 
-    // 4) Respuesta (conserva compat)
+      return {
+        ids: {
+          tmdb: r.idMap.tmdb ?? null,
+          anilist: r.idMap.anilist ?? null,
+          mal: r.idMap.mal ?? null,
+          kitsu: r.idMap.kitsu ?? null,
+        },
+        title: r.title,
+        poster: r.poster ?? null,
+        providers: normalizeProviderNames(providerNames),
+        meta: {
+          year: r.year ?? null,
+          season: r.season ?? null,
+          episodes: r.episodes ?? null,
+          airingStatus: r.airingStatus ?? null,
+          score: r.score ?? null,
+          genres: r.genres ?? [],
+          synopsis: r.synopsis ?? null,
+          startDate: r.startDateISO ?? null,
+          isAdult: typeof r.isAdult === "boolean" ? r.isAdult : null,
+          nextEpisode: r.nextEpisode ?? null,
+          nextEpisodeAt: r.nextEpisodeAtISO ?? null,
+        },
+      };
+    });
+
     return res.json({
       meta: {
         country: resolvedCountry,
         query: title,
         total: data.length,
         source: "AniList + TMDB (providers/poster)",
-        onlyAnime,
-        // Sugerencia futura: puedes exponer result.page.cursor para “ver más”
-        // page: result.page, // <- Descomenta cuando tu UI lo consuma
       },
       data,
     });
-  } catch (e) {
-    next(e);
+  } catch (error) {
+    next(error);
   }
 }

@@ -7,7 +7,12 @@ import { Loader2, Search } from "lucide-react";
 import SearchOverlay from "@/components/SearchOverlay";
 
 type ResultItem = {
-  ids: { tmdb?: number | null; anilist?: number | null; mal?: number | null; kitsu?: string | null };
+  ids: {
+    tmdb?: number | null;
+    anilist?: number | null;
+    mal?: number | null;
+    kitsu?: string | null;
+  };
   title: string;
   poster?: string | null;
   subtitle?: string | null;
@@ -19,11 +24,9 @@ const DEBOUNCE_MS = 450;
 export default function SearchBar({
   limit = 12,
   region = "MX",
-  onSelect,
 }: {
   limit?: number;
   region?: string;
-  onSelect?: (item: ResultItem) => void;
 }) {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,27 +34,36 @@ export default function SearchBar({
   const [items, setItems] = useState<ResultItem[]>([]);
   const anchorRef = useRef<HTMLDivElement>(null);
 
-  const doFetch = useCallback(async (q: string) => {
-    setLoading(true);
-    try {
-      const url =
-        `${process.env.NEXT_PUBLIC_API_URL}/search` +
-        `?title=${encodeURIComponent(q)}&country=${encodeURIComponent(region)}` +
-        `&limit=${encodeURIComponent(String(Math.max(5, Math.min(limit, 15))))}` +
-        `&onlyAnime=1&enrich=0`;
-      const r = await fetch(url);
-      const json = await r.json();
-      setItems(json?.data ?? []);
-      setOpen(true);
-    } catch (e) {
-      console.error(e);
-      setItems([]);
-      setOpen(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [limit, region]);
-
+  const doFetch = useCallback(
+    async (q: string) => {
+      setLoading(true);
+      try {
+        const url =
+          `${process.env.NEXT_PUBLIC_API_URL}/search` +
+          `?title=${encodeURIComponent(q)}&country=${encodeURIComponent(
+            region
+          )}` +
+          `&limit=${encodeURIComponent(
+            String(Math.max(5, Math.min(limit, 15)))
+          )}` +
+          `&onlyAnime=1&enrich=0`;
+        const r = await fetch(url);
+        const json = await r.json();
+        setItems(json?.data ?? []);
+        setOpen(true);
+      } catch (e) {
+        console.error(e);
+        setItems([]);
+        setOpen(true);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [limit, region]
+  );
+  const handleSelect = (item: ResultItem) => {
+    console.log("Selected item:", item);
+  };
   // Debounce
   useEffect(() => {
     const q = query.trim();
@@ -60,7 +72,9 @@ export default function SearchBar({
       setOpen(false);
       return;
     }
-    const t = setTimeout(() => { void doFetch(q); }, DEBOUNCE_MS);
+    const t = setTimeout(() => {
+      void doFetch(q);
+    }, DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [query, doFetch]);
 
@@ -71,7 +85,7 @@ export default function SearchBar({
         onSubmit={(e) => {
           e.preventDefault();
           const q = query.trim();
-          if (q.length >= MIN && items[0]) onSelect?.(items[0]);
+          if (q.length >= MIN && items[0]) handleSelect(items[0]);
         }}
       >
         <Input
@@ -89,7 +103,11 @@ export default function SearchBar({
           disabled={query.trim().length < MIN}
           aria-label="Buscar"
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Search className="h-4 w-4" />
+          )}
         </Button>
       </form>
 
@@ -98,7 +116,10 @@ export default function SearchBar({
         loading={loading}
         items={items}
         onClose={() => setOpen(false)}
-        onSelect={(it) => { setOpen(false); onSelect?.(it); }}
+        onSelect={(it) => {
+          setOpen(false);
+          handleSelect(it);
+        }}
         anchorRef={anchorRef}
         showThumbs
       />

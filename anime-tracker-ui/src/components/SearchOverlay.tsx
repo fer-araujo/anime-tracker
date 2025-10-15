@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 
 type Item = {
   ids: { tmdb?: number | null } & Record<string, unknown>;
@@ -18,8 +18,6 @@ export default function SearchOverlay({
   onSelect,
   anchorRef,
   showThumbs = true,
-  minWidth = 480,
-  maxWidth = 640,
 }: {
   open: boolean;
   loading: boolean;
@@ -82,9 +80,9 @@ export default function SearchOverlay({
           </div>
         ) : items.length ? (
           <ul className="max-h-[60vh] overflow-auto py-1">
-            {items.map((it) => (
+            {items.map((it, i) => (
               <li
-                key={String(it.ids.tmdb ?? it.title)}
+                key={`${it.ids.anilist ?? it.ids.tmdb ?? it.title}-${i}`}
                 tabIndex={0}
                 onClick={() => onSelect(it)}
                 className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-white/[0.06] focus:bg-white/[0.08] focus:outline-none"
