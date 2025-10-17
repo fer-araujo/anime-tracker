@@ -4,24 +4,26 @@ import { SearchQuery } from "../models/schema.js";
 import { searchAnime } from "../services/search.service.js";
 
 const NAME_ALIASES: Record<string, string> = {
-  "Disney": "Disney+",
+  Disney: "Disney+",
   "Disney+": "Disney+",
   "Disney Plus": "Disney+",
   "Star+": "Disney+",
   "Star Plus": "Disney+",
-  "Hulu": "Disney+",
+  Hulu: "Disney+",
   "Netflix (Basic)": "Netflix",
   "Amazon Prime": "Amazon Prime Video",
   "Prime Video": "Amazon Prime Video",
   "HBO Max": "Max",
-  "HBO": "Max",
+  HBO: "Max",
   "Crunchyroll Amazon Channel": "Crunchyroll",
-  "CR": "Crunchyroll",
+  CR: "Crunchyroll",
 };
 
 function normalizeProviderNames(names: string[]) {
   return Array.from(
-    new Map(names.map((n) => [NAME_ALIASES[n] ?? n, NAME_ALIASES[n] ?? n])).keys()
+    new Map(
+      names.map((n) => [NAME_ALIASES[n] ?? n, NAME_ALIASES[n] ?? n])
+    ).keys()
   ).sort((a, b) => a.localeCompare(b));
 }
 
@@ -31,12 +33,17 @@ export async function searchTitle(
   next: NextFunction
 ) {
   try {
-    const { title, country } = ((req.validated || req.body) ?? {}) as SearchQuery & { country?: string };
+    const { title, country } = ((req.validated || req.body) ??
+      {}) as SearchQuery & { country?: string };
     if (!title || title.trim().length < 1) {
       return res.status(400).json({ error: "Missing title" });
     }
 
-    const resolvedCountry = (country || ENV.DEFAULT_COUNTRY || "MX").toUpperCase();
+    const resolvedCountry = (
+      country ||
+      ENV.DEFAULT_COUNTRY ||
+      "MX"
+    ).toUpperCase();
     const limitParam = Number(req.query.limit ?? 12);
     const limit = Math.max(5, Math.min(limitParam, 15));
 
@@ -73,6 +80,7 @@ export async function searchTitle(
           isAdult: typeof r.isAdult === "boolean" ? r.isAdult : null,
           nextEpisode: r.nextEpisode ?? null,
           nextEpisodeAt: r.nextEpisodeAtISO ?? null,
+          status: r.nextEpisodeAtISO ? "ongoing" : "finished",
         },
       };
     });
