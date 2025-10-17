@@ -35,3 +35,20 @@ export interface SeasonResponse {
   };
   data: AnimeItem[];
 }
+
+export type AnimeCardMeta = {
+  genres?: string[];
+  rating?: number | null;
+  isAdult?: boolean | null;
+  nextEpisode?: number | null;
+  nextEpisodeAt?: string | null;
+};
+
+export type AnimeCardData = {
+  id: { anilist: number; tmdb: number | null };
+  title: string;
+  poster: string | null;
+  providers: string[];
+  meta?: AnimeCardMeta;
+};
+

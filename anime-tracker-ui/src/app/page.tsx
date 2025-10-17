@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { AnimeCard } from "@/components/AnimeCard";
 import { apiPath, safeJson } from "@/lib/api";
 import type { SeasonResponse } from "@/types/anime";
-import { SearchBar } from "@/components/SearchBar";
 import { AnimeGridSkeleton } from "@/components/Loaders/GridSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -58,7 +57,7 @@ export default function HomePage() {
       </div>
       <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         {season.data.map((anime) => (
-          <AnimeCard key={anime.id.anilist} anime={anime} />
+          <AnimeCard key={anime.id.anilist} anime={anime}  overlayTone="strong" autoContrast />
         ))}
       </div>
     </main>

@@ -195,6 +195,7 @@ export async function getSeason(
               isAdult: typeof anime.isAdult === "boolean" ? anime.isAdult : null,
               nextEpisode: anime.nextAiringEpisode?.episode ?? null,
               nextEpisodeAt: nextEpisodeAtISO,
+              status: anime.nextAiringEpisode ? "ongoing" : "finished",
             },
             sources: {},
           };
@@ -218,6 +219,7 @@ export async function getSeason(
                   synopsis: it.meta?.synopsis ?? enrich.synopsis,
                   episodes: it.meta?.episodes ?? enrich.episodes ?? null,
                   startDate: it.meta?.startDate ?? enrich.startDate ?? null,
+                  status: it.meta?.status ?? null,
                 },
                 sources: {
                   ...(it.sources || {}),
