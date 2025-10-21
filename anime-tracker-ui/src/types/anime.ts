@@ -1,3 +1,32 @@
+export type Anime = {
+  id: { anilist: number; tmdb: number | null };
+  title: string;
+  poster: string | null;
+  providers: string[];
+  meta?: {
+    genres?: string[];
+    rating?: number | null; // 0..10
+    isAdult?: boolean;
+    isNew?: boolean;
+    status?: "ongoing" | "finished";
+    studio?: string | null;
+    type?: string | null; // TV / ONA / Movie / OVA / Special ...
+    episodes?: number | null;
+    progress?: number | null; // vistos
+    nextAiring?: string | null; // e.g. "in 6 days" (texto ya formateado)
+  };
+};
+
+export type AnimeCardProps = {
+  anime: Anime;
+  onOpen?: (anime: Anime) => void;
+  onAddToList?: (anime: Anime) => void;
+  onToggleFavorite?: (anime: Anime, next: boolean) => void;
+  variant?: "default" | "compact";
+  showTitleBelow?: boolean; // título fuera del card
+  overlayTone?: "soft" | "strong"; // tono manual base
+  autoContrast?: boolean; // detectar pósters claros automáticamente
+};
 export interface AnimeMeta {
   genres?: string[];
   rating?: number | null;
@@ -51,4 +80,3 @@ export type AnimeCardData = {
   providers: string[];
   meta?: AnimeCardMeta;
 };
-
