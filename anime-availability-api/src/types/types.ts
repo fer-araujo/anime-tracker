@@ -84,6 +84,9 @@ export interface AniMedia {
   isAdult?: boolean;
   startDate?: { year?: number; month?: number; day?: number } | null;
   nextAiringEpisode?: { episode?: number; airingAt?: number } | null;
+  format?: string;
+  studios: any;
+  
   // campo auxiliar opcional para fallback TMDB en search
   __tmdb__?: TMDBSearchTVItem;
 }
@@ -107,6 +110,8 @@ export interface SearchResultItem extends BaseAnimeInfo {
   isAdult?: boolean;
   nextEpisode?: number;
   nextEpisodeAtISO?: string | null;
+  type: string | null;
+  studio: string | null;
 }
 
 export interface SearchResponse {

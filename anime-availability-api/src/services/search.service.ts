@@ -1,5 +1,9 @@
 import { memoryCache } from "../utils/cache.js";
-import type { AiringStatus, ProviderInfo, TMDBSearchTVItem } from "../types/types.js";
+import type {
+  AiringStatus,
+  ProviderInfo,
+  TMDBSearchTVItem,
+} from "../types/types.js";
 import { tmdbPosterUrl, tmdbSearchTV } from "./tmdb.service.js";
 import { fetchProvidersUnified } from "./provider.service.js";
 import {
@@ -53,7 +57,8 @@ async function runWithConcurrency<T, R>(
       results[idx] = await task(items[idx], idx);
     }
   };
-  for (let k = 0; k < Math.max(1, Math.min(concurrency, items.length)); k++) workers.push(worker());
+  for (let k = 0; k < Math.max(1, Math.min(concurrency, items.length)); k++)
+    workers.push(worker());
   await Promise.all(workers);
   return results;
 }
@@ -75,7 +80,9 @@ function baseTitleCandidate(title: string) {
     .trim();
 }
 
-function fuzzyDateToISO(fd?: { year?: number; month?: number; day?: number } | null): string | null {
+function fuzzyDateToISO(
+  fd?: { year?: number; month?: number; day?: number } | null
+): string | null {
   if (!fd?.year) return null;
   const y = fd.year;
   const m = fd.month ?? 1;
@@ -86,16 +93,23 @@ function fuzzyDateToISO(fd?: { year?: number; month?: number; day?: number } | n
   return `${y}-${mm}-${dd}`;
 }
 
-function pickBestTmdbMatch(title: string, year: number | undefined, items: TMDBSearchTVItem[]) {
+function pickBestTmdbMatch(
+  title: string,
+  year: number | undefined,
+  items: TMDBSearchTVItem[]
+) {
   const t = title.toLowerCase();
   const tBase = baseTitleCandidate(title).toLowerCase();
 
   const starts = items.filter(
-    (i) => i.name?.toLowerCase()?.startsWith(t) || i.name?.toLowerCase()?.startsWith(tBase)
+    (i) =>
+      i.name?.toLowerCase()?.startsWith(t) ||
+      i.name?.toLowerCase()?.startsWith(tBase)
   );
   const contains = items.filter(
     (i) =>
-      (i.name?.toLowerCase()?.includes(t) || i.name?.toLowerCase()?.includes(tBase)) &&
+      (i.name?.toLowerCase()?.includes(t) ||
+        i.name?.toLowerCase()?.includes(tBase)) &&
       !starts.includes(i)
   );
 
@@ -111,7 +125,11 @@ function pickBestTmdbMatch(title: string, year: number | undefined, items: TMDBS
   return ordered[0] ?? items[0];
 }
 
-async function anilistSearchPage(query: string, page: number, perPage: number): Promise<AniPage> {
+async function anilistSearchPage(
+  query: string,
+  page: number,
+  perPage: number
+): Promise<AniPage> {
   const cacheKey = `anilist:page:${query.toLowerCase()}:${page}:${perPage}`;
   const cached = memoryCache.get(cacheKey) as AniPage | undefined;
   if (cached) return cached;
@@ -134,6 +152,10 @@ async function anilistSearchPage(query: string, page: number, perPage: number): 
           isAdult
           startDate { year month day }
           nextAiringEpisode { episode airingAt }
+          format
+          studios {
+            edges { isMain node { name } }
+          }
         }
       }
     }
@@ -142,7 +164,10 @@ async function anilistSearchPage(query: string, page: number, perPage: number): 
   const res = await fetch(ANILIST_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query: gql, variables: { search: query, page, perPage } }),
+    body: JSON.stringify({
+      query: gql,
+      variables: { search: query, page, perPage },
+    }),
   });
   if (!res.ok) throw new Error(`AniList search error: ${res.status}`);
 
@@ -154,7 +179,9 @@ async function anilistSearchPage(query: string, page: number, perPage: number): 
   return pageData;
 }
 
-export async function searchAnime(options: SearchOptions): Promise<SearchResponse> {
+export async function searchAnime(
+  options: SearchOptions
+): Promise<SearchResponse> {
   const query = options.query?.trim();
   if (!query)
     return {
@@ -167,7 +194,9 @@ export async function searchAnime(options: SearchOptions): Promise<SearchRespons
   const region = options.region ?? "MX";
   const perPage = Math.max(5, Math.min(options.limit ?? 12, 15));
 
-  const cursorData = decodeCursor<{ page: number; perPage: number; q: string }>(options.cursor);
+  const cursorData = decodeCursor<{ page: number; perPage: number; q: string }>(
+    options.cursor
+  );
   const page = cursorData?.page && cursorData.q === query ? cursorData.page : 1;
 
   const ani = await anilistSearchPage(query, page, perPage);
@@ -219,10 +248,21 @@ export async function searchAnime(options: SearchOptions): Promise<SearchRespons
     if (tmdbItem && idx < (options.providersForTop ?? 3)) {
       providers = await fetchProvidersUnified(tmdbItem.id, region);
     }
+    const mainStudio =
+      m?.studios?.edges?.find((e: any) => e?.isMain)?.node?.name ??
+      m?.studios?.edges?.[0]?.node?.name ??
+      undefined;
 
+    const type = (m as any)?.format;
     const poster = usedBaseTitle
-      ? m.coverImage?.large ?? m.coverImage?.medium ?? (tmdbItem?.poster_path ? tmdbPosterUrl(tmdbItem.poster_path, "w342") : undefined)
-      : (tmdbItem?.poster_path ? tmdbPosterUrl(tmdbItem.poster_path, "w342") : m.coverImage?.large ?? m.coverImage?.medium);
+      ? m.coverImage?.large ??
+        m.coverImage?.medium ??
+        (tmdbItem?.poster_path
+          ? tmdbPosterUrl(tmdbItem.poster_path, "w342")
+          : undefined)
+      : tmdbItem?.poster_path
+      ? tmdbPosterUrl(tmdbItem.poster_path, "w342")
+      : m.coverImage?.large ?? m.coverImage?.medium;
 
     const nextAtISO =
       typeof m.nextAiringEpisode?.airingAt === "number"
@@ -240,13 +280,16 @@ export async function searchAnime(options: SearchOptions): Promise<SearchRespons
       airingStatus: normalizeStatus(m.status),
       poster,
       providers,
-      score: typeof m.averageScore === "number" ? m.averageScore / 10 : undefined,
+      score:
+        typeof m.averageScore === "number" ? m.averageScore / 10 : undefined,
       genres: m.genres ?? [],
       synopsis: m.description ?? null,
       startDateISO: fuzzyDateToISO(m.startDate),
       isAdult: Boolean(m.isAdult),
       nextEpisode: m.nextAiringEpisode?.episode ?? undefined,
       nextEpisodeAtISO: nextAtISO,
+      studio: mainStudio,
+      type,
     } as SearchResultItem;
   });
 

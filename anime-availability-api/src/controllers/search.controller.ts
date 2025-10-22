@@ -81,6 +81,10 @@ export async function searchTitle(
           nextEpisode: r.nextEpisode ?? null,
           nextEpisodeAt: r.nextEpisodeAtISO ?? null,
           status: r.nextEpisodeAtISO ? "ongoing" : "finished",
+          studio: r.studio ?? null,
+          type: r.type ?? null,
+          progress: null, // pendiente de user-list
+          nextAiring: r.nextEpisodeAtISO ? null : null, // lo puedes formatear en FE si quieres
         },
       };
     });
