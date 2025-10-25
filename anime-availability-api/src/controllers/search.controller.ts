@@ -67,6 +67,8 @@ export async function searchTitle(
         },
         title: r.title,
         poster: r.poster ?? null,
+        backdrop: r.backdrop ?? null,
+        banner: r.banner ?? null,
         providers: normalizeProviderNames(providerNames),
         meta: {
           year: r.year ?? null,
@@ -74,6 +76,8 @@ export async function searchTitle(
           episodes: r.episodes ?? null,
           airingStatus: r.airingStatus ?? null,
           score: r.score ?? null,
+          popularity: r.popularity ?? null,
+          favourites: r.favourites ?? null,
           genres: r.genres ?? [],
           synopsis: r.synopsis ?? null,
           startDate: r.startDateISO ?? null,

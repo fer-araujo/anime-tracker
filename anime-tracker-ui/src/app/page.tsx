@@ -1,65 +1,44 @@
-"use client";
+import { Container } from "@/components/common/Container";
+import { MinimalShelf } from "@/components/Shelf";
+import { HeroCarouselCinematic } from "@/components/Spotlight";
+import { fetchSeason } from "@/lib/api";
+import { Anime } from "@/types/anime";
 
-import { useEffect, useState } from "react";
-import { AnimeCard } from "@/components/AnimeCard";
-import { apiPath, safeJson } from "@/lib/api";
-import type { SeasonResponse } from "@/types/anime";
-import { AnimeGridSkeleton } from "@/components/Loaders/GridSkeleton";
-import { Skeleton } from "@/components/ui/skeleton";
-
-export default function HomePage() {
-  const [season, setSeason] = useState<SeasonResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(apiPath("/season?enrich=1"));
-        const json = await safeJson(res);
-        setSeason(json as SeasonResponse);
-      } catch (err) {
-        console.error(err);
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  if (error) {
-    return <main className="p-6 text-red-400">Error: {error}</main>;
+export default async function HomePage() {
+  const season = await fetchSeason({ enrich: false });
+  const top = season.data[0];
+  function scoreHype(a: Anime) {
+    const r = a.meta?.rating ?? 0; // 0..10
+    const pop = a.meta?.popularity ?? 0; // absoluto
+    const fav = a.meta?.favourites ?? 0; // absoluto
+    // normalización simple (robusta, no perfecta)
+    const popN = Math.log10(1 + pop);
+    const favN = Math.log10(1 + fav);
+    // ponderación balanceada: rating pesa más, pero hype empuja
+    return r * 0.65 + popN * 0.22 + favN * 0.13;
   }
 
-  if (loading || !season) {
-    return (
-      <main className="flex flex-col gap-4 p-6 text-muted-foreground">
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-4 w-[250px]" />
-          <Skeleton className="h-4 w-[200px]" />
-        </div>
-        <Skeleton className="h-10 w-full rounded-md" />
-        <AnimeGridSkeleton count={10} />
-      </main>
-    );
-  }
+  const heroItems = [...season.data]
+    .filter((a) => a.meta?.status !== "finished") // prioriza lo que “mueve” hoy
+    .sort((a, b) => scoreHype(b) - scoreHype(a))
+    .slice(0, 5);
 
   return (
-    <main className="space-y-8">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Anime de Temporada
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {season.meta.year} – {season.meta.season} · {season.meta.total}{" "}
-          títulos
-        </p>
-      </div>
-      <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-        {season.data.map((anime) => (
-          <AnimeCard key={anime.id.anilist} anime={anime}  overlayTone="strong" autoContrast />
-        ))}
-      </div>
+    <main className="space-y-12">
+      {top && (
+        <HeroCarouselCinematic
+          items={heroItems}
+          // primaryHref={`/anime/${top.id.anilist}`}
+          // secondaryHref={`/mi-lista?add=${top.id.anilist}`}
+          className="min-h-[calc(100vh-4rem)]"
+        />
+      )}
+      <MinimalShelf
+        title="Tendencias de la temporada"
+        items={season.data.slice(0, 12)}
+      />
+      <Container className="py-12"></Container>
+      {/* luego tu SmartShelf minimal o una sola sección clave */}
     </main>
   );
 }

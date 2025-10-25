@@ -9,6 +9,8 @@ import {
   tmdbSearchTV,
   tmdbTVProviders,
   tmdbPosterUrl,
+  tmdbBackdropUrl,
+  tmdbImageUrl,
 } from "../services/tmdb.service.js";
 import { enrichFromMalAndKitsu } from "../utils/enrich.js";
 import { AniMedia, AniTitle, TMDBSearchTVItem } from "../types/types.js";
@@ -42,6 +44,8 @@ async function fetchSeasonAnimeLite(
           episodes
           coverImage { large medium }
           averageScore
+          popularity
+          favourites
           genres
           description
           isAdult
@@ -179,16 +183,19 @@ export async function getSeason(
             anime.seasonYear ?? undefined
           );
 
-          const poster = usedBaseTitle
-            ? anime.coverImage?.large ??
-              anime.coverImage?.medium ??
-              (bestMatch?.poster_path
-                ? tmdbPosterUrl(bestMatch.poster_path, "w342")
-                : null)
-            : bestMatch?.poster_path
-            ? tmdbPosterUrl(bestMatch.poster_path, "w342")
+          // NUEVO: backdrop/hero para HERO BANNER (prioriza backdrop 16:9)
+          const posterLg = bestMatch?.poster_path
+            ? tmdbPosterUrl(bestMatch.poster_path, "w780") // nítido para hero/card
             : anime.coverImage?.large ?? anime.coverImage?.medium ?? null;
 
+          // nuevo: backdrop amplio
+          const backdrop = bestMatch?.backdrop_path
+            ? tmdbBackdropUrl(bestMatch.backdrop_path, "w1280")
+            : null;
+
+          // opcional: AniList tiene banner horizontal ideal para hero
+          // agrega "bannerImage" en tu GQL (Media.bannerImage) y úsalo aquí:
+          const banner = (anime as any)?.bannerImage ?? null;
           let providers: string[] = [];
           if (bestMatch?.id) {
             const cacheKey = `providers:${bestMatch.id}:${resolvedCountry}`;
@@ -224,7 +231,9 @@ export async function getSeason(
             id: { anilist: anime.id, tmdb: bestMatch?.id ?? null },
             title: mainTitle,
             altTitles,
-            poster,
+            poster: posterLg,
+            backdrop,
+            banner,
             season: anime.season ?? resolved.season,
             year: anime.seasonYear ?? resolved.year,
             providers,
@@ -233,6 +242,14 @@ export async function getSeason(
               rating:
                 typeof anime.averageScore === "number"
                   ? anime.averageScore / 10
+                  : null,
+              popularity:
+                typeof (anime as any).popularity === "number"
+                  ? (anime as any).popularity
+                  : null,
+              favourites:
+                typeof (anime as any).favourites === "number"
+                  ? (anime as any).favourites
                   : null,
               synopsis: anime.description ?? null,
               episodes: anime.episodes ?? null,

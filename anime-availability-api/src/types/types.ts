@@ -12,7 +12,11 @@ export interface BaseAnimeInfo {
   season?: string;
   episodes?: number;
   airingStatus?: AiringStatus;
+  popularity?: number;
+  favourites?: number;
   poster?: string;
+  backdrop?: string;
+  banner?: string;
   providers?: ProviderInfo[];
   score?: number; // 0..10
 }
@@ -26,6 +30,7 @@ export interface TMDBSearchTVItem {
   original_language?: string;
   overview?: string;
   poster_path?: string | null;
+  backdrop_path?: string | null;
   genre_ids?: number[];
   vote_average?: number;
 }
@@ -51,6 +56,7 @@ export interface AniListMedia {
   status?: string; // RELEASING | FINISHED | NOT_YET_RELEASED...
   season?: string; // WINTER | SPRING | SUMMER | FALL
   seasonYear?: number;
+  bannerImage?: string | null;
   coverImage?: { large?: string; medium?: string };
   averageScore?: number; // 0..100
   genres?: string[];

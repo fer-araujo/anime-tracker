@@ -2,10 +2,19 @@ export type Anime = {
   id: { anilist: number; tmdb: number | null };
   title: string;
   poster: string | null;
+  backdrop?: string | null;
+  banner?: string | null;
   providers: string[];
   meta?: {
     genres?: string[];
     rating?: number | null; // 0..10
+    synopsis?: string | null;
+    year?: number | null;
+    season?: string | null;
+    popularity?: number | null;
+    favourites?: number | null;
+    score?: number | null; // 0..10
+    startDate?: string | null; // fecha ISO
     isAdult?: boolean;
     isNew?: boolean;
     status?: "ongoing" | "finished";
@@ -14,6 +23,7 @@ export type Anime = {
     episodes?: number | null;
     progress?: number | null; // vistos
     nextAiring?: string | null; // e.g. "in 6 days" (texto ya formateado)
+    nextEpisodeAt?: string | null; // fecha ISO del próximo episodio
   };
 };
 

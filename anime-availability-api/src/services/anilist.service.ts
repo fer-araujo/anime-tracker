@@ -27,8 +27,11 @@ export async function fetchAniListBySearch(title: string): Promise<BaseAnimeInfo
         status
         season
         seasonYear
+        bannerImage
         coverImage { large medium }
         averageScore
+        popularity
+        favourites
       }
     }
   `;
@@ -53,7 +56,10 @@ export async function fetchAniListBySearch(title: string): Promise<BaseAnimeInfo
     season: m.season,
     airingStatus: normalizeStatus(m.status),
     poster: m.coverImage?.large ?? m.coverImage?.medium,
+    backdrop: m.bannerImage ?? m.coverImage?.large,
     score: m.averageScore ? m.averageScore / 10 : undefined,
+    popularity: typeof (m as any).popularity === "number" ? (m as any).popularity : undefined,
+    favourites: typeof (m as any).favourites === "number" ? (m as any).favourites : undefined,
   };
 
   memoryCache.set(cacheKey, info);

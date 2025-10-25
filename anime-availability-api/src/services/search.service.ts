@@ -4,7 +4,7 @@ import type {
   ProviderInfo,
   TMDBSearchTVItem,
 } from "../types/types.js";
-import { tmdbPosterUrl, tmdbSearchTV } from "./tmdb.service.js";
+import { tmdbBackdropUrl, tmdbImageUrl, tmdbPosterUrl, tmdbSearchTV } from "./tmdb.service.js";
 import { fetchProvidersUnified } from "./provider.service.js";
 import {
   AniMedia,
@@ -264,6 +264,12 @@ export async function searchAnime(
       ? tmdbPosterUrl(tmdbItem.poster_path, "w342")
       : m.coverImage?.large ?? m.coverImage?.medium;
 
+    const backdrop = tmdbItem?.backdrop_path
+      ? tmdbBackdropUrl(tmdbItem.backdrop_path, "w1280")
+      : tmdbItem?.poster_path
+      ? tmdbImageUrl(tmdbItem.poster_path, "w780")
+      : m.coverImage?.large ?? m.coverImage?.medium;
+      
     const nextAtISO =
       typeof m.nextAiringEpisode?.airingAt === "number"
         ? new Date(m.nextAiringEpisode.airingAt * 1000).toISOString()
@@ -279,6 +285,7 @@ export async function searchAnime(
       season: m.season,
       airingStatus: normalizeStatus(m.status),
       poster,
+      backdrop,
       providers,
       score:
         typeof m.averageScore === "number" ? m.averageScore / 10 : undefined,
