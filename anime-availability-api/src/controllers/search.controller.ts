@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { ENV } from "../config/env.js";
 import { SearchQuery } from "../models/schema.js";
 import { searchAnime } from "../services/search.service.js";
+import { htmlToText, shorten } from "../utils/sanitize.js";
 
 const NAME_ALIASES: Record<string, string> = {
   Disney: "Disney+",
@@ -79,7 +80,9 @@ export async function searchTitle(
           popularity: r.popularity ?? null,
           favourites: r.favourites ?? null,
           genres: r.genres ?? [],
-          synopsis: r.synopsis ?? null,
+          synopsisHtml: r.synopsis ?? null,
+          synopsis: r.synopsis ? shorten(htmlToText(r.synopsis)) : null,
+          synopsisShort: r.synopsis ? htmlToText(r.synopsis) : null,
           startDate: r.startDateISO ?? null,
           isAdult: typeof r.isAdult === "boolean" ? r.isAdult : null,
           nextEpisode: r.nextEpisode ?? null,

@@ -5,10 +5,13 @@ export type Anime = {
   backdrop?: string | null;
   banner?: string | null;
   providers: string[];
+  artworkCandidates?: ArtworkCandidate[];
   meta?: {
     genres?: string[];
     rating?: number | null; // 0..10
     synopsis?: string | null;
+    synopsisShort?: string | null;
+    synopsisHTML?: string | null;
     year?: number | null;
     season?: string | null;
     popularity?: number | null;
@@ -40,7 +43,9 @@ export type AnimeCardProps = {
 export interface AnimeMeta {
   genres?: string[];
   rating?: number | null;
+  synopsisHTML?: string | null;
   synopsis?: string | null;
+  synopsisShort?: string | null;
 }
 
 export interface AnimeID {
@@ -89,4 +94,16 @@ export type AnimeCardData = {
   poster: string | null;
   providers: string[];
   meta?: AnimeCardMeta;
+};
+
+export type ArtworkCandidate = {
+  lang: string | null;
+  votes: number;
+  rating: number;
+  aspect: number | null;
+  width: number | null;
+  height: number | null;
+  url_780: string | null;
+  url_1280: string | null;
+  url_orig: string | null;
 };

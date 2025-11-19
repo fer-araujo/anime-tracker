@@ -37,6 +37,17 @@ export async function tmdbSearchTV(query: string): Promise<TMDBSearchTVItem[]> {
   return (data?.results ?? []) as TMDBSearchTVItem[];
 }
 
+// Nuevo helper (déjalo aquí o en utils)
+export function isAnimeCandidate(item: TMDBSearchTVItem) {
+  const isAnimation =
+    Array.isArray(item.genre_ids) && item.genre_ids.includes(16);
+  const origins = Array.isArray(item.origin_country) ? item.origin_country : [];
+  const fromAnimeRegions = origins.some((c) =>
+    ["JP", "CN", "KR", "TW"].includes(c)
+  );
+  return isAnimation || fromAnimeRegions; // aceptamos si cumple cualquiera (mejor recall)
+}
+
 // reemplaza el contenido de tmdbTVProviders:
 export async function tmdbTVProviders(
   tvId: number,

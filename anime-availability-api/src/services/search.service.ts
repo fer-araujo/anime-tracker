@@ -4,7 +4,13 @@ import type {
   ProviderInfo,
   TMDBSearchTVItem,
 } from "../types/types.js";
-import { tmdbBackdropUrl, tmdbImageUrl, tmdbPosterUrl, tmdbSearchTV } from "./tmdb.service.js";
+import {
+  isAnimeCandidate,
+  tmdbBackdropUrl,
+  tmdbImageUrl,
+  tmdbPosterUrl,
+  tmdbSearchTV,
+} from "./tmdb.service.js";
 import { fetchProvidersUnified } from "./provider.service.js";
 import {
   AniMedia,
@@ -94,35 +100,45 @@ function fuzzyDateToISO(
 }
 
 function pickBestTmdbMatch(
-  title: string,
-  year: number | undefined,
-  items: TMDBSearchTVItem[]
-) {
-  const t = title.toLowerCase();
-  const tBase = baseTitleCandidate(title).toLowerCase();
+  tmdbList: TMDBSearchTVItem[],
+  titles: AniTitle,
+  seasonYear?: number | null
+): TMDBSearchTVItem | undefined {
+  if (!Array.isArray(tmdbList) || tmdbList.length === 0) return undefined;
 
-  const starts = items.filter(
-    (i) =>
-      i.name?.toLowerCase()?.startsWith(t) ||
-      i.name?.toLowerCase()?.startsWith(tBase)
-  );
-  const contains = items.filter(
-    (i) =>
-      (i.name?.toLowerCase()?.includes(t) ||
-        i.name?.toLowerCase()?.includes(tBase)) &&
-      !starts.includes(i)
-  );
+  // 1) Filtra candidatos que parezcan anime
+  const animeOnly = tmdbList.filter(isAnimeCandidate);
+  const basePool = animeOnly.length ? animeOnly : tmdbList; // fallback si no hay ninguno “anime”
 
-  const ordered = [...starts, ...contains];
-  if (year) {
+  const candidates = (
+    [titles.english, titles.romaji, titles.native].filter(Boolean) as string[]
+  ).map((t) => t.toLowerCase());
+
+  const starts: TMDBSearchTVItem[] = [];
+  const contains: TMDBSearchTVItem[] = [];
+
+  for (const item of basePool) {
+    const name = (item.name || item.original_name || "").toLowerCase();
+    if (!name) continue;
+    if (candidates.some((t) => name.startsWith(t))) starts.push(item);
+    else if (candidates.some((t) => name.includes(t))) contains.push(item);
+  }
+
+  let ordered = [...starts, ...contains];
+  if (ordered.length === 0) ordered = basePool;
+
+  // 2) Si tenemos año, desempatamos por año
+  if (seasonYear) {
     const byYear = ordered.find(
       (i) =>
         typeof i.first_air_date === "string" &&
-        i.first_air_date.slice(0, 4) === String(year)
+        i.first_air_date.slice(0, 4) === String(seasonYear)
     );
     if (byYear) return byYear;
   }
-  return ordered[0] ?? items[0];
+
+  // 3) Como último recurso, el primero del pool filtrado
+  return ordered[0];
 }
 
 async function anilistSearchPage(
@@ -240,7 +256,7 @@ export async function searchAnime(
             tmdbList = await tmdbSearchTV(base);
           }
         }
-        tmdbItem = pickBestTmdbMatch(title, m.seasonYear, tmdbList || []);
+        tmdbItem = pickBestTmdbMatch(tmdbList || [], title as AniTitle, m.seasonYear, );
       } catch {}
     }
 
@@ -269,7 +285,7 @@ export async function searchAnime(
       : tmdbItem?.poster_path
       ? tmdbImageUrl(tmdbItem.poster_path, "w780")
       : m.coverImage?.large ?? m.coverImage?.medium;
-      
+
     const nextAtISO =
       typeof m.nextAiringEpisode?.airingAt === "number"
         ? new Date(m.nextAiringEpisode.airingAt * 1000).toISOString()

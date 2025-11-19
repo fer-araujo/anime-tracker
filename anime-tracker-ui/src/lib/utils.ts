@@ -52,3 +52,19 @@ export const handleImageLoad = (
     // noop
   }
 };
+
+export function getAspectClass(aspect?: number | null) {
+  if (!aspect) return "aspect-video"; // fallback 16:9
+  if (aspect > 2.1) return "aspect-[21/9]"; // cinematic widescreen
+  if (aspect > 1.9) return "aspect-[19/9]";
+  if (aspect > 1.7) return "aspect-video";
+  if (aspect > 1.5) return "aspect-[3/2]";
+  return "aspect-[4/3]"; // muy cuadrado o viejo
+}
+
+export function getScaleClass(aspect?: number | null) {
+  if (!aspect) return "scale-100";
+  if (aspect > 2.1) return "scale-[1.08]";
+  if (aspect > 1.9) return "scale-[1.05]";
+  return "scale-100";
+}

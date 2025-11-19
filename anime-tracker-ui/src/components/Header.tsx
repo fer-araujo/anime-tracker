@@ -6,7 +6,12 @@ import SearchBar from "@/components/SearchBar";
 
 export default function Header() {
   return (
-    <header className="fixed inset-x-0 top-0 z-40 w-full border-b border-white/10 bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header
+      className={
+        "fixed top-0 inset-x-0 z-50 h-14 backdrop-blur supports-[backdrop-filter]:bg-black/25 " +
+        "pl-[min(18vw,6rem)] pr-[min(18vw,6rem)] md:pl-8 md:pr-8"
+      }
+    >
       <div className="mx-auto max-w-[88rem] px-3 sm:px-4">
         <div className="flex h-14 items-center gap-3">
           <Link href="/" className="flex items-center gap-2">

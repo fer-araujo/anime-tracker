@@ -11,9 +11,11 @@ import {
   tmdbPosterUrl,
   tmdbBackdropUrl,
   tmdbImageUrl,
+  isAnimeCandidate,
 } from "../services/tmdb.service.js";
 import { enrichFromMalAndKitsu } from "../utils/enrich.js";
 import { AniMedia, AniTitle, TMDBSearchTVItem } from "../types/types.js";
+import { htmlToText, shorten } from "../utils/sanitize.js";
 
 const limit = pLimit(5);
 const PROVIDERS_TTL_MS = 1000 * 60 * 60 * 12;
@@ -36,13 +38,20 @@ async function fetchSeasonAnimeLite(
   const query = `
     query ($season: MediaSeason, $year: Int, $page: Int, $perPage: Int) {
       Page(page: $page, perPage: $perPage) {
-        media(season: $season, seasonYear: $year, type: ANIME) {
+        media(
+          type: ANIME
+          season: $season
+          seasonYear: $year
+          format_in: [TV, ONA, MOVIE, OVA, SPECIAL, TV_SHORT]
+          sort: [POPULARITY_DESC]
+        ) {
           id
           title { romaji english native }
           season
           seasonYear
           episodes
           coverImage { large medium }
+          bannerImage
           averageScore
           popularity
           favourites
@@ -62,8 +71,65 @@ async function fetchSeasonAnimeLite(
       }
     }
   `;
+
   const body = { query, variables: { season, year, page: 1, perPage: 50 } };
 
+  const res = await fetch(ANILIST_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text(); // útil para debug
+    throw new Error(`AniList seasonal error: ${res.status} - ${text}`);
+  }
+
+  const json = await res.json();
+  const media = (json?.data?.Page?.media ?? []) as AniMedia[];
+  return media;
+}
+
+async function fetchSeasonTrendingLite(
+  season: string,
+  year: number
+): Promise<AniMedia[]> {
+  const query = `
+    query ($season: MediaSeason, $year: Int, $page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
+        media(
+          type: ANIME
+          season: $season
+          seasonYear: $year
+          format_in: [TV, ONA, MOVIE, OVA, SPECIAL, TV_SHORT]
+          sort: [TRENDING_DESC]
+        ) {
+          id
+          title { romaji english native }
+          season
+          seasonYear
+          episodes
+          coverImage { large medium }
+          averageScore
+          popularity
+          favourites
+          trending
+          genres
+          description
+          isAdult
+          startDate { year month day }
+          nextAiringEpisode { episode airingAt }
+          format
+          status
+          studios {
+            edges { isMain node { name } }
+          }
+          bannerImage
+        }
+      }
+    }
+  `;
+  const body = { query, variables: { season, year, page: 1, perPage: 50 } };
   const res = await fetch(ANILIST_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -100,6 +166,12 @@ function pickBestTmdbMatch(
   titles: AniTitle,
   seasonYear?: number | null
 ): TMDBSearchTVItem | undefined {
+  if (!Array.isArray(tmdbList) || tmdbList.length === 0) return undefined;
+
+  // 1) Filtra candidatos que parezcan anime
+  const animeOnly = tmdbList.filter(isAnimeCandidate);
+  const basePool = animeOnly.length ? animeOnly : tmdbList; // fallback si no hay ninguno “anime”
+
   const candidates = (
     [titles.english, titles.romaji, titles.native].filter(Boolean) as string[]
   ).map((t) => t.toLowerCase());
@@ -107,16 +179,17 @@ function pickBestTmdbMatch(
   const starts: TMDBSearchTVItem[] = [];
   const contains: TMDBSearchTVItem[] = [];
 
-  for (const item of tmdbList) {
+  for (const item of basePool) {
     const name = (item.name || item.original_name || "").toLowerCase();
     if (!name) continue;
     if (candidates.some((t) => name.startsWith(t))) starts.push(item);
     else if (candidates.some((t) => name.includes(t))) contains.push(item);
   }
 
-  const ordered = [...starts, ...contains];
-  if (ordered.length === 0) return tmdbList[0];
+  let ordered = [...starts, ...contains];
+  if (ordered.length === 0) ordered = basePool;
 
+  // 2) Si tenemos año, desempatamos por año
   if (seasonYear) {
     const byYear = ordered.find(
       (i) =>
@@ -125,6 +198,8 @@ function pickBestTmdbMatch(
     );
     if (byYear) return byYear;
   }
+
+  // 3) Como último recurso, el primero del pool filtrado
   return ordered[0];
 }
 
@@ -147,9 +222,13 @@ export async function getSeason(
       season: (season ?? current.season).toUpperCase(),
       year: Number.isFinite(year as number) ? (year as number) : current.year,
     };
+    const rank = String(req.query.rank || "popular"); // "popular" | "trending"
 
-    const list = await fetchSeasonAnimeLite(resolved.season, resolved.year);
-
+    const list =
+      rank === "trending"
+        ? await fetchSeasonTrendingLite(resolved.season, resolved.year)
+        : await fetchSeasonAnimeLite(resolved.season, resolved.year);
+        
     const items = await Promise.all(
       list.map((anime) =>
         limit(async () => {
@@ -183,19 +262,18 @@ export async function getSeason(
             anime.seasonYear ?? undefined
           );
 
-          // NUEVO: backdrop/hero para HERO BANNER (prioriza backdrop 16:9)
-          const posterLg = bestMatch?.poster_path
-            ? tmdbPosterUrl(bestMatch.poster_path, "w780") // nítido para hero/card
-            : anime.coverImage?.large ?? anime.coverImage?.medium ?? null;
+          const posterLg =
+            bestMatch?.poster_path && isAnimeCandidate(bestMatch)
+              ? tmdbPosterUrl(bestMatch.poster_path, "w780")
+              : anime.coverImage?.large ?? anime.coverImage?.medium ?? null;
 
-          // nuevo: backdrop amplio
-          const backdrop = bestMatch?.backdrop_path
-            ? tmdbBackdropUrl(bestMatch.backdrop_path, "w1280")
-            : null;
+          const backdrop =
+            bestMatch?.backdrop_path && isAnimeCandidate(bestMatch)
+              ? tmdbBackdropUrl(bestMatch.backdrop_path, "w1280")
+              : null;
 
-          // opcional: AniList tiene banner horizontal ideal para hero
-          // agrega "bannerImage" en tu GQL (Media.bannerImage) y úsalo aquí:
           const banner = (anime as any)?.bannerImage ?? null;
+
           let providers: string[] = [];
           if (bestMatch?.id) {
             const cacheKey = `providers:${bestMatch.id}:${resolvedCountry}`;
@@ -251,7 +329,13 @@ export async function getSeason(
                 typeof (anime as any).favourites === "number"
                   ? (anime as any).favourites
                   : null,
-              synopsis: anime.description ?? null,
+              synopsisHtml: anime.description ?? null, // por si quieres en fichas ricas
+              synopsis: anime.description
+                ? htmlToText(anime.description)
+                : null,
+              synopsisShort: anime.description
+                ? shorten(htmlToText(anime.description), 220)
+                : null,
               episodes: anime.episodes ?? null,
               startDate: fuzzyDateToISO(anime.startDate),
               isAdult:

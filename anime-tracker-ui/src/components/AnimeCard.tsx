@@ -122,7 +122,14 @@ export function AnimeCard({
                 {genres.slice(0, 3).join(" · ")}
               </p>
             )}
-
+            {anime.meta?.synopsisShort && (
+              <p
+                className="mt-2 px-3 text-[0.78rem] leading-[1.25rem] text-white/90 [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                title={anime.meta.synopsisShort}
+              >
+                {anime.meta.synopsisShort}
+              </p>
+            )}
             {/* Bottom: providers + actions */}
             <div className="mt-auto flex flex-col gap-4 px-3 pb-3">
               <div className="flex flex-wrap gap-1.5 mb-1.5">
