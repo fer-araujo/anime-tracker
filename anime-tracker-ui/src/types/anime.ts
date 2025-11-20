@@ -2,10 +2,22 @@ export type Anime = {
   id: { anilist: number; tmdb: number | null };
   title: string;
   poster: string | null;
+  backdrop?: string | null;
+  banner?: string | null;
   providers: string[];
+  artworkCandidates?: ArtworkCandidate[];
   meta?: {
     genres?: string[];
     rating?: number | null; // 0..10
+    synopsis?: string | null;
+    synopsisShort?: string | null;
+    synopsisHTML?: string | null;
+    year?: number | null;
+    season?: string | null;
+    popularity?: number | null;
+    favourites?: number | null;
+    score?: number | null; // 0..10
+    startDate?: string | null; // fecha ISO
     isAdult?: boolean;
     isNew?: boolean;
     status?: "ongoing" | "finished";
@@ -14,6 +26,7 @@ export type Anime = {
     episodes?: number | null;
     progress?: number | null; // vistos
     nextAiring?: string | null; // e.g. "in 6 days" (texto ya formateado)
+    nextEpisodeAt?: string | null; // fecha ISO del próximo episodio
   };
 };
 
@@ -30,7 +43,9 @@ export type AnimeCardProps = {
 export interface AnimeMeta {
   genres?: string[];
   rating?: number | null;
+  synopsisHTML?: string | null;
   synopsis?: string | null;
+  synopsisShort?: string | null;
 }
 
 export interface AnimeID {
@@ -79,4 +94,16 @@ export type AnimeCardData = {
   poster: string | null;
   providers: string[];
   meta?: AnimeCardMeta;
+};
+
+export type ArtworkCandidate = {
+  lang: string | null;
+  votes: number;
+  rating: number;
+  aspect: number | null;
+  width: number | null;
+  height: number | null;
+  url_780: string | null;
+  url_1280: string | null;
+  url_orig: string | null;
 };

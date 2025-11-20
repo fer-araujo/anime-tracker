@@ -112,7 +112,7 @@ export function ProviderBadge({
       className={cn(
         "border-white/12 text-foreground/80",
         "hover:border-white/20 hover:text-foreground",
-        "px-2 py-1 text-[11px] rounded-full bg-transparent",
+        "px-2 py-1 text-[11px] rounded-full bg-transparent ",
         className
       )}
     >

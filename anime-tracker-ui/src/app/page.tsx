@@ -1,65 +1,27 @@
-"use client";
+import { Container } from "@/components/common/Container";
+import { MinimalShelf } from "@/components/Shelf";
+import { HeroCarouselCinematic } from "@/components/Spotlight";
+import { fetchHomeHero, fetchSeason } from "@/lib/api";
 
-import { useEffect, useState } from "react";
-import { AnimeCard } from "@/components/AnimeCard";
-import { apiPath, safeJson } from "@/lib/api";
-import type { SeasonResponse } from "@/types/anime";
-import { AnimeGridSkeleton } from "@/components/Loaders/GridSkeleton";
-import { Skeleton } from "@/components/ui/skeleton";
+export default async function HomePage() {
+  const hero = await fetchHomeHero();
+  const heroItems = hero.data.slice(0, 5);
 
-export default function HomePage() {
-  const [season, setSeason] = useState<SeasonResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(apiPath("/season?enrich=1"));
-        const json = await safeJson(res);
-        setSeason(json as SeasonResponse);
-      } catch (err) {
-        console.error(err);
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  if (error) {
-    return <main className="p-6 text-red-400">Error: {error}</main>;
-  }
-
-  if (loading || !season) {
-    return (
-      <main className="flex flex-col gap-4 p-6 text-muted-foreground">
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-4 w-[250px]" />
-          <Skeleton className="h-4 w-[200px]" />
-        </div>
-        <Skeleton className="h-10 w-full rounded-md" />
-        <AnimeGridSkeleton count={10} />
-      </main>
-    );
-  }
+  const season = await fetchSeason({ enrich: false });
 
   return (
-    <main className="space-y-8">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Anime de Temporada
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {season.meta.year} – {season.meta.season} · {season.meta.total}{" "}
-          títulos
-        </p>
-      </div>
-      <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-        {season.data.map((anime) => (
-          <AnimeCard key={anime.id.anilist} anime={anime}  overlayTone="strong" autoContrast />
-        ))}
-      </div>
+    <main className="space-y-12">
+      {heroItems.length > 0 && (
+        <HeroCarouselCinematic
+          items={heroItems}
+          className="min-h-[calc(100vh-4rem)]"
+        />
+      )}
+      <MinimalShelf
+        title="Popular esta temporada"
+        items={season.data.slice(0, 12)}
+      />
+      <Container className="py-12" />
     </main>
   );
 }

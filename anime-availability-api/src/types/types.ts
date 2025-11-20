@@ -12,7 +12,11 @@ export interface BaseAnimeInfo {
   season?: string;
   episodes?: number;
   airingStatus?: AiringStatus;
+  popularity?: number;
+  favourites?: number;
   poster?: string;
+  backdrop?: string;
+  banner?: string;
   providers?: ProviderInfo[];
   score?: number; // 0..10
 }
@@ -26,6 +30,7 @@ export interface TMDBSearchTVItem {
   original_language?: string;
   overview?: string;
   poster_path?: string | null;
+  backdrop_path?: string | null;
   genre_ids?: number[];
   vote_average?: number;
 }
@@ -44,6 +49,18 @@ export interface TMDBProvidersResponse {
   >;
 }
 
+export type TmdbImageResp = {
+  backdrops?: Array<{
+    iso_639_1: string | null;
+    file_path: string;
+    vote_count?: number;
+    vote_average?: number;
+    width?: number;
+    height?: number;
+    aspect_ratio?: number;
+  }>;
+};
+
 export interface AniListMedia {
   id: number;
   title: { romaji?: string; english?: string; native?: string };
@@ -51,6 +68,7 @@ export interface AniListMedia {
   status?: string; // RELEASING | FINISHED | NOT_YET_RELEASED...
   season?: string; // WINTER | SPRING | SUMMER | FALL
   seasonYear?: number;
+  bannerImage?: string | null;
   coverImage?: { large?: string; medium?: string };
   averageScore?: number; // 0..100
   genres?: string[];
@@ -84,6 +102,9 @@ export interface AniMedia {
   isAdult?: boolean;
   startDate?: { year?: number; month?: number; day?: number } | null;
   nextAiringEpisode?: { episode?: number; airingAt?: number } | null;
+  format?: string;
+  studios: any;
+
   // campo auxiliar opcional para fallback TMDB en search
   __tmdb__?: TMDBSearchTVItem;
 }
@@ -107,6 +128,8 @@ export interface SearchResultItem extends BaseAnimeInfo {
   isAdult?: boolean;
   nextEpisode?: number;
   nextEpisodeAtISO?: string | null;
+  type: string | null;
+  studio: string | null;
 }
 
 export interface SearchResponse {
@@ -127,4 +150,33 @@ export type Enrichment = {
     mal?: { id?: number | string; title?: string } | null;
     kitsu?: { id?: string | number; title?: string } | null;
   };
+};
+
+export type ArtworkCandidate = {
+  url_780: string | null;
+  url_1280: string | null;
+  url_orig: string | null;
+  width?: number | null;
+  height?: number | null;
+  aspect?: number | null;
+};
+
+export type ResolveArtworkOpts =
+  | string
+  | {
+      serverOrigin?: string;
+      requireLandscape?: boolean; // si true, filtra a ~16:9
+      lang?: string; // ej: "es,en,null"
+    };
+export type AniCover = { extraLarge?: string; large?: string; medium?: string };
+export type MediaLike = {
+  bannerImage?: string | null;
+  tmdbId?: number | null;
+  coverImage?: AniCover;
+};
+export type ResolveOpts = {
+  serverOrigin?: string; // default: http://localhost:PORT
+  requireLandscape?: boolean; // si true -> filtra 1.6..1.9
+  trySearchIfEmpty?: boolean; // si true -> intenta buscar por título si /artwork está vacío
+  langs?: string; // default: "es,en,null"
 };

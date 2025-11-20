@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { ENV } from "../config/env.js";
 import { SearchQuery } from "../models/schema.js";
 import { searchAnime } from "../services/search.service.js";
+import { htmlToText, shorten } from "../utils/sanitize.js";
 
 const NAME_ALIASES: Record<string, string> = {
   Disney: "Disney+",
@@ -67,6 +68,8 @@ export async function searchTitle(
         },
         title: r.title,
         poster: r.poster ?? null,
+        backdrop: r.backdrop ?? null,
+        banner: r.banner ?? null,
         providers: normalizeProviderNames(providerNames),
         meta: {
           year: r.year ?? null,
@@ -74,13 +77,21 @@ export async function searchTitle(
           episodes: r.episodes ?? null,
           airingStatus: r.airingStatus ?? null,
           score: r.score ?? null,
+          popularity: r.popularity ?? null,
+          favourites: r.favourites ?? null,
           genres: r.genres ?? [],
-          synopsis: r.synopsis ?? null,
+          synopsisHtml: r.synopsis ?? null,
+          synopsis: r.synopsis ? shorten(htmlToText(r.synopsis)) : null,
+          synopsisShort: r.synopsis ? htmlToText(r.synopsis) : null,
           startDate: r.startDateISO ?? null,
           isAdult: typeof r.isAdult === "boolean" ? r.isAdult : null,
           nextEpisode: r.nextEpisode ?? null,
           nextEpisodeAt: r.nextEpisodeAtISO ?? null,
           status: r.nextEpisodeAtISO ? "ongoing" : "finished",
+          studio: r.studio ?? null,
+          type: r.type ?? null,
+          progress: null, // pendiente de user-list
+          nextAiring: r.nextEpisodeAtISO ? null : null, // lo puedes formatear en FE si quieres
         },
       };
     });

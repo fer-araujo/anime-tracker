@@ -38,7 +38,7 @@ export function AnimeCard({
     <div className="group relative w-full select-none">
       <Card
         className={cn(
-          "relative w-full overflow-hidden rounded-2xl p-0",
+          "relative w-full overflow-hidden p-0 isolate rounded-md",
           heightCls,
           "border border-white/10 bg-neutral-950 transition-shadow duration-300 ease-out hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.5)]"
         )}
@@ -66,14 +66,14 @@ export function AnimeCard({
             "absolute inset-0 z-[2]",
             // Hover: degradé + blur + leve extra opacidad
             "opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-out",
-            "backdrop-blur-[4px] backdrop-saturate-[125%]",
+            "backdrop-blur-[6px] backdrop-saturate-[125%]",
             overlayMode === "ultra" || overlayTone === "strong"
-              ? "bg-[linear-gradient(to_top,rgba(0,0,0,0.90)_0%,rgba(0,0,0,0.66)_52%,rgba(0,0,0,0.22)_100%)]"
-              : "bg-[linear-gradient(to_top,rgba(0,0,0,0.72)_0%,rgba(0,0,0,0.48)_52%,rgba(0,0,0,0.14)_100%)]"
+              ? "bg-[linear-gradient(to_top,rgba(0,0,0,0.90)_20%,rgba(0,0,0,0.66)_65%,rgba(0,0,0,0.52)_100%)]"
+              : "bg-[linear-gradient(to_top,rgba(0,0,0,0.72)_20%,rgba(0,0,0,0.48)_65%,rgba(0,0,0,0.34)_100%)]"
           )}
         >
           {/* Content */}
-          <div className="relative z-10 flex h-full flex-col text-white">
+          <div className="relative z-10 flex w-full h-full flex-col text-white">
             {/* Top: status pills (left) + score (right) */}
             <div className="flex items-start justify-between gap-2 px-3 pt-3">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -122,7 +122,14 @@ export function AnimeCard({
                 {genres.slice(0, 3).join(" · ")}
               </p>
             )}
-
+            {anime.meta?.synopsisShort && (
+              <p
+                className="mt-2 px-3 text-[0.78rem] leading-[1.25rem] text-white/90 [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                title={anime.meta.synopsisShort}
+              >
+                {anime.meta.synopsisShort}
+              </p>
+            )}
             {/* Bottom: providers + actions */}
             <div className="mt-auto flex flex-col gap-4 px-3 pb-3">
               <div className="flex flex-wrap gap-1.5 mb-1.5">
@@ -136,6 +143,7 @@ export function AnimeCard({
               </div>
               <div className="flex items-center gap-2">
                 <ActionButton
+                  variant="soft"
                   onClick={() => onOpen?.(anime)}
                   icon={<Info size={14} />}
                 >

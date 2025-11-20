@@ -5,9 +5,17 @@ import { ENV } from "../config/env.js";
 import { SeasonQuery } from "../models/schema.js";
 import { memoryCache } from "../utils/cache.js";
 import { normalizeProviderNames } from "../utils/providers.js";
-import { tmdbSearchTV, tmdbTVProviders, tmdbPosterUrl } from "../services/tmdb.service.js";
+import {
+  tmdbSearchTV,
+  tmdbTVProviders,
+  tmdbPosterUrl,
+  tmdbBackdropUrl,
+  tmdbImageUrl,
+  isAnimeCandidate,
+} from "../services/tmdb.service.js";
 import { enrichFromMalAndKitsu } from "../utils/enrich.js";
 import { AniMedia, AniTitle, TMDBSearchTVItem } from "../types/types.js";
+import { htmlToText, shorten } from "../utils/sanitize.js";
 
 const limit = pLimit(5);
 const PROVIDERS_TTL_MS = 1000 * 60 * 60 * 12;
@@ -23,11 +31,79 @@ function getCurrentSeasonYearLocal() {
   return { season: "FALL" as const, year: y };
 }
 
-async function fetchSeasonAnimeLite(season: string, year: number): Promise<AniMedia[]> {
+async function fetchSeasonAnimeLite(
+  season: string,
+  year: number
+): Promise<AniMedia[]> {
   const query = `
     query ($season: MediaSeason, $year: Int, $page: Int, $perPage: Int) {
       Page(page: $page, perPage: $perPage) {
-        media(season: $season, seasonYear: $year, type: ANIME) {
+        media(
+          type: ANIME
+          season: $season
+          seasonYear: $year
+          format_in: [TV, ONA, MOVIE, OVA, SPECIAL, TV_SHORT]
+          sort: [POPULARITY_DESC]
+        ) {
+          id
+          title { romaji english native }
+          season
+          seasonYear
+          episodes
+          coverImage { large medium }
+          bannerImage
+          averageScore
+          popularity
+          favourites
+          genres
+          description
+          isAdult
+          startDate { year month day }
+          nextAiringEpisode { episode airingAt }
+          format
+          studios {
+            edges {
+              isMain
+              node { name }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const body = { query, variables: { season, year, page: 1, perPage: 50 } };
+
+  const res = await fetch(ANILIST_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text(); // útil para debug
+    throw new Error(`AniList seasonal error: ${res.status} - ${text}`);
+  }
+
+  const json = await res.json();
+  const media = (json?.data?.Page?.media ?? []) as AniMedia[];
+  return media;
+}
+
+async function fetchSeasonTrendingLite(
+  season: string,
+  year: number
+): Promise<AniMedia[]> {
+  const query = `
+    query ($season: MediaSeason, $year: Int, $page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
+        media(
+          type: ANIME
+          season: $season
+          seasonYear: $year
+          format_in: [TV, ONA, MOVIE, OVA, SPECIAL, TV_SHORT]
+          sort: [TRENDING_DESC]
+        ) {
           id
           title { romaji english native }
           season
@@ -35,17 +111,25 @@ async function fetchSeasonAnimeLite(season: string, year: number): Promise<AniMe
           episodes
           coverImage { large medium }
           averageScore
+          popularity
+          favourites
+          trending
           genres
           description
           isAdult
           startDate { year month day }
           nextAiringEpisode { episode airingAt }
+          format
+          status
+          studios {
+            edges { isMain node { name } }
+          }
+          bannerImage
         }
       }
     }
   `;
   const body = { query, variables: { season, year, page: 1, perPage: 50 } };
-
   const res = await fetch(ANILIST_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -65,9 +149,13 @@ function baseTitleCandidate(title: string) {
     .trim();
 }
 
-function fuzzyDateToISO(fd?: { year?: number; month?: number; day?: number } | null): string | null {
+function fuzzyDateToISO(
+  fd?: { year?: number; month?: number; day?: number } | null
+): string | null {
   if (!fd?.year) return null;
-  const y = fd.year, m = fd.month ?? 1, d = fd.day ?? 1;
+  const y = fd.year,
+    m = fd.month ?? 1,
+    d = fd.day ?? 1;
   const mm = String(m).padStart(2, "0");
   const dd = String(d).padStart(2, "0");
   return `${y}-${mm}-${dd}`;
@@ -78,23 +166,30 @@ function pickBestTmdbMatch(
   titles: AniTitle,
   seasonYear?: number | null
 ): TMDBSearchTVItem | undefined {
-  const candidates = ([titles.english, titles.romaji, titles.native].filter(Boolean) as string[]).map(
-    (t) => t.toLowerCase()
-  );
+  if (!Array.isArray(tmdbList) || tmdbList.length === 0) return undefined;
+
+  // 1) Filtra candidatos que parezcan anime
+  const animeOnly = tmdbList.filter(isAnimeCandidate);
+  const basePool = animeOnly.length ? animeOnly : tmdbList; // fallback si no hay ninguno “anime”
+
+  const candidates = (
+    [titles.english, titles.romaji, titles.native].filter(Boolean) as string[]
+  ).map((t) => t.toLowerCase());
 
   const starts: TMDBSearchTVItem[] = [];
   const contains: TMDBSearchTVItem[] = [];
 
-  for (const item of tmdbList) {
+  for (const item of basePool) {
     const name = (item.name || item.original_name || "").toLowerCase();
     if (!name) continue;
     if (candidates.some((t) => name.startsWith(t))) starts.push(item);
     else if (candidates.some((t) => name.includes(t))) contains.push(item);
   }
 
-  const ordered = [...starts, ...contains];
-  if (ordered.length === 0) return tmdbList[0];
+  let ordered = [...starts, ...contains];
+  if (ordered.length === 0) ordered = basePool;
 
+  // 2) Si tenemos año, desempatamos por año
   if (seasonYear) {
     const byYear = ordered.find(
       (i) =>
@@ -103,6 +198,8 @@ function pickBestTmdbMatch(
     );
     if (byYear) return byYear;
   }
+
+  // 3) Como último recurso, el primero del pool filtrado
   return ordered[0];
 }
 
@@ -112,22 +209,32 @@ export async function getSeason(
   next: NextFunction
 ) {
   try {
-    const { country, season, year } = ((req.validated || req.body) ?? {}) as SeasonQuery;
-    const resolvedCountry = (country || ENV.DEFAULT_COUNTRY || "MX").toUpperCase();
+    const { country, season, year } = ((req.validated || req.body) ??
+      {}) as SeasonQuery;
+    const resolvedCountry = (
+      country ||
+      ENV.DEFAULT_COUNTRY ||
+      "MX"
+    ).toUpperCase();
 
     const current = getCurrentSeasonYearLocal();
     const resolved = {
       season: (season ?? current.season).toUpperCase(),
       year: Number.isFinite(year as number) ? (year as number) : current.year,
     };
+    const rank = String(req.query.rank || "popular"); // "popular" | "trending"
 
-    const list = await fetchSeasonAnimeLite(resolved.season, resolved.year);
-
+    const list =
+      rank === "trending"
+        ? await fetchSeasonTrendingLite(resolved.season, resolved.year)
+        : await fetchSeasonAnimeLite(resolved.season, resolved.year);
+        
     const items = await Promise.all(
       list.map((anime) =>
         limit(async () => {
           const titles = anime.title ?? {};
-          const mainTitle = titles.english || titles.romaji || titles.native || "";
+          const mainTitle =
+            titles.english || titles.romaji || titles.native || "";
 
           let usedBaseTitle = false;
           let tmdbResults = await tmdbSearchTV(mainTitle);
@@ -140,15 +247,32 @@ export async function getSeason(
             }
           }
 
-          const bestMatch = pickBestTmdbMatch(tmdbResults || [], titles, anime.seasonYear ?? undefined);
+          const mainStudio =
+            anime?.studios?.edges?.find((e: any) => e?.isMain)?.node?.name ??
+            anime?.studios?.edges?.[0]?.node?.name ??
+            null;
 
-          const poster = usedBaseTitle
-            ? anime.coverImage?.large ??
-              anime.coverImage?.medium ??
-              (bestMatch?.poster_path ? tmdbPosterUrl(bestMatch.poster_path, "w342") : null)
-            : bestMatch?.poster_path
-            ? tmdbPosterUrl(bestMatch.poster_path, "w342")
-            : anime.coverImage?.large ?? anime.coverImage?.medium ?? null;
+          const type =
+            (anime as any)?.format /* TV | ONA | MOVIE | OVA | SPECIAL ... */ ??
+            null;
+
+          const bestMatch = pickBestTmdbMatch(
+            tmdbResults || [],
+            titles,
+            anime.seasonYear ?? undefined
+          );
+
+          const posterLg =
+            bestMatch?.poster_path && isAnimeCandidate(bestMatch)
+              ? tmdbPosterUrl(bestMatch.poster_path, "w780")
+              : anime.coverImage?.large ?? anime.coverImage?.medium ?? null;
+
+          const backdrop =
+            bestMatch?.backdrop_path && isAnimeCandidate(bestMatch)
+              ? tmdbBackdropUrl(bestMatch.backdrop_path, "w1280")
+              : null;
+
+          const banner = (anime as any)?.bannerImage ?? null;
 
           let providers: string[] = [];
           if (bestMatch?.id) {
@@ -158,7 +282,10 @@ export async function getSeason(
             if (cached) {
               providers = cached;
             } else {
-              const provList = await tmdbTVProviders(bestMatch.id, resolvedCountry);
+              const provList = await tmdbTVProviders(
+                bestMatch.id,
+                resolvedCountry
+              );
               const names = (provList ?? []).map((p) => p.name);
               providers = normalizeProviderNames(names);
               memoryCache.set(cacheKey, providers, PROVIDERS_TTL_MS);
@@ -182,20 +309,52 @@ export async function getSeason(
             id: { anilist: anime.id, tmdb: bestMatch?.id ?? null },
             title: mainTitle,
             altTitles,
-            poster,
+            poster: posterLg,
+            backdrop,
+            banner,
             season: anime.season ?? resolved.season,
             year: anime.seasonYear ?? resolved.year,
             providers,
             meta: {
               genres: anime.genres ?? [],
-              rating: typeof anime.averageScore === "number" ? anime.averageScore / 10 : null,
-              synopsis: anime.description ?? null,
+              rating:
+                typeof anime.averageScore === "number"
+                  ? anime.averageScore / 10
+                  : null,
+              popularity:
+                typeof (anime as any).popularity === "number"
+                  ? (anime as any).popularity
+                  : null,
+              favourites:
+                typeof (anime as any).favourites === "number"
+                  ? (anime as any).favourites
+                  : null,
+              synopsisHtml: anime.description ?? null, // por si quieres en fichas ricas
+              synopsis: anime.description
+                ? htmlToText(anime.description)
+                : null,
+              synopsisShort: anime.description
+                ? shorten(htmlToText(anime.description), 220)
+                : null,
               episodes: anime.episodes ?? null,
               startDate: fuzzyDateToISO(anime.startDate),
-              isAdult: typeof anime.isAdult === "boolean" ? anime.isAdult : null,
+              isAdult:
+                typeof anime.isAdult === "boolean" ? anime.isAdult : null,
               nextEpisode: anime.nextAiringEpisode?.episode ?? null,
               nextEpisodeAt: nextEpisodeAtISO,
               status: anime.nextAiringEpisode ? "ongoing" : "finished",
+              studio: mainStudio,
+              type,
+              progress: null, // esto vendrá de user-list más adelante
+              nextAiring: anime.nextAiringEpisode?.airingAt
+                ? `in ${Math.max(
+                    1,
+                    Math.round(
+                      (anime.nextAiringEpisode.airingAt * 1000 - Date.now()) /
+                        (1000 * 60 * 60 * 24)
+                    )
+                  )} days`
+                : null,
             },
             sources: {},
           };
@@ -214,7 +373,9 @@ export async function getSeason(
                 poster: it.poster ?? enrich.posterAlt ?? null,
                 meta: {
                   ...(it.meta || {}),
-                  genres: it.meta?.genres?.length ? it.meta.genres : enrich.genres,
+                  genres: it.meta?.genres?.length
+                    ? it.meta.genres
+                    : enrich.genres,
                   rating: it.meta?.rating ?? enrich.rating,
                   synopsis: it.meta?.synopsis ?? enrich.synopsis,
                   episodes: it.meta?.episodes ?? enrich.episodes ?? null,
@@ -233,8 +394,16 @@ export async function getSeason(
       : items;
 
     const uniqueItems = enriched
-      .filter((it, idx, self) => self.findIndex((a) => a.id.anilist === it.id.anilist) === idx)
-      .sort((a, b) => a.title.localeCompare(b.title));
+      .filter(
+        (it, idx, self) =>
+          self.findIndex((a) => a.id.anilist === it.id.anilist) === idx
+      )
+      .sort((a, b) => {
+        const ar = a.meta?.rating ?? -1;
+        const br = b.meta?.rating ?? -1;
+        if (br !== ar) return br - ar; // ⭐ primero mayor rating
+        return a.title.localeCompare(b.title); // tie-breaker por título
+      });
 
     return res.json({
       meta: {

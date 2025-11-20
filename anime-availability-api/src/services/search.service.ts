@@ -1,6 +1,16 @@
 import { memoryCache } from "../utils/cache.js";
-import type { AiringStatus, ProviderInfo, TMDBSearchTVItem } from "../types/types.js";
-import { tmdbPosterUrl, tmdbSearchTV } from "./tmdb.service.js";
+import type {
+  AiringStatus,
+  ProviderInfo,
+  TMDBSearchTVItem,
+} from "../types/types.js";
+import {
+  isAnimeCandidate,
+  tmdbBackdropUrl,
+  tmdbImageUrl,
+  tmdbPosterUrl,
+  tmdbSearchTV,
+} from "./tmdb.service.js";
 import { fetchProvidersUnified } from "./provider.service.js";
 import {
   AniMedia,
@@ -53,7 +63,8 @@ async function runWithConcurrency<T, R>(
       results[idx] = await task(items[idx], idx);
     }
   };
-  for (let k = 0; k < Math.max(1, Math.min(concurrency, items.length)); k++) workers.push(worker());
+  for (let k = 0; k < Math.max(1, Math.min(concurrency, items.length)); k++)
+    workers.push(worker());
   await Promise.all(workers);
   return results;
 }
@@ -75,7 +86,9 @@ function baseTitleCandidate(title: string) {
     .trim();
 }
 
-function fuzzyDateToISO(fd?: { year?: number; month?: number; day?: number } | null): string | null {
+function fuzzyDateToISO(
+  fd?: { year?: number; month?: number; day?: number } | null
+): string | null {
   if (!fd?.year) return null;
   const y = fd.year;
   const m = fd.month ?? 1;
@@ -86,32 +99,53 @@ function fuzzyDateToISO(fd?: { year?: number; month?: number; day?: number } | n
   return `${y}-${mm}-${dd}`;
 }
 
-function pickBestTmdbMatch(title: string, year: number | undefined, items: TMDBSearchTVItem[]) {
-  const t = title.toLowerCase();
-  const tBase = baseTitleCandidate(title).toLowerCase();
+function pickBestTmdbMatch(
+  tmdbList: TMDBSearchTVItem[],
+  titles: AniTitle,
+  seasonYear?: number | null
+): TMDBSearchTVItem | undefined {
+  if (!Array.isArray(tmdbList) || tmdbList.length === 0) return undefined;
 
-  const starts = items.filter(
-    (i) => i.name?.toLowerCase()?.startsWith(t) || i.name?.toLowerCase()?.startsWith(tBase)
-  );
-  const contains = items.filter(
-    (i) =>
-      (i.name?.toLowerCase()?.includes(t) || i.name?.toLowerCase()?.includes(tBase)) &&
-      !starts.includes(i)
-  );
+  // 1) Filtra candidatos que parezcan anime
+  const animeOnly = tmdbList.filter(isAnimeCandidate);
+  const basePool = animeOnly.length ? animeOnly : tmdbList; // fallback si no hay ninguno “anime”
 
-  const ordered = [...starts, ...contains];
-  if (year) {
+  const candidates = (
+    [titles.english, titles.romaji, titles.native].filter(Boolean) as string[]
+  ).map((t) => t.toLowerCase());
+
+  const starts: TMDBSearchTVItem[] = [];
+  const contains: TMDBSearchTVItem[] = [];
+
+  for (const item of basePool) {
+    const name = (item.name || item.original_name || "").toLowerCase();
+    if (!name) continue;
+    if (candidates.some((t) => name.startsWith(t))) starts.push(item);
+    else if (candidates.some((t) => name.includes(t))) contains.push(item);
+  }
+
+  let ordered = [...starts, ...contains];
+  if (ordered.length === 0) ordered = basePool;
+
+  // 2) Si tenemos año, desempatamos por año
+  if (seasonYear) {
     const byYear = ordered.find(
       (i) =>
         typeof i.first_air_date === "string" &&
-        i.first_air_date.slice(0, 4) === String(year)
+        i.first_air_date.slice(0, 4) === String(seasonYear)
     );
     if (byYear) return byYear;
   }
-  return ordered[0] ?? items[0];
+
+  // 3) Como último recurso, el primero del pool filtrado
+  return ordered[0];
 }
 
-async function anilistSearchPage(query: string, page: number, perPage: number): Promise<AniPage> {
+async function anilistSearchPage(
+  query: string,
+  page: number,
+  perPage: number
+): Promise<AniPage> {
   const cacheKey = `anilist:page:${query.toLowerCase()}:${page}:${perPage}`;
   const cached = memoryCache.get(cacheKey) as AniPage | undefined;
   if (cached) return cached;
@@ -134,6 +168,10 @@ async function anilistSearchPage(query: string, page: number, perPage: number): 
           isAdult
           startDate { year month day }
           nextAiringEpisode { episode airingAt }
+          format
+          studios {
+            edges { isMain node { name } }
+          }
         }
       }
     }
@@ -142,7 +180,10 @@ async function anilistSearchPage(query: string, page: number, perPage: number): 
   const res = await fetch(ANILIST_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query: gql, variables: { search: query, page, perPage } }),
+    body: JSON.stringify({
+      query: gql,
+      variables: { search: query, page, perPage },
+    }),
   });
   if (!res.ok) throw new Error(`AniList search error: ${res.status}`);
 
@@ -154,7 +195,9 @@ async function anilistSearchPage(query: string, page: number, perPage: number): 
   return pageData;
 }
 
-export async function searchAnime(options: SearchOptions): Promise<SearchResponse> {
+export async function searchAnime(
+  options: SearchOptions
+): Promise<SearchResponse> {
   const query = options.query?.trim();
   if (!query)
     return {
@@ -167,7 +210,9 @@ export async function searchAnime(options: SearchOptions): Promise<SearchRespons
   const region = options.region ?? "MX";
   const perPage = Math.max(5, Math.min(options.limit ?? 12, 15));
 
-  const cursorData = decodeCursor<{ page: number; perPage: number; q: string }>(options.cursor);
+  const cursorData = decodeCursor<{ page: number; perPage: number; q: string }>(
+    options.cursor
+  );
   const page = cursorData?.page && cursorData.q === query ? cursorData.page : 1;
 
   const ani = await anilistSearchPage(query, page, perPage);
@@ -211,7 +256,7 @@ export async function searchAnime(options: SearchOptions): Promise<SearchRespons
             tmdbList = await tmdbSearchTV(base);
           }
         }
-        tmdbItem = pickBestTmdbMatch(title, m.seasonYear, tmdbList || []);
+        tmdbItem = pickBestTmdbMatch(tmdbList || [], title as AniTitle, m.seasonYear, );
       } catch {}
     }
 
@@ -219,10 +264,27 @@ export async function searchAnime(options: SearchOptions): Promise<SearchRespons
     if (tmdbItem && idx < (options.providersForTop ?? 3)) {
       providers = await fetchProvidersUnified(tmdbItem.id, region);
     }
+    const mainStudio =
+      m?.studios?.edges?.find((e: any) => e?.isMain)?.node?.name ??
+      m?.studios?.edges?.[0]?.node?.name ??
+      undefined;
 
+    const type = (m as any)?.format;
     const poster = usedBaseTitle
-      ? m.coverImage?.large ?? m.coverImage?.medium ?? (tmdbItem?.poster_path ? tmdbPosterUrl(tmdbItem.poster_path, "w342") : undefined)
-      : (tmdbItem?.poster_path ? tmdbPosterUrl(tmdbItem.poster_path, "w342") : m.coverImage?.large ?? m.coverImage?.medium);
+      ? m.coverImage?.large ??
+        m.coverImage?.medium ??
+        (tmdbItem?.poster_path
+          ? tmdbPosterUrl(tmdbItem.poster_path, "w342")
+          : undefined)
+      : tmdbItem?.poster_path
+      ? tmdbPosterUrl(tmdbItem.poster_path, "w342")
+      : m.coverImage?.large ?? m.coverImage?.medium;
+
+    const backdrop = tmdbItem?.backdrop_path
+      ? tmdbBackdropUrl(tmdbItem.backdrop_path, "w1280")
+      : tmdbItem?.poster_path
+      ? tmdbImageUrl(tmdbItem.poster_path, "w780")
+      : m.coverImage?.large ?? m.coverImage?.medium;
 
     const nextAtISO =
       typeof m.nextAiringEpisode?.airingAt === "number"
@@ -239,14 +301,18 @@ export async function searchAnime(options: SearchOptions): Promise<SearchRespons
       season: m.season,
       airingStatus: normalizeStatus(m.status),
       poster,
+      backdrop,
       providers,
-      score: typeof m.averageScore === "number" ? m.averageScore / 10 : undefined,
+      score:
+        typeof m.averageScore === "number" ? m.averageScore / 10 : undefined,
       genres: m.genres ?? [],
       synopsis: m.description ?? null,
       startDateISO: fuzzyDateToISO(m.startDate),
       isAdult: Boolean(m.isAdult),
       nextEpisode: m.nextAiringEpisode?.episode ?? undefined,
       nextEpisodeAtISO: nextAtISO,
+      studio: mainStudio,
+      type,
     } as SearchResultItem;
   });
 
