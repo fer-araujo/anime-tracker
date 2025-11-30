@@ -33,7 +33,7 @@ export function AnimeCard({
   const adultByGenre = genres.some((g) => ADULT_GENRES.has(g));
   const isAdult = Boolean(anime.meta?.isAdult || adultByGenre);
   const status = anime.meta?.status; // "ongoing" | "finished" | undefined
-
+  // console.log(anime.poster)
   return (
     <div className="group relative w-full select-none">
       <Card
@@ -50,7 +50,7 @@ export function AnimeCard({
               src={anime.poster}
               alt={anime.title}
               fill
-              sizes="(max-width:768px) 100vw, 33vw"
+              sizes="(max-width:980px) 100vw, 33vw"
               className="object-cover [image-rendering:auto]"
               priority={false}
               onLoad={(e) => handleImageLoad(e, setOverlayMode, autoContrast)}

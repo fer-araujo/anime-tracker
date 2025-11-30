@@ -81,7 +81,7 @@ export function HeroCarouselCinematic({
   const current = items[index];
   const aspect = current.artworkCandidates?.[0]?.aspect ?? null;
   const aspectClass = getAspectClass(aspect);
-  console.log(current.artworkCandidates);
+  
   const heroBackdrop =
     current.artworkCandidates?.[0]?.url_orig ??
     current.artworkCandidates?.[0]?.url_1280 ??
@@ -91,11 +91,17 @@ export function HeroCarouselCinematic({
     current.poster ??
     null;
 
+  const bestArtwork = current.artworkCandidates?.[0];
+  const isWide =
+    bestArtwork?.aspect &&
+    bestArtwork.aspect > 1.3 &&
+    bestArtwork.source !== "anilist-cover"; // o simplemente aspect > 1.3
+
   return (
     <>
       <section
         className={cn(
-          "relative w-full min-h-[100svh] md:min-h-[90svh] lg:min-h-[94svh] isolate overflow-hidden",
+          "relative w-full h-[min(90vh,56vw)] overflow-hidden",
           className
         )}
       >
@@ -118,11 +124,14 @@ export function HeroCarouselCinematic({
                   src={heroBackdrop}
                   alt={current.title}
                   fill
-                  priority={index === 0} // solo el primer slide con priority
-                  sizes="100vw" // ocupa ancho completo
-                  // ¡OJO! el blur/“pixel” no es por object-cover, es por falta de resolución
-                  className="object-contain object-center will-change-transform"
-                  // si usas loader propio para TMDB, déjalo, pero no bajes el tamaño
+                  priority={index === 0}
+                  sizes="100vw"
+                  className={cn(
+                    "will-change-transform",
+                    isWide
+                      ? "object-cover object-center"
+                      : "object-contain bg-black"
+                  )}
                 />
               )}
 
