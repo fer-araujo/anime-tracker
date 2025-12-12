@@ -1,14 +1,17 @@
+// src/routes/index.ts
 import { Router } from "express";
-import seasonRouter from "./season.routes.js";
-import searchRouter from "./search.routes.js";
-import homeRouter from "./home.routes.js";
-import { artworkRouter } from "./artwork.routes.js";
+import homeRoutes from "./home.routes.js";
+import searchRoutes from "./search.routes.js";
+import seasonRoutes from "./season.routes.js";
+import artworkRouter from "./artwork.routes.js";
+import providerRoutes from "./provider.routes.js";
 
-export const router = Router();
+const router = Router();
 
-router.use("/season", seasonRouter);
-router.use("/search", searchRouter);
-router.get("/home/hero", homeRouter);
-router.use(artworkRouter);
+router.use("/", homeRoutes);
+router.use("/search", searchRoutes);
+router.use("/season", seasonRoutes);
+router.use("/anime", artworkRouter);
+router.use("/anime", providerRoutes);
 
 export default router;

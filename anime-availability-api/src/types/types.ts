@@ -1,5 +1,13 @@
 export type AiringStatus = "ongoing" | "finished" | "announced";
 
+type SeasonName = "WINTER" | "SPRING" | "SUMMER" | "FALL";
+
+export type AniListSeasonParams = {
+  season: SeasonName;
+  year: number;
+  perPage?: number;
+};
+
 export interface ProviderInfo {
   id: number;
   name: string;
@@ -69,7 +77,7 @@ export interface AniListMedia {
   season?: string; // WINTER | SPRING | SUMMER | FALL
   seasonYear?: number;
   bannerImage?: string | null;
-  coverImage?: { large?: string; medium?: string };
+  coverImage?: { large?: string };
   averageScore?: number; // 0..100
   genres?: string[];
   description?: string | null;
@@ -95,7 +103,7 @@ export interface AniMedia {
   status?: string;
   season?: string;
   seasonYear?: number;
-  coverImage?: { large?: string; medium?: string };
+  coverImage?: { extraLarge?: string; large?: string };
   averageScore?: number;
   genres?: string[];
   description?: string | null;
@@ -168,7 +176,7 @@ export type ResolveArtworkOpts =
       requireLandscape?: boolean; // si true, filtra a ~16:9
       lang?: string; // ej: "es,en,null"
     };
-export type AniCover = { extraLarge?: string; large?: string; medium?: string };
+export type AniCover = { extraLarge?: string; large?: string };
 export type MediaLike = {
   bannerImage?: string | null;
   tmdbId?: number | null;

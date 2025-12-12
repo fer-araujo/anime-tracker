@@ -1,35 +1,107 @@
-import { memoryCache } from "../utils/cache.js";
-import { normalizeProviderNames } from "../utils/providers.js";
-import { tmdbTVProviders } from "./tmdb.service.js";
+// src/services/provider.service.ts
+import { ENV } from "../config/env.js";
+import { tmdbSearch, tmdbWatchProviders, isAnimeCandidate } from "./tmdb.service.js";
 import type { ProviderInfo } from "../types/types.js";
 
-export async function fetchProvidersUnified(
-  tmdbId: number | null | undefined,
-  region: string
-): Promise<ProviderInfo[]> {
-  if (!tmdbId) return [];
+type AniListTitleResp = {
+  data?: {
+    Media?: {
+      id: number;
+      format?: string | null; // 👈 para decidir tv/movie
+      title?: {
+        romaji?: string | null;
+        english?: string | null;
+        native?: string | null;
+      } | null;
+    } | null;
+  };
+};
 
-  const cacheKey = `providers:${tmdbId}:${region}`;
-  const cached = memoryCache.get(cacheKey);
-  if (cached) return cached as ProviderInfo[];
+function preferTitle(t?: {
+  romaji?: string | null;
+  english?: string | null;
+  native?: string | null;
+}) {
+  return t?.english ?? t?.romaji ?? t?.native ?? "Untitled";
+}
 
-  try {
-    const tmdbProviders = await tmdbTVProviders(tmdbId, region);
-    const providerNames = (tmdbProviders ?? [])
-      .map((p) => p?.name)
-      .filter((name): name is string => Boolean(name));
+function inferKind(format?: string | null): "tv" | "movie" {
+  return String(format).toUpperCase() === "MOVIE" ? "movie" : "tv";
+}
 
-    const normalizedNames = normalizeProviderNames(providerNames);
+async function fetchAniListTitleAndKind(
+  anilistId: number
+): Promise<{ title: string; kind: "tv" | "movie" }> {
+  const query = `
+    query ($id: Int!) {
+      Media(id: $id, type: ANIME) {
+        id
+        format
+        title { romaji english native }
+      }
+    }
+  `;
 
-    const normalizedProviders: ProviderInfo[] = normalizedNames.map((name, index) => ({
-      id: index + 1,
-      name,
-    }));
+  const body = { query, variables: { id: anilistId } };
 
-    memoryCache.set(cacheKey, normalizedProviders, 1000 * 60 * 60 * 12);
-    return normalizedProviders;
-  } catch (error) {
-    console.error(`[fetchProvidersUnified] Error fetching providers for ${region}/${tmdbId}:`, error);
-    return [];
+  const res = await fetch(ENV.ANILIST_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    throw new Error(`AniList title error ${res.status}`);
   }
+
+  const json = (await res.json()) as AniListTitleResp;
+  const media = json.data?.Media;
+  if (!media) throw new Error("AniList: Media not found");
+
+  return {
+    title: preferTitle(media.title ?? undefined),
+    kind: inferKind(media.format),
+  };
+}
+
+async function resolveTmdbIdByTitle(
+  kind: "tv" | "movie",
+  title: string
+): Promise<{ tmdbId: number | null }> {
+  const hits = await tmdbSearch(kind, title);
+  if (!hits || !hits.length) return { tmdbId: null };
+
+  const best = hits.find(isAnimeCandidate) ?? hits[0];
+  return { tmdbId: best?.id ?? null };
+}
+
+export type GetProvidersResult = {
+  title: string;
+  tmdbId: number | null;
+  providers: string[];
+  kind: "tv" | "movie"; // opcional pero útil para debug
+};
+
+/**
+ * Dado un anilistId y un país, devuelve plataformas (según TMDB).
+ * Ahora respeta MOVIE vs TV.
+ */
+export async function getProvidersForAnime(
+  anilistId: number,
+  country: string
+): Promise<GetProvidersResult> {
+  const { title, kind } = await fetchAniListTitleAndKind(anilistId);
+
+  const { tmdbId } = await resolveTmdbIdByTitle(kind, title);
+  if (!tmdbId) {
+    return { title, tmdbId: null, providers: [], kind };
+  }
+
+  const infos: ProviderInfo[] = await tmdbWatchProviders(kind, tmdbId, country);
+  const providers = (infos ?? []).map((p) => p.name);
+
+  return { title, tmdbId, providers, kind };
 }
