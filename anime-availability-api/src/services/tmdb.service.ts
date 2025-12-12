@@ -1,3 +1,4 @@
+// src/services/tmdb.service.ts
 import { memoryCache } from "../utils/cache.js";
 import type {
   ProviderInfo,
@@ -15,16 +16,14 @@ const TMDB_API_KEY = process.env.TMDB_KEY ?? "";
 export const tmdbPosterUrl = (path?: string | null, size = "w780") =>
   path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined;
 
-// NUEVO: util para cualquier path/size
 export const tmdbImageUrl = (path?: string | null, size = "original") =>
   path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined;
 
-// NUEVO: tamaño ideal para hero (backdrop 16:9)
 export const tmdbBackdropUrl = (path?: string | null, size = "w1280") =>
   path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined;
 
-export async function tmdbSearchTV(query: string): Promise<TMDBSearchTVItem[]> {
-  const url = new URL(`${TMDB_BASE}/search/tv`);
+export async function tmdbSearch(kind: "tv" | "movie", query: string) {
+  const url = new URL(`${TMDB_BASE}/search/${kind}`);
   url.searchParams.set("query", query);
   url.searchParams.set("include_adult", "false");
 
@@ -32,41 +31,30 @@ export async function tmdbSearchTV(query: string): Promise<TMDBSearchTVItem[]> {
     headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
   });
 
-  if (!res.ok) throw new Error(`TMDB search error: ${res.status}`);
+  if (!res.ok) throw new Error(`TMDB search ${kind} error: ${res.status}`);
   const data = await res.json();
-  return (data?.results ?? []) as TMDBSearchTVItem[];
+  return (data?.results ?? []) as TMDBSearchTVItem[]; // si quieres, renombra el type a TMDBSearchItem
 }
 
-// Nuevo helper (déjalo aquí o en utils)
-export function isAnimeCandidate(item: TMDBSearchTVItem) {
-  const isAnimation =
-    Array.isArray(item.genre_ids) && item.genre_ids.includes(16);
-  const origins = Array.isArray(item.origin_country) ? item.origin_country : [];
-  const fromAnimeRegions = origins.some((c) =>
-    ["JP", "CN", "KR", "TW"].includes(c)
-  );
-  return isAnimation || fromAnimeRegions; // aceptamos si cumple cualquiera (mejor recall)
-}
-
-// reemplaza el contenido de tmdbTVProviders:
-export async function tmdbTVProviders(
-  tvId: number,
+export async function tmdbWatchProviders(
+  kind: "tv" | "movie",
+  id: number,
   region = "MX"
 ): Promise<ProviderInfo[]> {
-  const cacheKey = `providers:${tvId}:${region}`;
+  const cacheKey = `providers:${kind}:${id}:${region}`;
   const cached = memoryCache.get(cacheKey);
   if (cached) return cached as ProviderInfo[];
 
-  const url = `${TMDB_BASE}/tv/${tvId}/watch/providers`;
+  const url = `${TMDB_BASE}/${kind}/${id}/watch/providers`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
   });
   if (!res.ok) return [];
 
   const data = (await res.json()) as TMDBProvidersResponse;
-  const regionData = data.results[region];
+  const regionData = data.results?.[region];
 
-  const names = flattenProviders(regionData); // flatrate+buy+rent+free+ads
+  const names = flattenProviders(regionData /* <- streaming-only si ya aplicaste el fix */);
   const normalized = normalizeProviderNames(names).map((name, idx) => ({
     id: idx + 1,
     name,
@@ -75,3 +63,18 @@ export async function tmdbTVProviders(
   memoryCache.set(cacheKey, normalized, 1000 * 60 * 60 * 12);
   return normalized;
 }
+
+// 👇 sin scoring, solo filtro booleando
+export function isAnimeCandidate(item: TMDBSearchTVItem) {
+  const isAnimation =
+    Array.isArray(item.genre_ids) && item.genre_ids.includes(16);
+
+  const origins = Array.isArray(item.origin_country) ? item.origin_country : [];
+
+  const fromAnimeRegions = origins.some((c) =>
+    ["JP", "CN", "KR", "TW"].includes(c)
+  );
+
+  return isAnimation || fromAnimeRegions;
+}
+

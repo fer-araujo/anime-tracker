@@ -69,7 +69,7 @@ export function MinimalShelf({
               key={`${a.id.anilist}-${a.id.tmdb ?? "x"}`}
               className="snap-start shrink-0 w-60"
             >
-              <AnimeCard anime={a} showTitleBelow />
+              <AnimeCard anime={a} showTitleBelow onOpen={() => console.log(a)} />
             </div>
           ))}
         </div>

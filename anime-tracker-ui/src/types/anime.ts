@@ -98,6 +98,7 @@ export type AnimeCardData = {
 
 export type ArtworkCandidate = {
   lang: string | null;
+  source: "anilist-cover" | "anilist-banner" | "tmdb-poster" | "tmdb-backdrop";
   votes: number;
   rating: number;
   aspect: number | null;

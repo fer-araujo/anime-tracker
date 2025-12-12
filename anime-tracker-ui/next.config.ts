@@ -32,6 +32,11 @@ const nextConfig = {
         hostname: "s4.anilist.co",
         pathname: "/file/anilistcdn/media/anime/**",
       },
+      {
+        protocol: "https",
+        hostname: "shikimori.one",
+        pathname: "/system/screenshots/original/**",
+      },
     ],
   },
 };
