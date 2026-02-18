@@ -3,6 +3,7 @@ import { useRef } from "react";
 import type { Anime } from "@/types/anime";
 import { cn } from "@/lib/utils";
 import { AnimeCard } from "./AnimeCard";
+import { useRouter } from "next/navigation";
 
 export function MinimalShelf({
   title,
@@ -14,11 +15,18 @@ export function MinimalShelf({
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
+
   const scroll = (dir: 1 | -1) => {
     const el = ref.current;
     if (!el) return;
     const card = 240; // aprox width + gap (tu w-60 ≈ 240px)
     el.scrollBy({ left: dir * card * 3, behavior: "smooth" });
+  };
+
+  const handleOpen = (anime: Anime) => {
+    // Aquí podrías usar un router para ir a la página del anime, por ejemplo:
+    router.push(`/anime/${anime.id.anilist}`);
   };
 
   return (
@@ -69,7 +77,11 @@ export function MinimalShelf({
               key={`${a.id.anilist}-${a.id.tmdb ?? "x"}`}
               className="snap-start shrink-0 w-60"
             >
-              <AnimeCard anime={a} showTitleBelow onOpen={() => console.log(a)} />
+              <AnimeCard
+                anime={a}
+                showTitleBelow
+                onOpen={() => handleOpen(a)}
+              />
             </div>
           ))}
         </div>

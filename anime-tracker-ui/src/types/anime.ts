@@ -1,11 +1,14 @@
 export type Anime = {
   id: { anilist: number; tmdb: number | null };
   title: string;
-  poster: string | null;
-  backdrop?: string | null;
-  banner?: string | null;
   providers: string[];
-  artworkCandidates?: ArtworkCandidate[];
+  images: {
+    artworkCandidates?: ArtworkCandidate[];
+    banner?: string | null;
+    backdrop?: string | null;
+    logo?: string | null;
+    poster?: string | null;
+  };
   meta?: {
     genres?: string[];
     rating?: number | null; // 0..10

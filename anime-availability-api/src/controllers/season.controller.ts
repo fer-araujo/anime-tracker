@@ -1,22 +1,13 @@
-// src/controllers/season.controller.ts
 import type { Request, Response, NextFunction } from "express";
 import pLimit from "p-limit";
 
 import { ENV } from "../config/env.js";
 import { SeasonQuery } from "../models/schema.js";
-import {
-  tmdbSearch,
-  tmdbPosterUrl,
-  tmdbBackdropUrl,
-  isAnimeCandidate,
-} from "../services/tmdb.service.js";
-import type { AniMedia, AniTitle, TMDBSearchTVItem } from "../types/types.js";
+import { tmdbSearch, isAnimeCandidate } from "../services/tmdb.service.js";
 import { htmlToText, shorten } from "../utils/sanitize.js";
 import { extractStudio } from "../utils/extractStudio.js";
-import {
-  resolveProvidersForAnime,
-  resolveProvidersForAnimeDetailed,
-} from "../utils/resolveProviders.js";
+import { resolveProvidersForAnimeDetailed } from "../utils/resolveProviders.js";
+import { normalizeTitle } from "../utils/tmdb.enrich.js"; // <--- IMPORTACIÓN CLAVE
 
 const limit = pLimit(5);
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
@@ -31,395 +22,154 @@ function getCurrentSeasonYearLocal() {
   return { season: "FALL" as const, year: y };
 }
 
-async function fetchSeasonAnimeLite(
-  _season: string,
-  year: number
-): Promise<AniMedia[]> {
-  const query = `
-    query ($year: Int, $page: Int, $perPage: Int) {
-      Page(page: $page, perPage: $perPage) {
-        media(
-          type: ANIME
-          seasonYear: $year
-          format_in: [TV, ONA, MOVIE, OVA, SPECIAL, TV_SHORT]
-          sort: [POPULARITY_DESC]
-        ) {
-          id
-          title { romaji english native }
-          season
-          seasonYear
-          episodes
-          coverImage { extraLarge, large }
-          bannerImage
-          averageScore
-          popularity
-          favourites
-          genres
-          description
-          isAdult
-          startDate { year month day }
-          nextAiringEpisode { episode airingAt }
-          format
-          studios {
-            edges {
-              isMain
-              node { name }
-            }
-          }
-        }
-      }
-    }
-  `;
-
-  const body = { query, variables: { year, page: 1, perPage: 50 } };
-
-  const res = await fetch(ANILIST_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`AniList seasonal error: ${res.status} - ${text}`);
-  }
-
-  const json = await res.json();
-  const media = (json?.data?.Page?.media ?? []) as AniMedia[];
-  return media;
-}
-
-async function fetchSeasonTrendingLite(
-  season: string,
-  year: number
-): Promise<AniMedia[]> {
-  const query = `
-    query ($season: MediaSeason, $year: Int, $page: Int, $perPage: Int) {
-      Page(page: $page, perPage: $perPage) {
-        media(
-          type: ANIME
-          season: $season
-          seasonYear: $year
-          format_in: [TV, ONA, MOVIE, OVA, SPECIAL, TV_SHORT]
-          sort: [TRENDING_DESC]
-        ) {
-          id
-          title { romaji english native }
-          season
-          seasonYear
-          episodes
-          coverImage { extraLarge, large  }
-          averageScore
-          popularity
-          favourites
-          trending
-          genres
-          description
-          isAdult
-          startDate { year month day }
-          nextAiringEpisode { episode airingAt }
-          format
-          status
-          studios {
-            edges { isMain node { name } }
-          }
-          bannerImage
-        }
-      }
-    }
-  `;
-  const body = { query, variables: { season, year, page: 1, perPage: 50 } };
-  const res = await fetch(ANILIST_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`AniList seasonal error: ${res.status}`);
-
-  const json = await res.json();
-  const media = (json?.data?.Page?.media ?? []) as AniMedia[];
-  return media;
-}
-
-function fuzzyDateToISO(
-  fd?: { year?: number; month?: number; day?: number } | null
-): string | null {
-  if (!fd?.year) return null;
-  const y = fd.year;
-  const m = fd.month ?? 1;
-  const d = fd.day ?? 1;
-  const mm = String(m).padStart(2, "0");
-  const dd = String(d).padStart(2, "0");
-  return `${y}-${mm}-${dd}`;
-}
-
-function stripCourAndPart(raw: string): string {
-  return raw
-    .replace(/\bCour\s*\d+\b/gi, "")
-    .replace(/\bPart\s*\d+\b/gi, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
-
-function baseTitleCandidate(title: string) {
-  return title
-    .replace(/\b(vol(ume)?|season|cour|part)\s*\d+\b/gi, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
-
-function normalizeAniTitle(raw?: string | null): string | null {
-  if (!raw) return null;
-  return (
-    baseTitleCandidate(
-      raw.replace(/[^\p{Letter}\p{Number}\s]/gu, "").toLowerCase()
-    )
-      .replace(/\s{2,}/g, " ")
-      .trim() || null
-  );
-}
-
-function pickBestTmdbMatch(
-  tmdbList: TMDBSearchTVItem[] | undefined,
-  titles: AniTitle,
-  seasonYear?: number | null
-): TMDBSearchTVItem | undefined {
-  if (!tmdbList || tmdbList.length === 0) return undefined;
-
-  const animeOnly = tmdbList.filter(isAnimeCandidate);
-  const basePool = animeOnly.length ? animeOnly : tmdbList;
-
-  const candidateTitles = [titles.english, titles.romaji, titles.native].filter(
-    Boolean
-  ) as string[];
-
-  const normalizedCandidates = candidateTitles
-    .map((t) => normalizeAniTitle(t))
-    .filter(Boolean) as string[];
-
-  if (!normalizedCandidates.length) {
-    return basePool[0];
-  }
-
-  const yearStr =
-    typeof seasonYear === "number" && seasonYear > 1900
-      ? String(seasonYear)
-      : null;
-
-  const buckets: {
-    exact: TMDBSearchTVItem[];
-    starts: TMDBSearchTVItem[];
-    contains: TMDBSearchTVItem[];
-  } = { exact: [], starts: [], contains: [] };
-
-  for (const item of basePool) {
-    const rawName = item.name || item.original_name || "";
-    const nameNorm = normalizeAniTitle(rawName);
-    if (!nameNorm) continue;
-
-    for (const cand of normalizedCandidates) {
-      if (nameNorm === cand) {
-        buckets.exact.push(item);
-        break;
-      }
-      if (nameNorm.startsWith(cand)) {
-        buckets.starts.push(item);
-        break;
-      }
-      if (nameNorm.includes(cand)) {
-        buckets.contains.push(item);
-        break;
-      }
-    }
-  }
-
-  const pickWithYear = (
-    arr: TMDBSearchTVItem[]
-  ): TMDBSearchTVItem | undefined => {
-    if (!arr.length) return undefined;
-    if (!yearStr) return arr[0];
-    const withYear = arr.find(
-      (it) =>
-        typeof it.first_air_date === "string" &&
-        it.first_air_date.slice(0, 4) === yearStr
-    );
-    return withYear ?? arr[0];
-  };
-
-  return (
-    pickWithYear(buckets.exact) ??
-    pickWithYear(buckets.starts) ??
-    pickWithYear(buckets.contains) ??
-    basePool[0]
-  );
-}
-
-function inferKind(format?: string | null): "tv" | "movie" {
-  return String(format).toUpperCase() === "MOVIE" ? "movie" : "tv";
-}
-
 export async function getSeason(
   req: Request & { validated?: SeasonQuery },
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
-    const { country, season, year } = ((req.validated || req.body) ??
-      {}) as SeasonQuery;
+    const defaultSeason = getCurrentSeasonYearLocal();
+    // Aseguramos que 'rank' venga del query, tipado rápido
+    const query = (req.validated || req.query) as SeasonQuery & {
+      rank?: string;
+    };
 
+    const year = query.year || defaultSeason.year;
+    const season = (query.season || defaultSeason.season).toUpperCase();
     const resolvedCountry = (
-      country ||
+      query.country ||
       ENV.DEFAULT_COUNTRY ||
       "MX"
     ).toUpperCase();
 
-    const current = getCurrentSeasonYearLocal();
-    const resolved = {
-      season: (season ?? current.season).toUpperCase(),
-      year: Number.isFinite(year as number) ? (year as number) : current.year,
-    };
+    // 1. LÓGICA DE RANKING
+    // Si el front pide "trending", usamos TRENDING_DESC, si no, POPULARITY_DESC
+    const sortParam =
+      query.rank === "trending" ? "TRENDING_DESC" : "POPULARITY_DESC";
 
-    const rank = String(req.query.rank || "popular");
-
-    const list =
-      rank === "trending"
-        ? await fetchSeasonTrendingLite(resolved.season, resolved.year)
-        : await fetchSeasonAnimeLite(resolved.season, resolved.year);
-
-    const items = await Promise.all(
-      list.map((anime) =>
-        limit(async () => {
-          const titles = anime.title ?? {};
-          const rawTitle =
-            titles.english || titles.romaji || titles.native || "";
-
-          const displayTitle = stripCourAndPart(rawTitle);
-
-          const type = (anime as any)?.format ?? null;
-          const kind = inferKind(type);
-
-          // ✅ TMDB search según kind (tv/movie)
-          let tmdbResults = await tmdbSearch(kind, rawTitle);
-          if (!tmdbResults?.length) {
-            const base = baseTitleCandidate(rawTitle);
-            if (base && base !== rawTitle) {
-              tmdbResults = await tmdbSearch(kind, base);
+    // 2. QUERY DINÁMICA
+    // Agregamos $sort a la definición y lo usamos en media()
+    const gql = `
+      query ($season: MediaSeason, $seasonYear: Int, $page: Int, $sort: [MediaSort]) {
+        Page(page: $page, perPage: 50) {
+          pageInfo { hasNextPage lastPage }
+          media(season: $season, seasonYear: $seasonYear, type: ANIME, sort: $sort, isAdult: false) {
+            id
+            idMal
+            title { romaji english native }
+            coverImage { extraLarge large }
+            bannerImage
+            description
+            episodes
+            status
+            format
+            genres
+            averageScore
+            nextAiringEpisode { episode airingAt }
+            studios(isMain: true) {
+              edges { isMain node { name } }
             }
           }
+        }
+      }
+    `;
 
-          const mainStudio = extractStudio(anime.studios);
+    // 3. PASAR LA VARIABLE
+    const variables = {
+      season,
+      seasonYear: year,
+      page: 1,
+      sort: [sortParam], // AniList espera un Array de sorts
+    };
 
-          const bestMatch = pickBestTmdbMatch(
-            tmdbResults || [],
-            titles as AniTitle,
-            anime.seasonYear ?? undefined
+    // Fetch a AniList
+    const aniRes = await fetch(ANILIST_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: gql, variables }),
+    });
+
+    if (!aniRes.ok) {
+      return res.status(aniRes.status).json({ error: "AniList Error" });
+    }
+
+    const json = await aniRes.json();
+    const data = json?.data?.Page;
+    if (!data?.media) {
+      return res.json({ meta: { season, year, count: 0 }, data: [] });
+    }
+
+    // Procesamos cada anime en paralelo con límite
+    const items = await Promise.all(
+      data.media.map(async (anime: any) => {
+        return limit(async () => {
+          const titleObj = anime.title || {};
+          const title =
+            titleObj.english ??
+            titleObj.romaji ??
+            titleObj.native ??
+            "Untitled";
+
+          // --- CORRECCIÓN: Buscamos ID de TMDB usando el título LIMPIO ---
+          const searchTitle = normalizeTitle(title);
+          const queryTerm = searchTitle.length > 0 ? searchTitle : title;
+
+          let tmdbId: number | null = null;
+          try {
+            // Buscamos "jujutsu kaisen" en lugar de "jujutsu kaisen 2nd season"
+            const tmdbResults = await tmdbSearch("tv", queryTerm);
+
+            // Priorizamos resultados que sean Anime
+            const bestTmdb =
+              tmdbResults.find(isAnimeCandidate) ?? tmdbResults[0];
+            tmdbId = bestTmdb?.id ?? null;
+          } catch (e) {
+            console.warn(`TMDB Season search fail for ${title}`, e);
+          }
+
+          // Resolvemos providers usando el ID correcto de TMDB
+          const providers = await resolveProvidersForAnimeDetailed(
+            anime.id,
+            resolvedCountry,
+            tmdbId,
+            title,
           );
 
-          const posterAni =
-            anime.coverImage?.extraLarge ?? anime.coverImage?.large ?? null;
+          const synopsis = htmlToText(anime.description);
+          const synopsisShort = shorten(synopsis, 140);
+          const mainStudio = extractStudio(anime.studios);
 
-          const posterTmdb =
-            bestMatch?.poster_path && isAnimeCandidate(bestMatch)
-              ? tmdbPosterUrl(bestMatch.poster_path, "w780")
-              : null;
-
-          const poster = posterAni ?? posterTmdb;
-
-          const backdrop =
-            bestMatch?.backdrop_path && isAnimeCandidate(bestMatch)
-              ? tmdbBackdropUrl(bestMatch.backdrop_path, "w1280")
-              : null;
-
-          const banner = (anime as any)?.bannerImage ?? null;
-
-          // ✅ Providers unificados usando el mismo kind
-          const releaseDate =
-            kind === "movie"
-              ? (bestMatch as any)?.release_date ?? null
-              : (bestMatch as any)?.first_air_date ?? null;
-
-          // providers detallados
-          const provResolved = await resolveProvidersForAnimeDetailed({
-            kind,
-            tmdbId: bestMatch?.id ?? null,
-            title: rawTitle,
-            country: resolvedCountry,
-          });
-
-          const providers = provResolved.providers;
-
-          // availability
-          const isFutureRelease =
-            typeof releaseDate === "string" && releaseDate.length >= 10
-              ? new Date(releaseDate).getTime() > Date.now()
-              : false;
-
-          const availability =
-            providers.length > 0
-              ? "available"
-              : bestMatch?.id
-              ? kind === "movie" && isFutureRelease
-                ? "comingSoon"
-                : provResolved.tmdbOk && provResolved.saOk
-                ? "notAvailable"
-                : "unknown"
-              : "unknown";
-
-          const altTitles = [
-            rawTitle,
-            ...[
-              titles.english,
-              titles.native,
-              titles.romaji && titles.romaji !== rawTitle
-                ? titles.romaji
-                : null,
-            ]
-              .filter(Boolean)
-              .filter((t) => t !== displayTitle && t !== rawTitle),
-          ] as string[];
-
-          const nextEpisodeAtISO =
-            typeof anime.nextAiringEpisode?.airingAt === "number"
-              ? new Date(anime.nextAiringEpisode.airingAt * 1000).toISOString()
-              : null;
-
-          const synopsisHtml = anime.description ?? null;
-          const synopsisText = anime.description
-            ? htmlToText(anime.description)
+          const nextEpisodeAtISO = anime.nextAiringEpisode?.airingAt
+            ? new Date(anime.nextAiringEpisode.airingAt * 1000).toISOString()
             : null;
 
+          const type = anime.format ?? null;
+
+          // Calculamos "releaseDate" aproximado para ordenar si hiciera falta
+          const releaseDate = nextEpisodeAtISO || null;
+
           return {
-            id: { anilist: anime.id, tmdb: bestMatch?.id ?? null },
-            title: displayTitle,
-            altTitles,
-            poster,
-            backdrop,
-            banner,
-            season: anime.season ?? resolved.season,
-            year: anime.seasonYear ?? resolved.year,
-            providers,
-            availability,
+            id: { anilist: anime.id, tmdb: tmdbId },
+            title,
+            images: {
+              poster:
+                anime.coverImage?.extraLarge ?? anime.coverImage?.large ?? null,
+              backdrop: anime.bannerImage ?? null, // Usamos banner como backdrop por defecto en season list
+            },
+            providers: providers.providers,
             meta: {
               genres: anime.genres ?? [],
               rating:
                 typeof anime.averageScore === "number"
                   ? anime.averageScore / 10
                   : null,
-              popularity:
-                typeof (anime as any).popularity === "number"
-                  ? (anime as any).popularity
-                  : null,
-              favourites:
-                typeof (anime as any).favourites === "number"
-                  ? (anime as any).favourites
-                  : null,
-              synopsisHtml,
-              synopsis: synopsisText,
-              synopsisShort: synopsisText ? shorten(synopsisText, 220) : null,
+              synopsis,
+              synopsisShort,
+              synopsisHTML: null, // Opcional si lo necesitas
+              year: year,
+              season: season,
               episodes: anime.episodes ?? null,
-              startDate: fuzzyDateToISO(anime.startDate),
-              isAdult:
-                typeof anime.isAdult === "boolean" ? anime.isAdult : null,
+              isAdult: false, // Filtramos isAdult: false en la query
               nextEpisode: anime.nextAiringEpisode?.episode ?? null,
               nextEpisodeAt: nextEpisodeAtISO,
               status: anime.nextAiringEpisode ? "ongoing" : "finished",
@@ -431,24 +181,26 @@ export async function getSeason(
                     1,
                     Math.round(
                       (anime.nextAiringEpisode.airingAt * 1000 - Date.now()) /
-                        (1000 * 60 * 60 * 24)
-                    )
+                        (1000 * 60 * 60 * 24),
+                    ),
                   )} days`
                 : null,
             },
             releaseDate,
             sources: {},
           };
-        })
-      )
+        });
+      }),
     );
 
+    // Filtrar duplicados y ordenar
     const uniqueItems = items
       .filter(
         (it, idx, self) =>
-          self.findIndex((a) => a.id.anilist === it.id.anilist) === idx
+          self.findIndex((a) => a.id.anilist === it.id.anilist) === idx,
       )
       .sort((a, b) => {
+        // Ordenar por Rating primero, luego alfabético
         const ar = a.meta?.rating ?? -1;
         const br = b.meta?.rating ?? -1;
         if (br !== ar) return br - ar;
@@ -458,10 +210,10 @@ export async function getSeason(
     return res.json({
       meta: {
         country: resolvedCountry,
-        season: resolved.season,
-        year: resolved.year,
+        season: season,
+        year: year,
         total: uniqueItems.length,
-        source: "AniList + TMDb + StreamingAvailability (season core)",
+        source: "AniList + TMDB",
       },
       data: uniqueItems,
     });
