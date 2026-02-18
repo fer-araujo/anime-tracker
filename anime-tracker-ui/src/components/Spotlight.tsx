@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Anime } from "@/types/anime";
 import { ActionButton } from "@/components/common/Buttons";
 import { useCallback, useEffect, useState } from "react";
+import { Info, Plus } from "lucide-react";
 
 type Props = {
   items: Anime[];
@@ -54,7 +55,8 @@ export function HeroCarouselCinematic({
   useEffect(() => {
     // precargar la siguiente imagen sin bloquear el render
     const nextIdx = (index + 1) % total;
-    const nextSrc = items[nextIdx]?.backdrop ?? items[nextIdx]?.banner;
+    const nextSrc =
+      items[nextIdx]?.images.backdrop ?? items[nextIdx]?.images.banner;
     // simple prefetch
     if (typeof nextSrc === "string") {
       const img = new window.Image();
@@ -79,30 +81,24 @@ export function HeroCarouselCinematic({
   }, []);
 
   const current = items[index];
-  const aspect = current.artworkCandidates?.[0]?.aspect ?? null;
+  const aspect = current.images.artworkCandidates?.[0]?.aspect ?? null;
   const aspectClass = getAspectClass(aspect);
-  
-  const heroBackdrop =
-    current.artworkCandidates?.[0]?.url_orig ??
-    current.artworkCandidates?.[0]?.url_1280 ??
-    current.artworkCandidates?.[0]?.url_780 ??
-    current.banner ??
-    current.backdrop ??
-    current.poster ??
-    null;
 
-  const bestArtwork = current.artworkCandidates?.[0];
-  const isWide =
-    bestArtwork?.aspect &&
-    bestArtwork.aspect > 1.3 &&
-    bestArtwork.source !== "anilist-cover"; // o simplemente aspect > 1.3
+  const heroBackdrop =
+    current.images.banner ??
+    current.images.backdrop ??
+    current.images.artworkCandidates?.[0]?.url_orig ??
+    current.images.artworkCandidates?.[0]?.url_1280 ??
+    current.images.artworkCandidates?.[0]?.url_780 ??
+    current.images.poster ??
+    null;
 
   return (
     <>
       <section
         className={cn(
           "relative w-full h-[min(90vh,56vw)] overflow-hidden",
-          className
+          className,
         )}
       >
         {/* Slides */}
@@ -121,30 +117,40 @@ export function HeroCarouselCinematic({
               {/* Capa NÍTIDA principal */}
               {heroBackdrop && (
                 <Image
-                  src={heroBackdrop}
+                  src={
+                    current.images.backdrop ||
+                    current.images.banner ||
+                    current.images.poster ||
+                    ""
+                  }
                   alt={current.title}
                   fill
-                  priority={index === 0}
-                  sizes="100vw"
+                  priority
+                  // Next.js 15 soporta esto. Si tu linter se queja, es un falso positivo, pero renderizará bien.
+                  // Esto elimina la compresión agresiva del 75%.
+                  quality={95}
                   className={cn(
-                    "will-change-transform",
-                    isWide
-                      ? "object-cover object-center"
-                      : "object-contain bg-black"
+                    "object-cover transition-transform duration-700",
+                    // UX IMPROVEMENT:
+                    // Si es backdrop/banner, enfocamos al 20% superior para no cortar cabezas.
+                    // Si es poster (vertical), centramos normal.
+                    current.images.backdrop || current.images.banner
+                      ? "object-[center_20%]"
+                      : "object-center",
                   )}
                 />
               )}
 
-              {/* Vignettes para contraste/legibilidad */}
-              <div className="absolute inset-y-0 left-0 w-[58vw] bg-[linear-gradient(90deg,rgba(0,0,0,0.82)_0%,rgba(0,0,0,0.48)_60%,transparent_100%)]" />
-              <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_70%_50%,rgba(0,0,0,0.10)_0%,rgba(0,0,0,0.22)_55%,rgba(0,0,0,0.50)_100%)]" />
-              <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(0,0,0,0.55),rgba(0,0,0,0))]" />
+              <div className="absolute inset-0 bg-black/10" />
+              {/* Nueva viñeta lateral izquierda para que el logo y el texto siempre tengan contraste */}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/10 to-transparent w-[80%] md:w-[65%]" />
+              <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,1)0%,rgba(0,0,0,0)65%)]" />
             </motion.div>
           </AnimatePresence>
         </div>
         {/* Content */}
-        <div className="absolute inset-0 z-10 flex items-end md:items-center justify-start">
-          <div className="px-8 md:px-24 pb-10 md:pb-[14vh] max-w-4xl">
+        <div className="absolute inset-0 z-10 flex items-center justify-start">
+          <div className="px-6 md:px-16 lg:px-24 pb-20 md:pb-32 w-full max-w-6xl space-y-4">
             <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-white/80">
               {current.meta?.status && (
                 <span className="rounded-full bg-white/10 px-2 py-0.5 capitalize">
@@ -156,25 +162,66 @@ export function HeroCarouselCinematic({
                 <span>{current.meta.episodes} eps</span>
               ) : null}
             </div>
-
-            <h1 className="text-[clamp(2.2rem,5vw,4rem)] md:text-[clamp(2.8rem,4vw,4.5rem)] font-extrabold leading-[1.06] text-white drop-shadow-[0_8px_22px_rgba(0,0,0,0.65)]">
-              {current.title}
-            </h1>
-
-            {current.meta?.genres?.length ? (
-              <p className="mt-3 text-base text-white/90">
-                {current.meta.genres.slice(0, 3).join(" · ")}
-              </p>
-            ) : null}
-
-            {current.meta?.synopsisShort && (
-              <p className="mt-4 text-[0.95rem] leading-relaxed text-white/90 max-w-[62ch] [display:-webkit-box] [-webkit-line-clamp:6] [-webkit-box-orient:vertical] overflow-hidden">
-                {current.meta.synopsisShort}
-              </p>
+            {/* --- LOGO CINEMÁTICO --- */}
+            {current.images?.logo ? (
+              <motion.div
+                key={`logo-${current.id.anilist}`}
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+                className="w-full max-w-[40vw] md:max-w-[25vw] lg:max-w-[30vw] mb-6"
+              >
+                <Image
+                  src={current.images.logo}
+                  alt={current.title}
+                  width={800}
+                  height={400}
+                  className="w-auto h-20 md:h-32 lg:h-40 object-contain object-left-bottom drop-shadow-[0_8px_30px_rgba(0,0,0,0.9)]"
+                  priority
+                />
+              </motion.div>
+            ) : (
+              // Fallback Título
+              <motion.h2
+                key={`title-${current.id.anilist}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-3xl md:text-5xl lg:text-6xl font-bold text-white drop-shadow-lg leading-tight mb-4"
+              >
+                {current.title}
+              </motion.h2>
             )}
+            {/* ----------------------- */}
+
+            {/* Nueva fila de Metadatos (Año • Género • Rating) */}
+            <div className="flex items-center gap-2 text-xs md:text-sm font-medium text-white/80 tracking-wide mb-1">
+              {current.meta?.year && <span>{current.meta.year}</span>}
+              {current.meta?.year && current.meta?.genres?.[0] && (
+                <span className="text-white/40">•</span>
+              )}
+
+              {current.meta?.genres?.[0] && (
+                <span>{current.meta.genres[0]}</span>
+              )}
+              {current.meta?.genres?.[0] && current.meta?.rating && (
+                <span className="text-white/40">•</span>
+              )}
+
+              {current.meta?.rating && (
+                <span className="flex items-center gap-1">
+                  ⭐ {Number(current.meta.rating).toFixed(1)}
+                </span>
+              )}
+            </div>
+
+            <p className="mt-4 text-[0.95rem] leading-relaxed text-white/90 max-w-[62ch] [display:-webkit-box] [-webkit-line-clamp:6] [-webkit-box-orient:vertical] overflow-hidden">
+              {current.meta?.synopsisShort || current.meta?.synopsis}
+            </p>
             <div className="mt-5 flex gap-3">
               <ActionButton
                 onClick={() => router.push(`/anime/${current.id.anilist}`)}
+                icon={<Info size={14} />}
               >
                 Ver detalles
               </ActionButton>
@@ -183,6 +230,7 @@ export function HeroCarouselCinematic({
                 onClick={() =>
                   router.push(`/mi-lista?add=${current.id.anilist}`)
                 }
+                icon={<Plus size={14} />}
               >
                 Añadir
               </ActionButton>
@@ -253,7 +301,7 @@ export function HeroCarouselCinematic({
                     "h-2.5 w-2.5 rounded-full transition-opacity",
                     i === index
                       ? "bg-white/90"
-                      : "bg-white/50 hover:opacity-80 opacity-50"
+                      : "bg-white/50 hover:opacity-80 opacity-50",
                   )}
                   aria-label={`Ir al slide ${i + 1}`}
                 />

@@ -1,20 +1,15 @@
-// src/controllers/home.controller.ts
 import type { Request, Response, NextFunction } from "express";
 import { memoryCache } from "../utils/cache.js";
-import { ENV } from "../config/env.js";
-import type { AniMedia } from "../types/animeCore.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
+import { normalizeTitle } from "../utils/tmdb.enrich.js";
+import e from "express";
 
 /* helpers */
 function stripHtml(input?: string | null) {
   if (!input) return null;
-  const withBreaks = input.replace(/<br\s*\/?>/gi, "\n");
-  const noTags = withBreaks.replace(/<\/?[^>]+(>|$)/g, "");
-  const withoutSource = noTags.replace(/\(?\[?source:[^\)\]]+[\)\]]?/gi, "");
-  return withoutSource
-    .replace(/\s+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  // Limpieza básica de HTML
+  const noTags = input.replace(/<\/?[^>]+(>|$)/g, ""); 
+  return noTags.trim();
 }
 
 function preferTitle(t?: {
@@ -25,193 +20,106 @@ function preferTitle(t?: {
   return t?.english ?? t?.romaji ?? t?.native ?? "Untitled";
 }
 
-function currentSeasonWindow() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth() + 1;
+const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
-  const season =
-    m <= 3 ? "WINTER" : m <= 6 ? "SPRING" : m <= 9 ? "SUMMER" : "FALL";
+export async function getHomeHero(req: Request, res: Response, next: NextFunction) {
+  try {
+    const cacheKey = "home:hero:cinematic:v3"; // Nueva key
+    const cached = memoryCache.get(cacheKey);
+    if (cached) return res.json(cached);
 
-  const start =
-    season === "WINTER"
-      ? `${y}0101`
-      : season === "SPRING"
-      ? `${y}0401`
-      : season === "SUMMER"
-      ? `${y}0701`
-      : `${y}1001`;
-
-  const end =
-    season === "WINTER"
-      ? `${y}0331`
-      : season === "SPRING"
-      ? `${y}0630`
-      : season === "SUMMER"
-      ? `${y}0930`
-      : `${y}1231`;
-
-  return { season, year: y, start, end };
-}
-
-// 🔹 AniList query para POPULARITY_DESC de ESTA temporada
-async function fetchSeasonPopularStrict(): Promise<AniMedia[]> {
-  const { season, year, start, end } = currentSeasonWindow();
-  const ck = `anilist:hero-popular:${season}:${year}:v1`;
-  const cached = memoryCache.get(ck);
-  if (cached) return cached as AniMedia[];
-
-  const query = `
-    query ($season: MediaSeason!, $year: Int!, $perPage: Int!) {
-      Page(page: 1, perPage: $perPage) {
-        media(
-          type: ANIME
-          season: $season
-          seasonYear: $year
-          format_in: [TV, ONA, MOVIE, OVA, SPECIAL, TV_SHORT]
-          sort: [POPULARITY_DESC]
-          status_in: [RELEASING, NOT_YET_RELEASED]
-        ) {
-          id
-          title { romaji english native }
-          season
-          seasonYear
-          format
-          status
-          description
-          averageScore
-          popularity
-          favourites
-          isAdult
-          coverImage { extraLarge large }
-          bannerImage
-          startDate { year month day }
-          nextAiringEpisode { airingAt }
-          genres
-          studios { edges { isMain node { name } } }
+    // 1. Pedimos 10 para filtrar
+    const gql = `
+      query {
+        Page(page: 1, perPage: 10) {
+          media(type: ANIME, sort: TRENDING_DESC, isAdult: false) {
+            id
+            title { romaji english native }
+            coverImage { extraLarge }
+            bannerImage
+            description
+            episodes
+            genres
+            averageScore
+            seasonYear
+            status
+            studios(isMain: true) { edges { isMain node { name } } }
+            trailer { id site }
+            type
+          }
         }
       }
-    }
-  `;
+    `;
 
-  const body = { query, variables: { season, year, perPage: 50 } };
-
-  const res = await fetch(ENV.ANILIST_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) throw new Error(`AniList hero popular ${res.status}`);
-
-  const json = await res.json();
-  const raw: AniMedia[] = json?.data?.Page?.media ?? [];
-
-  const toNum = (fd: AniMedia["startDate"]) =>
-    fd?.year
-      ? Number(
-          `${fd.year}${String(fd.month ?? 1).padStart(2, "0")}${String(
-            fd.day ?? 1
-          ).padStart(2, "0")}`
-        )
-      : null;
-
-  const startNum = Number(start);
-  const endNum = Number(end);
-
-  const filtered = raw
-    .filter((m) => !m.isAdult)
-    .filter((m) => {
-      if (m.season === season && m.seasonYear === year) return true;
-      const sd = toNum(m.startDate ?? null);
-      return sd ? sd >= startNum && sd <= endNum : false;
+    const aniRes = await fetch(ANILIST_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: gql }),
     });
 
-  memoryCache.set(ck, filtered, 1000 * 60 * 30);
-  return filtered;
-}
+    if (!aniRes.ok) return res.status(aniRes.status).json({ error: "AniList Error" });
+    const json = await aniRes.json();
+    const media = json.data?.Page?.media || [];
 
-/* GET /home/hero — hero = títulos más popular de la temporada */
+    const itemsProm = media.map(async (m: any) => {
+      const title = preferTitle(m.title);
+      const cleanTitle = normalizeTitle(title);
+      const searchTitle = cleanTitle.length > 0 ? cleanTitle : title;
 
-export async function getHomeHero(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  try {
-    const popular = await fetchSeasonPopularStrict();
+      // A) Obtenemos TODO del artwork service
+      // PERO NOTA: Aquí extraemos 'artworkCandidates' pero NO lo metemos al return final.
+      const { backdrop, logo, tmdbId } = await resolveHeroArtwork(
+        searchTitle,
+        { bannerImage: m.bannerImage }
+      );
 
-    const heroItems: any[] = [];
+      // Si no hay backdrop cinemático, este anime no es digno del Hero
+      if (!backdrop) return null;
 
-    for (const m of popular) {
-      if (heroItems.length >= 5) break; // 🔹 TOP 5 con backdrop bueno
+      const synopsisRaw = stripHtml(m.description);
+      const synopsis = synopsisRaw 
+        ? (synopsisRaw.length > 180 ? synopsisRaw.slice(0, 180) + "..." : synopsisRaw)
+        : "";
 
-      const title =
-        m.title?.english ?? m.title?.romaji ?? m.title?.native ?? "Untitled";
-
-      const { backdrop, artworkCandidates } = await resolveHeroArtwork(title, {
-        bannerImage: m.bannerImage,
-        coverImage: m.coverImage ?? undefined,
-      });
-
-      if (!backdrop) continue; // si no hay backdrop decente, saltamos
-
-      const synopsis = stripHtml(m.description);
-      const synopsisShort =
-        synopsis && synopsis.length > 280
-          ? synopsis.slice(0, 277) + "…"
-          : synopsis;
-
-      heroItems.push({
-        id: { anilist: m.id, tmdb: null },
-        title,
-        poster: m.coverImage?.large ?? null,
-        backdrop,
-        banner: m.bannerImage ?? null,
-        artworkCandidates,
-        providers: [],
-        meta: {
-          genres: m.genres ?? [],
-          rating:
-            typeof m.averageScore === "number" ? m.averageScore / 10 : null,
-          synopsis,
-          synopsisShort,
-          synopsisHTML: null,
-          year: m.seasonYear ?? null,
-          season: m.season ?? null,
-          popularity: m.popularity ?? null,
-          favourites: m.favourites ?? null,
-          score:
-            typeof m.averageScore === "number" ? m.averageScore / 10 : null,
-          startDate: null,
-          isAdult: !!m.isAdult,
-          isNew: null,
-          status: m.nextAiringEpisode ? "ongoing" : "finished",
-          studio:
-            m?.studios?.edges?.find((e: any) => e?.isMain)?.node?.name ?? null,
-          type: m.format ?? null,
-          episodes: m.episodes ?? null,
-          progress: null,
-          nextAiring: null,
-          nextEpisodeAt: m?.nextAiringEpisode?.airingAt
-            ? new Date(m.nextAiringEpisode.airingAt * 1000).toISOString()
-            : null,
+      // B) CONSTRUCCIÓN DE RESPUESTA MINIMALISTA (Payload Ligero)
+      // Aquí "recortamos" los datos innecesarios para el Home
+      return {
+        id: { anilist: m.id, tmdb: tmdbId },
+        title, 
+        // Imágenes Esenciales
+        images: {
+          banner: m.bannerImage,
+          backdrop: backdrop, // 4K 
+          logo: logo,         // PNG Transparente (Wow factor)
+          poster: m.coverImage?.extraLarge // Fallback responsive
         },
-      });
-    }
-
-    return res.json({
-      meta: {
-        total: heroItems.length,
-        source: "AniList POPULARITY_DESC + TMDB (hero)",
-      },
-      data: heroItems,
+        // Meta Esencial
+        meta: {
+          synopsis: synopsis,
+          year: m.seasonYear,
+          rating: m.averageScore ? (m.averageScore / 10).toFixed(1) : null,
+          studio: m.studios?.edges?.[0]?.node?.name || null,
+          genres: m.genres?.slice(0, 3) || [], // Solo 3 géneros
+          status: m.status,
+          episodes: m.episodes,
+          type: m.format,
+          trailerId: m.trailer?.site === "youtube" ? m.trailer.id : null
+        }
+      };
     });
-  } catch (e) {
-    next(e);
+
+    const heroItems = await Promise.all(itemsProm);
+    
+    // C) FILTRADO FINAL: Top 5 mejores con imágenes válidas
+    const validHeroes = heroItems
+      .filter((h) => h !== null)
+      .slice(0, 5);
+
+    const response = { data: validHeroes };
+    memoryCache.set(cacheKey, response, 1000 * 60 * 60); // Cache 1 hora
+
+    return res.json(response);
+  } catch (err) {
+    next(err);
   }
 }
-

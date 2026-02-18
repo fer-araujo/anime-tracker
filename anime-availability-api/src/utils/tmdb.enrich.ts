@@ -1,5 +1,9 @@
 // src/utils/tmdb.enrich.ts
-import type { BaseAnimeInfo, ProviderInfo, TMDBSearchTVItem } from "../types/types.js";
+import type {
+  BaseAnimeInfo,
+  ProviderInfo,
+  TMDBSearchTVItem,
+} from "../types/types.js";
 import {
   tmdbSearch,
   tmdbPosterUrl,
@@ -12,57 +16,55 @@ export type TmdbEnrichedInfo = BaseAnimeInfo & {
   tmdbId?: number | null;
 };
 
-function normalizeTitle(raw: string): string {
-  return raw
-    .toLowerCase()
-    .replace(/\b(season|cour|part)\s*\d+\b/gi, "")
-    .replace(/[^\p{Letter}\p{Number}\s]/gu, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
+export function normalizeTitle(raw: string): string {
+  if (!raw) return "";
+  return (
+    raw
+      .toLowerCase()
+      // 1. Quita "Season X", "Cour X", "Part X"
+      .replace(/\b(season|cour|part)\s*\d+\b/gi, "")
+      // 2. Quita "2nd Season", "3rd Season", etc.
+      .replace(/\b\d+(st|nd|rd|th)\s*season\b/gi, "")
+      // 3. Quita subtítulos después de dos puntos (ej: ": The Culling Game")
+      .replace(/:\s*.*$/, "")
+      // 4. Limpieza general de caracteres raros y espacios dobles
+      .replace(/[^\p{Letter}\p{Number}\s]/gu, "")
+      .replace(/\s{2,}/g, " ")
+      .trim()
+  );
 }
 
 function pickBestTmdbMatch(
   results: TMDBSearchTVItem[] | undefined,
-  title: string
+  title: string,
 ): TMDBSearchTVItem | undefined {
   if (!results || results.length === 0) return undefined;
 
   const titleNorm = normalizeTitle(title);
 
+  // Filtramos solo candidatos de anime
   const animeOnly = results.filter(isAnimeCandidate);
   const pool = animeOnly.length ? animeOnly : results;
 
-  const exact: TMDBSearchTVItem[] = [];
-  const starts: TMDBSearchTVItem[] = [];
-  const contains: TMDBSearchTVItem[] = [];
+  // Prioridad 1: Match Exacto (título limpio vs título limpio)
+  const exact = pool.find((i) => normalizeTitle(i.name) === titleNorm);
+  if (exact) return exact;
 
-  for (const item of pool) {
-    // ✅ TV: name/original_name | Movie: title/original_title
-    const rawName =
-      (item as any).name ||
-      (item as any).original_name ||
-      (item as any).title ||
-      (item as any).original_title ||
-      "";
+  // Prioridad 2: Contenido (si "Jujutsu Kaisen" está dentro del título de AniList)
+  const contains = pool.find((i) => {
+    const tName = normalizeTitle(i.name);
+    return titleNorm.includes(tName) || tName.includes(titleNorm);
+  });
 
-    const nameNorm = normalizeTitle(rawName);
-    if (!nameNorm) continue;
+  if (contains) return contains;
 
-    if (nameNorm === titleNorm) exact.push(item);
-    else if (nameNorm.startsWith(titleNorm)) starts.push(item);
-    else if (nameNorm.includes(titleNorm)) contains.push(item);
-  }
-
-  if (exact.length) return exact[0];
-  if (starts.length) return starts[0];
-  if (contains.length) return contains[0];
   return pool[0];
 }
 
 export async function enrichWithTmdb(
   base: BaseAnimeInfo,
   region = "MX",
-  opts?: { kind?: "tv" | "movie" }
+  opts?: { kind?: "tv" | "movie" },
 ): Promise<TmdbEnrichedInfo> {
   if (!base?.title) return { ...base };
 
@@ -82,11 +84,15 @@ export async function enrichWithTmdb(
 
   const poster =
     base.poster ??
-    ((best as any).poster_path ? tmdbPosterUrl((best as any).poster_path, "w780") : undefined);
+    ((best as any).poster_path
+      ? tmdbPosterUrl((best as any).poster_path, "w780")
+      : undefined);
 
   const backdrop =
     base.backdrop ??
-    ((best as any).backdrop_path ? tmdbBackdropUrl((best as any).backdrop_path, "w1280") : undefined);
+    ((best as any).backdrop_path
+      ? tmdbBackdropUrl((best as any).backdrop_path, "w1280")
+      : undefined);
 
   let providers: ProviderInfo[] | undefined = base.providers;
 

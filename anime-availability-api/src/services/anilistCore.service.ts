@@ -1,3 +1,4 @@
+// src/services/anilistCore.service.ts
 import { ENV } from "../config/env.js";
 import {
   AnimeCore,
@@ -53,7 +54,34 @@ function extractProviders(m: AniMedia): string[] {
     .filter(Boolean) as string[];
 
   const filtered = rawNames.filter((name) => STREAMING_SITES.has(name));
-  return Array.from(new Set(filtered)); // únicos
+  return Array.from(new Set(filtered));
+}
+
+/** ✅ Normalización para match consistente (sin acentos / símbolos) */
+function normalizeText(text?: string | null) {
+  return (text ?? "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function matchesQuery(q: string, titles: AnimeTitleSet) {
+  const nq = normalizeText(q);
+  if (!nq) return false;
+
+  const pool = [titles.english, titles.romaji, titles.native].map(normalizeText);
+  return pool.some((t) => t.includes(nq));
+}
+
+function isPrefix(q: string, titles: AnimeTitleSet) {
+  const nq = normalizeText(q);
+  if (!nq) return false;
+
+  const pool = [titles.english, titles.romaji, titles.native].map(normalizeText);
+  return pool.some((t) => t.startsWith(nq));
 }
 
 /**
@@ -64,6 +92,9 @@ export async function searchAnimeFromAnilist(
   opts?: { perPage?: number }
 ): Promise<AnimeCore[]> {
   const perPage = opts?.perPage ?? 12;
+
+  // ✅ pedimos más para poder filtrar sin quedarnos sin resultados
+  const fetchN = Math.min(50, Math.max(perPage * 3, perPage));
 
   const gql = `
     query ($search: String!, $perPage: Int!) {
@@ -97,10 +128,7 @@ export async function searchAnimeFromAnilist(
     }
   `;
 
-  const body = {
-    query: gql,
-    variables: { search: query, perPage },
-  };
+  const body = { query: gql, variables: { search: query, perPage: fetchN } };
 
   const res = await fetch(ENV.ANILIST_URL, {
     method: "POST",
@@ -116,7 +144,28 @@ export async function searchAnimeFromAnilist(
   const json = await res.json();
   const media: AniMedia[] = json?.data?.Page?.media ?? [];
 
-  return media.map<AnimeCore>((m) => {
+  // ✅ POST-FILTER (evita resultados que no contienen el query en ningún title)
+  const filtered = media.filter((m) => {
+    const titles: AnimeTitleSet = {
+      romaji: m.title?.romaji ?? null,
+      english: m.title?.english ?? null,
+      native: m.title?.native ?? null,
+    };
+    return matchesQuery(query, titles);
+  });
+
+  // ✅ RANK: prefix primero, luego el resto (mantiene el orden de AniList dentro de cada grupo)
+  const prefix = filtered.filter((m) =>
+    isPrefix(query, {
+      romaji: m.title?.romaji ?? null,
+      english: m.title?.english ?? null,
+      native: m.title?.native ?? null,
+    })
+  );
+  const rest = filtered.filter((m) => !prefix.includes(m));
+  const ordered = [...prefix, ...rest].slice(0, perPage);
+
+  return ordered.map<AnimeCore>((m) => {
     const titles: AnimeTitleSet = {
       romaji: m.title?.romaji ?? null,
       english: m.title?.english ?? null,
@@ -125,11 +174,7 @@ export async function searchAnimeFromAnilist(
 
     const title = preferTitle(titles);
 
-    const poster =
-      m.coverImage?.extraLarge ??
-      m.coverImage?.large ??
-      null;
-
+    const poster = m.coverImage?.extraLarge ?? m.coverImage?.large ?? null;
     const banner = m.bannerImage ?? null;
     const artworkCandidates = artworkFromBanner(banner);
 
@@ -146,7 +191,6 @@ export async function searchAnimeFromAnilist(
 
     const providers = extractProviders(m);
 
-    // Studio principal
     const studioMain =
       m.studios?.edges?.find((e) => e?.isMain)?.node?.name ??
       m.studios?.edges?.[0]?.node?.name ??
@@ -155,7 +199,7 @@ export async function searchAnimeFromAnilist(
     return {
       ids: {
         anilist: m.id,
-        mal: null, // luego llenamos cuando agreguemos MAL
+        mal: null,
         kitsu: null,
         shikimori: null,
       },
@@ -171,13 +215,11 @@ export async function searchAnimeFromAnilist(
         season: (m.season as any) ?? null,
         seasonYear: m.seasonYear ?? null,
         episodes: m.episodes ?? null,
-        score:
-          typeof m.averageScore === "number" ? m.averageScore / 10 : null,
+        score: typeof m.averageScore === "number" ? m.averageScore / 10 : null,
         popularity: m.popularity ?? null,
         favourites: m.favourites ?? null,
         status: (m.status as any) ?? null,
-        isAdult:
-          typeof m.isAdult === "boolean" ? m.isAdult : null,
+        isAdult: typeof m.isAdult === "boolean" ? m.isAdult : null,
         genres: m.genres ?? [],
         studioMain,
         startDate: startDateISO,

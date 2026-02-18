@@ -13,6 +13,18 @@ export interface SearchResult {
   };
 }
 
+export type SearchResultItem = {
+  ids: {
+    anilist?: number | null;
+    tmdb?: number | null;
+    mal?: number | null;
+    kitsu?: string | null;
+  };
+  title: string;
+  poster?: string | null;
+  subtitle?: string | null;
+};
+
 export type SearchItem = {
   ids: { tmdb: number | null; mal?: number | null; kitsu?: string | null };
   title: string;

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Film } from "lucide-react";
-import SearchBar from "@/components/SearchBar";
+import SearchBar from "@/components/Search/SearchBar";
 
 export default function Header() {
   return (

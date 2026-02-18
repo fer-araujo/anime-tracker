@@ -1,6 +1,11 @@
 // src/utils/artwork.ts
 import type { ArtworkCandidate } from "../types/animeCore.js";
-import { tmdbSearch, tmdbBackdropUrl, isAnimeCandidate } from "../services/tmdb.service.js";
+import {
+  tmdbSearch,
+  tmdbBackdropUrl,
+  isAnimeCandidate,
+  getTmdbImages,
+} from "../services/tmdb.service.js";
 
 export type BasicAniListMedia = {
   bannerImage?: string | null;
@@ -13,7 +18,7 @@ export type BasicAniListMedia = {
 
 export function pickBestBackdrop(
   candidates: ArtworkCandidate[] | undefined,
-  opts?: { requireLandscape?: boolean; minAspect?: number }
+  opts?: { requireLandscape?: boolean; minAspect?: number },
 ): { backdrop: string | null; artworkCandidates: ArtworkCandidate[] } {
   const { requireLandscape = false, minAspect = 1.45 } = opts ?? {};
 
@@ -33,56 +38,88 @@ export function pickBestBackdrop(
   return { backdrop: url, artworkCandidates: candidates };
 }
 
-function inferKindFromFormat(format?: string | null): "tv" | "movie" {
-  return String(format).toUpperCase() === "MOVIE" ? "movie" : "tv";
-}
-
-async function fetchTmdbArtworkByTitle(
-  title: string,
-  kind: "tv" | "movie"
-): Promise<ArtworkCandidate[]> {
-  try {
-    const hits = await tmdbSearch(kind, title);
-    if (!hits || !hits.length) return [];
-
-    const best = hits.find(isAnimeCandidate) ?? hits[0];
-    if (!(best as any).backdrop_path) return [];
-
-    const url1280 = tmdbBackdropUrl((best as any).backdrop_path, "w1280");
-    const url780 = tmdbBackdropUrl((best as any).backdrop_path, "w780") ?? url1280;
-    const urlOrig =
-      tmdbBackdropUrl((best as any).backdrop_path, "original") ?? url1280 ?? url780;
-
-    if (!url1280 && !url780 && !urlOrig) return [];
-
-    return [
-      {
-        url_780: url780 ?? url1280 ?? urlOrig ?? null,
-        url_1280: url1280 ?? url780 ?? urlOrig ?? null,
-        url_orig: urlOrig ?? url1280 ?? url780 ?? null,
-        aspect: 16 / 9,
-        source: "tmdb-backdrop",
-      },
-    ];
-  } catch (err) {
-    console.warn("[tmdb] artwork error for title:", title, err);
-    return [];
-  }
-}
+// Helper para URL de imagen normal (para logos)
+const tmdbImageUrl = (path: string | null, size = "original") =>
+  path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
 
 export async function resolveHeroArtwork(
-  title: string,
-  media: BasicAniListMedia
-): Promise<{ backdrop: string | null; artworkCandidates: ArtworkCandidate[] }> {
-  const kind = inferKindFromFormat(media?.format);
+  searchTitle: string,
+  media: { bannerImage?: string | null; coverImage?: any },
+) {
+  let tmdbId: number | null = null;
+  let backdrop: string | null = null;
+  let logo: string | null = null; // <--- NUEVO CAMPO
+  let artworkCandidates: any[] = [];
 
-  const tmdbCandidates = await fetchTmdbArtworkByTitle(title, kind);
+  try {
+    const tmdbResults = await tmdbSearch("tv", searchTitle);
+    const bestTmdb = tmdbResults.find(isAnimeCandidate) ?? tmdbResults[0];
 
-  const { backdrop, artworkCandidates } = pickBestBackdrop(tmdbCandidates, {
-    requireLandscape: true,
-  });
+    if (bestTmdb) {
+      tmdbId = bestTmdb.id;
 
-  if (backdrop) return { backdrop, artworkCandidates };
+      // Pedimos Backdrops y Logos
+      const imagesData = await getTmdbImages(tmdbId, "tv");
 
-  return pickBestBackdrop(tmdbCandidates, { requireLandscape: false });
+      if (imagesData) {
+        // --- 1. BACKDROPS ---
+        if (imagesData.backdrops?.length > 0) {
+          const highQualityArt = imagesData.backdrops
+            .filter((img: any) => img.width >= 1920)
+            .sort((a: any, b: any) => {
+              // Prioridad: Sin texto > Votos > Voto promedio
+              const scoreA =
+                (a.iso_639_1 === null ? 50 : 0) +
+                a.vote_average * 5 +
+                a.vote_count;
+              const scoreB =
+                (b.iso_639_1 === null ? 50 : 0) +
+                b.vote_average * 5 +
+                b.vote_count;
+              return scoreB - scoreA;
+            });
+
+          artworkCandidates = highQualityArt.map((img: any) => ({
+            url_original: tmdbBackdropUrl(img.file_path, "original"),
+            width: img.width,
+            is_textless: img.iso_639_1 === null,
+          }));
+
+          if (highQualityArt[0]) {
+            backdrop =
+              tmdbBackdropUrl(highQualityArt[0].file_path, "original") ?? null;
+          }
+        }
+
+        // --- 2. LOGOS (NUEVO) ---
+        // Buscamos el mejor logo (PNG)
+        if (imagesData.logos?.length > 0) {
+          // Filtramos logos en inglés (suelen ser los internacionales) o sin idioma
+          // Ordenamos por votos para sacar el oficial más bonito
+          const bestLogo = imagesData.logos
+            .filter((l: any) => l.iso_639_1 === "en" || l.iso_639_1 === null)
+            .sort((a: any, b: any) => b.vote_average - a.vote_average)[0];
+
+          if (bestLogo) {
+            logo = tmdbImageUrl(bestLogo.file_path, "original");
+          }
+        }
+      }
+
+      // Fallback Backdrop
+      if (!backdrop && bestTmdb.backdrop_path) {
+        backdrop = tmdbBackdropUrl(bestTmdb.backdrop_path, "original") ?? null;
+      }
+    }
+  } catch (e) {
+    console.warn("Artwork resolution failed", e);
+  }
+
+  // Fallback final a AniList banner
+  if (!backdrop) {
+    backdrop = media.bannerImage ?? null;
+  }
+
+  // Regresamos todo, incluyendo candidates y logo
+  return { backdrop, logo, artworkCandidates, tmdbId };
 }

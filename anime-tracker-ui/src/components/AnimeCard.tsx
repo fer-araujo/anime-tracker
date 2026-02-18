@@ -1,3 +1,4 @@
+"use client"
 import Image from "next/image";
 import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
@@ -45,9 +46,9 @@ export function AnimeCard({
       >
         {/* Poster */}
         <div className="absolute inset-0 z-0">
-          {anime.poster ? (
+          {anime.images.poster ? (
             <Image
-              src={anime.poster}
+              src={anime.images.poster}
               alt={anime.title}
               fill
               sizes="(max-width:980px) 100vw, 33vw"

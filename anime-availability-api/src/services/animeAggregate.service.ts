@@ -15,4 +15,3 @@ export async function searchAnimeUnified(query: string, opts?: { perPage?: numbe
   const enriched = await Promise.all(anilist.map((c) => enrichAnimeCore(c, "MX")));
   return enriched;
 }
-
