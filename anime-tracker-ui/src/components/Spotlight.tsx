@@ -1,9 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { cn, getAspectClass } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+} from "framer-motion";
 import type { Anime } from "@/types/anime";
 import { ActionButton } from "@/components/common/Buttons";
 import { useCallback, useEffect, useState } from "react";
@@ -28,6 +33,14 @@ export function HeroCarouselCinematic({
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+  const { scrollY } = useScroll(); // Usamos scrollY (píxeles reales), no Progress
+
+  // Parallax del Hero: baja un 20% más lento que el scroll
+  const heroY = useTransform(scrollY, [0, 800], ["0%", "20%"]);
+  // Se oscurece gradualmente
+  const heroOpacity = useTransform(scrollY, [0, 500], [1, 0.1]);
+  // La UI (flechas y puntos) desaparece rápido en los primeros 300px
+  const uiOpacity = useTransform(scrollY, [0, 500], [1, 0]);
   // auto-play
   useEffect(() => {
     if (total <= 1) return;
@@ -81,75 +94,64 @@ export function HeroCarouselCinematic({
   }, []);
 
   const current = items[index];
-  const aspect = current.images.artworkCandidates?.[0]?.aspect ?? null;
-  const aspectClass = getAspectClass(aspect);
 
   const heroBackdrop =
-    current.images.banner ??
     current.images.backdrop ??
+    current.images.banner ??
     current.images.artworkCandidates?.[0]?.url_orig ??
     current.images.artworkCandidates?.[0]?.url_1280 ??
     current.images.artworkCandidates?.[0]?.url_780 ??
     current.images.poster ??
-    null;
+    "";
 
   return (
     <>
       <section
         className={cn(
-          "relative w-full h-[min(90vh,56vw)] overflow-hidden",
+          "relative h-[65vh] md:h-[80vh] w-full overflow-hidden bg-background",
           className,
         )}
       >
-        {/* Slides */}
-        <div
-          className={`relative w-full overflow-hidden transition-transform duration-700 ease-out ${aspectClass}`}
+        {/* 1. CONTENEDOR PARALLAX: Aquí aplicamos el movimiento y el fade out */}
+        <motion.div
+          style={{ y: heroY, opacity: heroOpacity }}
+          className="absolute inset-0 w-full h-full z-0"
         >
-          <AnimatePresence initial={false} mode="wait">
+          <AnimatePresence mode="wait">
             <motion.div
-              key={current?.id?.anilist ?? index}
-              className="absolute inset-0"
-              initial={{ opacity: 0, scale: 1.03 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.03 }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
+              key={current.id.anilist}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.7 }}
+              className="relative h-full w-full [mask-image:linear-gradient(to_bottom,black_70%,transparent_100%)]"
             >
-              {/* Capa NÍTIDA principal */}
-              {heroBackdrop && (
-                <Image
-                  src={
-                    current.images.backdrop ||
-                    current.images.banner ||
-                    current.images.poster ||
-                    ""
-                  }
-                  alt={current.title}
-                  fill
-                  priority
-                  // Next.js 15 soporta esto. Si tu linter se queja, es un falso positivo, pero renderizará bien.
-                  // Esto elimina la compresión agresiva del 75%.
-                  quality={95}
-                  className={cn(
-                    "object-cover transition-transform duration-700",
-                    // UX IMPROVEMENT:
-                    // Si es backdrop/banner, enfocamos al 20% superior para no cortar cabezas.
-                    // Si es poster (vertical), centramos normal.
-                    current.images.backdrop || current.images.banner
-                      ? "object-[center_20%]"
-                      : "object-center",
-                  )}
-                />
-              )}
+              <Image
+                src={heroBackdrop}
+                alt={current.title}
+                fill
+                priority
+                quality={95}
+                className={cn(
+                  "object-cover transition-transform duration-700",
+                  heroBackdrop ? "object-[center_20%]" : "object-center",
+                )}
+              />
 
-              <div className="absolute inset-0 bg-black/10" />
-              {/* Nueva viñeta lateral izquierda para que el logo y el texto siempre tengan contraste */}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/10 to-transparent w-[80%] md:w-[65%]" />
-              <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,1)0%,rgba(0,0,0,0)65%)]" />
+              {/* Viñeta general para oscurecer */}
+              <div className="absolute inset-0 bg-black/20" />
+
+              {/* Viñeta lateral izquierda para asegurar legibilidad del logo */}
+              <div className="absolute inset-0 bg-gradient-to-r from-background via-background/40 to-transparent w-[90%] md:w-[60%]" />
             </motion.div>
           </AnimatePresence>
-        </div>
+        </motion.div>
+
         {/* Content */}
-        <div className="absolute inset-0 z-10 flex items-center justify-start">
+        <motion.div
+          style={{ opacity: uiOpacity }}
+          className="absolute inset-0 z-10 flex items-center justify-start"
+        >
           <div className="px-6 md:px-16 lg:px-24 pb-20 md:pb-32 w-full max-w-6xl space-y-4">
             <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-white/80">
               {current.meta?.status && (
@@ -236,87 +238,79 @@ export function HeroCarouselCinematic({
               </ActionButton>
             </div>
           </div>
-        </div>
-        {/* nav arrows */}
-        {total > 1 && (
-          <>
-            {/* edge chevrons (hero & shelf) */}
-            <button
-              aria-label="Prev"
-              onClick={prev}
-              className="group absolute inset-y-0 left-0 z-20 w-[18vw] max-w-24 grid place-items-center hover:bg-white/[0.03] transition-colors
-              sm:grid"
-            >
-              <span
-                aria-hidden="true"
-                className="pointer-events-none text-white/70 group-hover:text-white
-             text-3xl -translate-x-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]"
+        </motion.div>
+        <motion.div
+          style={{ opacity: uiOpacity }}
+          className="absolute inset-0 z-20 pointer-events-none"
+        >
+          {/* nav arrows (les ponemos pointer-events-auto para que sigan siendo clickeables) */}
+          {total > 1 && (
+            <>
+              <button
+                aria-label="Prev"
+                onClick={prev}
+                className="pointer-events-auto group absolute inset-y-0 left-0 w-[15vw] max-w-24 grid place-items-center hover:bg-white/[0.03] transition-colors sm:grid"
               >
-                ‹
-              </span>
-            </button>
-            <button
-              aria-label="Next"
-              onClick={next}
-              className="group absolute inset-y-0 right-0 z-20 w-[18vw] max-w-24 grid place-items-center hover:bg-white/[0.03] transition-colors
-              sm:grid"
-            >
-              <span
-                aria-hidden="true"
-                className="pointer-events-none text-white/70 group-hover:text-white
-             text-3xl -translate-x-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]"
+                <span className="text-white/70 group-hover:text-white text-3xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
+                  ‹
+                </span>
+              </button>
+              <button
+                aria-label="Next"
+                onClick={next}
+                className="pointer-events-auto group absolute inset-y-0 right-0 w-[15vw] max-w-24 grid place-items-center hover:bg-white/[0.03] transition-colors sm:grid"
               >
-                ›
-              </span>
-            </button>
-          </>
-        )}
-        {/* progress + dots */}
-        {total > 1 && (
-          <div className="absolute left-0 right-0 bottom-0 z-20">
-            <div className="h-[3px] w-full rounded-full overflow-hidden">
-              <motion.div
-                key={index}
-                className="h-full"
-                initial={{
-                  width: prefersReducedMotion ? "100%" : "0%",
-                  backgroundColor: "rgb(34 197 94)",
-                }}
-                animate={{ width: "100%", backgroundColor: "rgb(34 197 94)" }}
-                transition={
-                  prefersReducedMotion
-                    ? undefined
-                    : { duration: intervalMs / 1000, ease: "linear" }
-                }
-              />
+                <span className="text-white/70 group-hover:text-white text-3xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
+                  ›
+                </span>
+              </button>
+            </>
+          )}
+
+          {/* INDICADORES PREMIUM (Pill Progress) */}
+          {total > 1 && (
+            <div className="absolute inset-x-0 bottom-8 flex items-center justify-center gap-3 pointer-events-auto">
+              {items.map((_, i) => {
+                const isActive = i === index;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => dotSelect(i)}
+                    aria-label={`Ir al slide ${i + 1}`}
+                    // Aumentamos el brillo del fondo (bg-white/30 y 50) para que se vean bien
+                    className={cn(
+                      "relative h-2 rounded-full overflow-hidden transition-all duration-500 ease-out",
+                      isActive
+                        ? "w-12 bg-white/30"
+                        : "w-2.5 bg-white/50 hover:bg-white/80",
+                    )}
+                  >
+                    {isActive && (
+                      <motion.div
+                        key={`progress-${index}`}
+                        className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_10px_rgba(16,185,129,0.9)]"
+                        initial={{
+                          width: prefersReducedMotion ? "100%" : "0%",
+                        }}
+                        animate={{ width: "100%" }}
+                        transition={{
+                          duration: prefersReducedMotion
+                            ? 0
+                            : intervalMs / 1000,
+                          ease: "linear",
+                        }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
             </div>
-            <div className="absolute inset-x-0 bottom-8 z-20 flex items-center justify-center gap-2">
-              {items.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    dotSelect(i);
-                  }}
-                  className={cn(
-                    "h-2.5 w-2.5 rounded-full transition-opacity",
-                    i === index
-                      ? "bg-white/90"
-                      : "bg-white/50 hover:opacity-80 opacity-50",
-                  )}
-                  aria-label={`Ir al slide ${i + 1}`}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-        {/* Fog / merge con la siguiente sección */}
-        {/* seam mínimo y sutil */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0">
-          {/* degradado suave para evitar corte duro */}
-          <div className="h-[6vh] bg-[linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,0.12))]" />
-          {/* Línea de contacto finísima (como Crunchy) */}
-          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-emerald-500/70" />
-        </div>
+          )}
+        </motion.div>
+
+        {/* 2. EL FOG SUTIL */}
+        {/* Solo 25vh de alto, un degradado más limpio hacia el fondo */}
+        <div className="absolute inset-x-0 bottom-0 h-[30vh] bg-gradient-to-t from-background via-background/50 to-transparent pointer-events-none z-10" />
       </section>
     </>
   );

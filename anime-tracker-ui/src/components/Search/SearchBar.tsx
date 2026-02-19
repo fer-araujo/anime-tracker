@@ -33,7 +33,7 @@ export default function SearchBar({
   // ✅ normaliza espacios (sin perder el contenido)
   const q = useMemo(
     () => query.toLowerCase().replace(/\s+/g, " ").trim(),
-    [query]
+    [query],
   );
 
   // ✅ valida por "caracteres útiles":
@@ -50,11 +50,9 @@ export default function SearchBar({
     (item: SearchResultItem) => {
       setOpen(false);
       const id = item.ids?.anilist;
-      console.log("Selected item:", item);
-      // if (id) router.push(`/anime/${id}`);
-      // else console.log("Selected item:", item);
+      router.push(`/anime/${id}`);
     },
-    []
+    [router],
   );
 
   const doFetch = useCallback(
@@ -94,7 +92,7 @@ export default function SearchBar({
         setLoading(false);
       }
     },
-    [limit, region]
+    [limit, region],
   );
 
   // Debounce + gating
@@ -132,7 +130,7 @@ export default function SearchBar({
   return (
     <div className="relative w-full" ref={anchorRef}>
       <form
-        className="relative flex w-full items-stretch gap-2"
+        className="relative flex w-full items-stretch gap-2 group"
         onSubmit={(e) => {
           e.preventDefault();
           if (items[activeIndex]) handleSelect(items[activeIndex]);
@@ -144,20 +142,22 @@ export default function SearchBar({
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Busca un anime…"
-          className="h-10 w-full pr-10"
           onFocus={() => isValid && setOpen(true)}
           spellCheck={false}
+          // ESTILOS PREMIUM: Cristal semitransparente que reacciona al foco
+          className="h-10 w-full pr-10 bg-white/10 border-white/10 text-white placeholder:text-white/50 backdrop-blur-xs transition-all duration-300 focus-visible:bg-black/40 focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-primary shadow-sm rounded-full"
         />
 
         <Button
           type="submit"
           size="icon"
-          className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
           disabled={!isValid}
           aria-label="Buscar"
+          // ESTILOS DEL BOTÓN: Transparente por defecto, se pinta sutilmente al hacer hover
+          className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 bg-transparent hover:bg-white/10 text-white/70 hover:text-white border-none rounded-full transition-colors"
         >
           {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
           ) : (
             <Search className="h-4 w-4" />
           )}

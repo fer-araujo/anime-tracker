@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="es">
       <body className="min-h-screen bg-background text-foreground">
         <Header />
-        <main className="pt-14">
+        <main className="relative flex flex-col min-h-screen">
           {children}
         </main>
       </body>
