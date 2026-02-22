@@ -15,7 +15,7 @@ export async function enrichAnimeCore(core: AnimeCore, region = "MX"): Promise<A
   if (!providers.length && core.ids?.tmdb) {
     // Tomamos el ID de AniList (asumo que está en core.id o core.ids.anilist)
     // Si en tu interfaz se llama diferente, ajústalo aquí.
-    const anilistId = core.id || core.ids?.anilist || 0; 
+    const anilistId = core.ids?.anilist || 0; 
 
     const r = await resolveProvidersForAnimeDetailed(
       anilistId,       // 1. anilistId: number
