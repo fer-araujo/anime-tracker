@@ -3,12 +3,13 @@ import { memoryCache } from "../utils/cache.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
 import { normalizeTitle } from "../utils/tmdb.enrich.js";
 import e from "express";
+import { getTmdbSynopsis } from "../services/tmdb.service.js";
 
 /* helpers */
 function stripHtml(input?: string | null) {
   if (!input) return null;
   // Limpieza básica de HTML
-  const noTags = input.replace(/<\/?[^>]+(>|$)/g, ""); 
+  const noTags = input.replace(/<\/?[^>]+(>|$)/g, "");
   return noTags.trim();
 }
 
@@ -22,7 +23,11 @@ function preferTitle(t?: {
 
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
-export async function getHomeHero(req: Request, res: Response, next: NextFunction) {
+export async function getHomeHero(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const cacheKey = "home:hero:cinematic:v3"; // Nueva key
     const cached = memoryCache.get(cacheKey);
@@ -31,8 +36,8 @@ export async function getHomeHero(req: Request, res: Response, next: NextFunctio
     // 1. Pedimos 10 para filtrar
     const gql = `
       query {
-        Page(page: 1, perPage: 10) {
-          media(type: ANIME, sort: TRENDING_DESC, isAdult: false) {
+        Page(page: 1, perPage: 15) {
+          media(type: ANIME, sort: [POPULARITY_DESC], status: RELEASING) {
             id
             title { romaji english native }
             coverImage { extraLarge }
@@ -57,7 +62,8 @@ export async function getHomeHero(req: Request, res: Response, next: NextFunctio
       body: JSON.stringify({ query: gql }),
     });
 
-    if (!aniRes.ok) return res.status(aniRes.status).json({ error: "AniList Error" });
+    if (!aniRes.ok)
+      return res.status(aniRes.status).json({ error: "AniList Error" });
     const json = await aniRes.json();
     const media = json.data?.Page?.media || [];
 
@@ -68,30 +74,36 @@ export async function getHomeHero(req: Request, res: Response, next: NextFunctio
 
       // A) Obtenemos TODO del artwork service
       // PERO NOTA: Aquí extraemos 'artworkCandidates' pero NO lo metemos al return final.
-      const { backdrop, logo, tmdbId } = await resolveHeroArtwork(
-        searchTitle,
-        { bannerImage: m.bannerImage }
-      );
+      const { backdrop, logo, tmdbId } = await resolveHeroArtwork(searchTitle, {
+        bannerImage: m.bannerImage,
+      });
 
       // Si no hay backdrop cinemático, este anime no es digno del Hero
       if (!backdrop) return null;
-
-      const synopsisRaw = stripHtml(m.description);
-      const synopsis = synopsisRaw 
-        ? (synopsisRaw.length > 180 ? synopsisRaw.slice(0, 180) + "..." : synopsisRaw)
+      const spanishSynopsis = tmdbId
+        ? await getTmdbSynopsis(
+            tmdbId,
+            m.format === "MOVIE" ? "movie" : "tv",
+          )
+        : null;
+      const synopsisRaw = stripHtml(spanishSynopsis || m.description);
+      const synopsis = synopsisRaw
+        ? synopsisRaw.length > 180
+          ? synopsisRaw.slice(0, 180) + "..."
+          : synopsisRaw
         : "";
 
       // B) CONSTRUCCIÓN DE RESPUESTA MINIMALISTA (Payload Ligero)
       // Aquí "recortamos" los datos innecesarios para el Home
       return {
         id: { anilist: m.id, tmdb: tmdbId },
-        title, 
+        title,
         // Imágenes Esenciales
         images: {
           banner: m.bannerImage,
-          backdrop: backdrop, // 4K 
-          logo: logo,         // PNG Transparente (Wow factor)
-          poster: m.coverImage?.extraLarge // Fallback responsive
+          backdrop: backdrop, // 4K
+          logo: logo, // PNG Transparente (Wow factor)
+          poster: m.coverImage?.extraLarge, // Fallback responsive
         },
         // Meta Esencial
         meta: {
@@ -103,17 +115,15 @@ export async function getHomeHero(req: Request, res: Response, next: NextFunctio
           status: m.status,
           episodes: m.episodes,
           type: m.format,
-          trailerId: m.trailer?.site === "youtube" ? m.trailer.id : null
-        }
+          trailerId: m.trailer?.site === "youtube" ? m.trailer.id : null,
+        },
       };
     });
 
     const heroItems = await Promise.all(itemsProm);
-    
+
     // C) FILTRADO FINAL: Top 5 mejores con imágenes válidas
-    const validHeroes = heroItems
-      .filter((h) => h !== null)
-      .slice(0, 5);
+    const validHeroes = heroItems.filter((h) => h !== null).slice(0, 5);
 
     const response = { data: validHeroes };
     memoryCache.set(cacheKey, response, 1000 * 60 * 60); // Cache 1 hora

@@ -4,6 +4,7 @@ import type { Anime } from "@/types/anime";
 import { cn } from "@/lib/utils";
 import { AnimeCard } from "./AnimeCard";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
 export function MinimalShelf({
   title,
@@ -25,52 +26,53 @@ export function MinimalShelf({
   };
 
   const handleOpen = (anime: Anime) => {
-    // Aquí podrías usar un router para ir a la página del anime, por ejemplo:
     router.push(`/anime/${anime.id.anilist}`);
   };
 
   return (
     <>
-      {/* <div className="h-8 bg-[linear-gradient(180deg,rgba(0,0,0,0.6)_0%,rgba(0,0,0,0)_100%)]" /> */}
-      <section className={cn("relative px-8 md:px-16 py-12", className)}>
-        <div
-          className="pointer-events-none absolute inset-0 -z-10
-                  bg-[conic-gradient(from_180deg_at_50%_50%,rgba(255,255,255,0.02),rgba(0,0,0,0.08),rgba(255,255,255,0.02))]"
-        />
-        <div
-          className="pointer-events-none absolute inset-0 -z-10 opacity-[0.035]
-                  [background-image:radial-gradient(1px_1px_at_20%_30%,#fff,transparent),radial-gradient(1px_1px_at_80%_60%,#fff,transparent)]"
-        />
+      <motion.section
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: false, margin: "-50px" }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className={cn(
+          "relative py-12",
+          "pl-[min(18vw,6rem)] pr-[min(18vw,6rem)] md:pl-8 md:pr-8",
+          className,
+        )}
+      >
+        {/* --- FLECHAS ALINEADAS CON EL HERO --- */}
+        {/* Al estar directo en el <section>, su absolute inset-y-0 abarca todo el alto del shelf */}
+        <button
+          onClick={() => scroll(-1)}
+          className="hidden md:grid absolute inset-y-0 -left-16 z-10 w-[18vw] max-w-24 place-items-center  transition-colors"
+        >
+          <span className="text-white/60 hover:text-white text-4xl cursor-pointer -translate-x-1">
+            ‹
+          </span>
+        </button>
+        <button
+          onClick={() => scroll(1)}
+          className="hidden md:grid absolute inset-y-0 -right-16 z-10 w-[18vw] max-w-24 place-items-center  transition-colors"
+        >
+          <span className="text-white/60 hover:text-white text-4xl cursor-pointer translate-x-1">
+            ›
+          </span>
+        </button>
 
-        <div className="mb-4 flex items-center justify-between">
+        {/* --- TÍTULO --- */}
+        <div className="mb-4">
           <h2 className="text-xl md:text-2xl font-semibold text-white/95">
             {title}
           </h2>
-          <div className="hidden md:flex gap-2">
-            <button
-              onClick={() => scroll(-1)}
-              className="hidden md:grid absolute inset-y-0 left-0 z-10 w-12 place-items-center hover:bg-white/5 transition-colors"
-            >
-              <span className="text-white/80 hover:text-white text-2xl -translate-x-1">
-                ‹
-              </span>
-            </button>
-            <button
-              onClick={() => scroll(1)}
-              className="hidden md:grid absolute inset-y-0 right-0 z-10 w-12 place-items-center hover:bg-white/5 transition-colors"
-            >
-              <span className="text-white/80 hover:text-white text-2xl translate-x-1">
-                ›
-              </span>
-            </button>
-          </div>
         </div>
 
+        {/* --- CARDS --- */}
         <div
           ref={ref}
-          className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory
-                   [scrollbar-width:none] [-ms-overflow-style:none]
-                   [&::-webkit-scrollbar]:hidden"
+          className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory px-3 sm:px-4
+                   [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
           {items.map((a) => (
             <div
@@ -85,7 +87,7 @@ export function MinimalShelf({
             </div>
           ))}
         </div>
-      </section>
+      </motion.section>
     </>
   );
 }

@@ -1,6 +1,28 @@
+// --- NUEVOS TIPOS PARA LA PÁGINA DE DETALLES ---
+export type FranchiseItem = {
+  id: number;
+  relationType: string;
+  title: string;
+  poster: string | null;
+  type: string;
+};
+
+export type StreamingEpisode = {
+  title: string;
+  thumbnail: string | null;
+  url: string;
+};
+
+export type ranking = {
+  rank: number;
+  type: string;
+};
+
+// --- TUS TIPOS ORIGINALES (AUMENTADOS) ---
 export type Anime = {
   id: { anilist: number; tmdb: number | null };
   title: string;
+  subtitle?: string | null; // <-- NUEVO
   providers: string[];
   images: {
     artworkCandidates?: ArtworkCandidate[];
@@ -9,6 +31,10 @@ export type Anime = {
     logo?: string | null;
     poster?: string | null;
   };
+
+  franchise?: FranchiseItem[]; // <-- NUEVO
+  episodesData?: StreamingEpisode[]; // <-- NUEVO
+
   meta?: {
     genres?: string[];
     rating?: number | null; // 0..10
@@ -23,10 +49,20 @@ export type Anime = {
     startDate?: string | null; // fecha ISO
     isAdult?: boolean;
     isNew?: boolean;
-    status?: "ongoing" | "finished";
+    ranking?: ranking | null; // ranking global de popularidad
+    recommendations?: Anime[]; // <-- Lo mantenemos aquí donde tú lo tenías
+    status?:
+      | "RELEASING"
+      | "FINISHED"
+      | "NOT_YET_RELEASED"
+      | "CANCELLED"
+      | "HIATUS"
+      | "COMPLETED";
     studio?: string | null;
     type?: string | null; // TV / ONA / Movie / OVA / Special ...
+    trailer?: string | null;
     episodes?: number | null;
+    duration?: number | null; // <-- NUEVO
     progress?: number | null; // vistos
     nextAiring?: string | null; // e.g. "in 6 days" (texto ya formateado)
     nextEpisodeAt?: string | null; // fecha ISO del próximo episodio
@@ -43,6 +79,7 @@ export type AnimeCardProps = {
   overlayTone?: "soft" | "strong"; // tono manual base
   autoContrast?: boolean; // detectar pósters claros automáticamente
 };
+
 export interface AnimeMeta {
   genres?: string[];
   rating?: number | null;
@@ -109,5 +146,6 @@ export type ArtworkCandidate = {
   height: number | null;
   url_780: string | null;
   url_1280: string | null;
-  url_orig: string | null;
+  url_orig?: string | null;
+  url_original?: string | null;
 };

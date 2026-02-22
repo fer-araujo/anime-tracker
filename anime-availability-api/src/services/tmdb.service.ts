@@ -65,6 +65,31 @@ export async function getTmdbImages(id: number, kind: "tv" | "movie" = "tv") {
   }
 }
 
+/**
+ * NUEVA FUNCIÓN: Obtiene la sinopsis en un idioma específico (por defecto es-MX)
+ */
+export async function getTmdbSynopsis(
+  id: number,
+  kind: "tv" | "movie" = "tv",
+  language: string = "es-MX"
+): Promise<string | null> {
+  const url = new URL(`${TMDB_BASE}/${kind}/${id}`);
+  url.searchParams.set("language", language);
+
+  try {
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
+    });
+    
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.overview || null;
+  } catch (e) {
+    console.warn(`Error fetching TMDB synopsis for ID ${id}`, e);
+    return null;
+  }
+}
+
 export async function tmdbWatchProviders(
   kind: "tv" | "movie",
   id: number,

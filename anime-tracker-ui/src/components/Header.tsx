@@ -1,35 +1,77 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Film } from "lucide-react";
+import { Bell, User } from "lucide-react";
 import SearchBar from "@/components/Search/SearchBar";
+import { cn } from "@/lib/utils";
+import { AnimeTrackerLogo } from "./Logo";
 
 export default function Header() {
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 40);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <header
-      className={
-        "fixed top-0 inset-x-0 z-50 h-14 backdrop-blur supports-[backdrop-filter]:bg-black/25 " +
-        "pl-[min(18vw,6rem)] pr-[min(18vw,6rem)] md:pl-8 md:pr-8"
-      }
+      className={cn(
+        "fixed top-0 inset-x-0 z-50 transition-all duration-500 ease-out",
+        isScrolled
+          ? "bg-background/50 backdrop-blur-2xl border-white/10 py-2 shadow-xl shadow-black/20"
+          : "bg-gradient-to-b from-black/90 via-black/40 to-transparent py-4",
+      )}
     >
-      <div className="mx-auto max-w-[88rem] px-3 sm:px-4">
-        <div className="flex h-14 items-center gap-3">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="grid h-8 w-8 place-items-center rounded-lg border border-emerald-400/30 bg-emerald-500/10">
-              <Film className="h-4 w-4 text-emerald-300" />
-            </div>
-            <span className="text-sm font-semibold">Anime Tracker</span>
-          </Link>
+      <div className="w-full flex items-center gap-4 md:gap-6 pl-6 md:pl-16 lg:pl-24 pr-[15vw] lg:pr-24">
+        {/* LOGO */}
+        {/* LOGO NUEVO Y PERSONALIZADO */}
+        <Link href="/">
+          <AnimeTrackerLogo />
+        </Link>
 
-          <nav className="ml-2 hidden items-center gap-4 text-sm text-muted-foreground sm:flex">
-            <Link href="/#season">Temporada</Link>
-            <Link href="/#top">Top</Link>
-          </nav>
+        {/* NAV LINKS */}
+        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white/70">
+          <button
+            onClick={() =>
+              alert(
+                "¡Próximamente! La página de Temporada estará lista en la versión 1.1 🚀",
+              )
+            }
+            className="hover:text-white transition-colors cursor-pointer"
+          >
+            Temporada
+          </button>
 
-          <div className="flex-1" />
+          <button
+            onClick={() =>
+              alert(
+                "¡Próximamente! El Top Histórico estará disponible en la versión 1.1 🏆",
+              )
+            }
+            className="hover:text-white transition-colors cursor-pointer"
+          >
+            Top
+          </button>
+        </nav>
 
-          <div className="w-full max-w-xl">
-            <SearchBar />
+        {/* ESPACIADOR FLUIDO */}
+        <div className="flex-1" />
+
+        {/* BUSCADOR */}
+        <div className="w-full max-w-sm lg:max-w-md xl:max-w-lg">
+          <SearchBar />
+        </div>
+
+        {/* ICONOS EXTRA (Para el MVP) */}
+        <div className="hidden md:flex items-center gap-4 shrink-0">
+          <button className="text-white/70 hover:text-white transition-colors">
+            <Bell className="w-5 h-5" />
+          </button>
+          <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/70 hover:border-primary transition-colors cursor-pointer">
+            <User className="w-4 h-4" />
           </div>
         </div>
       </div>
