@@ -94,15 +94,10 @@ export default function SearchOverlay({
     <div className="relative w-full">
       <div
         ref={panelRef}
-        // ESTILOS DEL CONTENEDOR:
-        // - mt-3: Separación para que flote
-        // - backdrop-blur-xl: Desenfoque fuerte estilo iOS
-        // - bg-black/60: Fondo oscuro pero translúcido
-        // - rounded-2xl: Bordes más modernos
         className={cn(
           "absolute top-full left-0 mt-3 z-50 w-full overflow-hidden",
           "rounded-2xl border border-white/10",
-          "bg-black/60 backdrop-blur-xl shadow-2xl shadow-black/50",
+          "bg-black/75 backdrop-blur-xl shadow-2xl shadow-black/50",
           "animate-in fade-in zoom-in-95 duration-200 slide-in-from-top-2", // Animación de entrada suave
         )}
         role="dialog"

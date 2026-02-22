@@ -143,9 +143,14 @@ export default function SearchBar({
           onKeyDown={onKeyDown}
           placeholder="Busca un anime…"
           onFocus={() => isValid && setOpen(true)}
+          onBlur={() => {
+            setTimeout(() => {
+              setQuery("");
+              setOpen(false);
+            }, 200);
+          }}
           spellCheck={false}
-          // ESTILOS PREMIUM: Cristal semitransparente que reacciona al foco
-          className="h-10 w-full pr-10 bg-white/10 border-white/10 text-white placeholder:text-white/50 backdrop-blur-xs transition-all duration-300 focus-visible:bg-black/40 focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-primary shadow-sm rounded-full"
+          className="h-10 w-full pr-10 bg-white/10 border-white/10 text-white placeholder:text-white/50 backdrop-blur-xs transition-all duration-300 focus-visible:bg-black/40 focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-primary shadow-sm rounded-xl"
         />
 
         <Button
@@ -153,7 +158,6 @@ export default function SearchBar({
           size="icon"
           disabled={!isValid}
           aria-label="Buscar"
-          // ESTILOS DEL BOTÓN: Transparente por defecto, se pinta sutilmente al hacer hover
           className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 bg-transparent hover:bg-white/10 text-white/70 hover:text-white border-none rounded-full transition-colors"
         >
           {loading ? (

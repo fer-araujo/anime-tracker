@@ -3,6 +3,7 @@ import { memoryCache } from "../utils/cache.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
 import { normalizeTitle } from "../utils/tmdb.enrich.js";
 import e from "express";
+import { getTmdbSynopsis } from "../services/tmdb.service.js";
 
 /* helpers */
 function stripHtml(input?: string | null) {
@@ -79,8 +80,13 @@ export async function getHomeHero(
 
       // Si no hay backdrop cinemático, este anime no es digno del Hero
       if (!backdrop) return null;
-
-      const synopsisRaw = stripHtml(m.description);
+      const spanishSynopsis = tmdbId
+        ? await getTmdbSynopsis(
+            tmdbId,
+            m.format === "MOVIE" ? "movie" : "tv",
+          )
+        : null;
+      const synopsisRaw = stripHtml(spanishSynopsis || m.description);
       const synopsis = synopsisRaw
         ? synopsisRaw.length > 180
           ? synopsisRaw.slice(0, 180) + "..."

@@ -34,7 +34,7 @@ export function MinimalShelf({
       <motion.section
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-50px" }}
+        viewport={{ once: false, margin: "-50px" }}
         transition={{ duration: 0.6, ease: "easeOut" }}
         className={cn(
           "relative py-12",
@@ -46,17 +46,17 @@ export function MinimalShelf({
         {/* Al estar directo en el <section>, su absolute inset-y-0 abarca todo el alto del shelf */}
         <button
           onClick={() => scroll(-1)}
-          className="hidden md:grid absolute inset-y-0 -left-16 z-10 w-[18vw] max-w-24 place-items-center hover:bg-white/5 transition-colors"
+          className="hidden md:grid absolute inset-y-0 -left-16 z-10 w-[18vw] max-w-24 place-items-center  transition-colors"
         >
-          <span className="text-white/80 hover:text-white text-2xl -translate-x-1">
+          <span className="text-white/60 hover:text-white text-4xl cursor-pointer -translate-x-1">
             ‹
           </span>
         </button>
         <button
           onClick={() => scroll(1)}
-          className="hidden md:grid absolute inset-y-0 -right-16 z-10 w-[18vw] max-w-24 place-items-center hover:bg-white/5 transition-colors"
+          className="hidden md:grid absolute inset-y-0 -right-16 z-10 w-[18vw] max-w-24 place-items-center  transition-colors"
         >
-          <span className="text-white/80 hover:text-white text-2xl translate-x-1">
+          <span className="text-white/60 hover:text-white text-4xl cursor-pointer translate-x-1">
             ›
           </span>
         </button>

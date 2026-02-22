@@ -13,7 +13,7 @@ export default async function HomePage() {
   const heroItems = heroResp.data;
   const popularItems = popularResp.data;
   const trendingItems = trendingResp.data;
-  console.log(heroItems);
+  
   return (
     <>
       {heroItems.length > 0 && <HeroCarouselCinematic items={heroItems} />}

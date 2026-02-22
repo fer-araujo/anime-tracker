@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Film, Bell, User } from "lucide-react";
+import { Bell, User } from "lucide-react";
 import SearchBar from "@/components/Search/SearchBar";
 import { cn } from "@/lib/utils";
+import { AnimeTrackerLogo } from "./Logo";
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -18,35 +19,42 @@ export default function Header() {
   return (
     <header
       className={cn(
-        "fixed top-0 inset-x-0 z-50 transition-all duration-300 ease-out",
+        "fixed top-0 inset-x-0 z-50 transition-all duration-500 ease-out",
         isScrolled
-          ? "bg-background/80 backdrop-blur-md border-b border-white/5 py-2 shadow-lg"
-          : "bg-gradient-to-b from-black/80 via-black/40 to-transparent py-4",
+          ? "bg-background/50 backdrop-blur-2xl border-white/10 py-2 shadow-xl shadow-black/20"
+          : "bg-gradient-to-b from-black/90 via-black/40 to-transparent py-4",
       )}
     >
-      {/* LA ALINEACIÓN MÁGICA:
-        - pl-6 md:pl-16 lg:pl-24 -> Alinea exacto con donde empieza tu texto del Hero
-        - pr-[15vw] lg:pr-24 -> Alinea exacto donde termina tu flecha derecha
-      */}
       <div className="w-full flex items-center gap-4 md:gap-6 pl-6 md:pl-16 lg:pl-24 pr-[15vw] lg:pr-24">
         {/* LOGO */}
-        <Link href="/" className="flex items-center gap-2 group shrink-0">
-          <div className="grid h-8 w-8 place-items-center rounded-lg border border-primary/30 bg-primary/10 transition-colors group-hover:border-primary/50 group-hover:bg-primary/20">
-            <Film className="h-4 w-4 text-primary" />
-          </div>
-          <span className="text-sm font-semibold tracking-wide text-white group-hover:text-primary transition-colors hidden sm:block">
-            Anime Tracker
-          </span>
+        {/* LOGO NUEVO Y PERSONALIZADO */}
+        <Link href="/">
+          <AnimeTrackerLogo />
         </Link>
 
         {/* NAV LINKS */}
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white/70">
-          <Link href="/#season" className="hover:text-white transition-colors">
+          <button
+            onClick={() =>
+              alert(
+                "¡Próximamente! La página de Temporada estará lista en la versión 1.1 🚀",
+              )
+            }
+            className="hover:text-white transition-colors cursor-pointer"
+          >
             Temporada
-          </Link>
-          <Link href="/#top" className="hover:text-white transition-colors">
+          </button>
+
+          <button
+            onClick={() =>
+              alert(
+                "¡Próximamente! El Top Histórico estará disponible en la versión 1.1 🏆",
+              )
+            }
+            className="hover:text-white transition-colors cursor-pointer"
+          >
             Top
-          </Link>
+          </button>
         </nav>
 
         {/* ESPACIADOR FLUIDO */}

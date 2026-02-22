@@ -153,15 +153,31 @@ export function HeroCarouselCinematic({
           className="absolute inset-0 z-10 flex items-center justify-start"
         >
           <div className="px-6 md:px-16 lg:px-24 pb-20 md:pb-32 w-full max-w-6xl space-y-4">
-            <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-white/80">
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-semibold tracking-widest uppercase">
               {current.meta?.status && (
-                <span className="rounded-full bg-white/10 px-2 py-0.5 capitalize">
-                  {current.meta.status}
+                <span
+                  className={cn(
+                    "px-3 py-1 rounded-md border backdrop-blur-md transition-colors",
+                    current.meta.status === "RELEASING"
+                      ? "bg-primary/10 text-primary border-primary/30"
+                      : "bg-white/5 text-white/50 border-white/10",
+                  )}
+                >
+                  {current.meta.status === "RELEASING"
+                    ? "En Emisión"
+                    : "Finalizado"}
                 </span>
               )}
-              {current.meta?.type && <span>{current.meta.type}</span>}
+              {current.meta?.type && (
+                <span className="text-white/70 ml-2">{current.meta.type}</span>
+              )}
               {current.meta?.episodes ? (
-                <span>{current.meta.episodes} eps</span>
+                <>
+                  <span className="w-1 h-1 bg-white/30 rounded-full mx-1" />
+                  <span className="text-white/70">
+                    {current.meta.episodes} eps
+                  </span>
+                </>
               ) : null}
             </div>
             {/* --- LOGO CINEMÁTICO --- */}
@@ -249,18 +265,18 @@ export function HeroCarouselCinematic({
               <button
                 aria-label="Prev"
                 onClick={prev}
-                className="pointer-events-auto group absolute inset-y-0 left-0 w-[15vw] max-w-24 grid place-items-center hover:bg-white/[0.03] transition-colors sm:grid"
+                className="pointer-events-auto group absolute inset-y-0 left-0 w-[15vw] max-w-24 grid place-items-center transition-colors sm:grid"
               >
-                <span className="text-white/70 group-hover:text-white text-3xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
+                <span className="text-white/60 group-hover:text-white text-4xl cursor-pointer drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
                   ‹
                 </span>
               </button>
               <button
                 aria-label="Next"
                 onClick={next}
-                className="pointer-events-auto group absolute inset-y-0 right-0 w-[15vw] max-w-24 grid place-items-center hover:bg-white/[0.03] transition-colors sm:grid"
+                className="pointer-events-auto group absolute inset-y-0 right-0 w-[15vw] max-w-24 grid place-items-center transition-colors sm:grid"
               >
-                <span className="text-white/70 group-hover:text-white text-3xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
+                <span className="text-white/60 group-hover:text-white text-4xl cursor-pointer drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
                   ›
                 </span>
               </button>

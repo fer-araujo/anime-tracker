@@ -34,7 +34,7 @@ export function AnimeCard({
   const adultByGenre = genres.some((g) => ADULT_GENRES.has(g));
   const isAdult = Boolean(anime.meta?.isAdult || adultByGenre);
   const status = anime.meta?.status; // "ongoing" | "finished" | undefined
-  // console.log(anime.poster)
+
   return (
     <div className="group relative w-full select-none">
       <Card
@@ -80,8 +80,8 @@ export function AnimeCard({
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 {anime.meta?.isNew && <Pill tone="emerald">NEW</Pill>}
                 {isAdult && <Pill tone="rose">+18</Pill>}
-                {status === "ongoing" && <Pill tone="sky">Ongoing</Pill>}
-                {status === "finished" && <Pill tone="slate">Finished</Pill>}
+                {status === "RELEASING" && <Pill tone="sky">Ongoing</Pill>}
+                {status === "FINISHED" && <Pill tone="slate">Finished</Pill>}
               </div>
 
               {typeof anime.meta?.rating === "number" && (

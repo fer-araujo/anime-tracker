@@ -1,322 +1,526 @@
 "use client";
-import React, { useRef } from "react";
+import React, { useRef, useState, useMemo } from "react";
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
   Play,
   Plus,
   Star,
-  Calendar,
   Clock,
   Tv,
   MonitorPlay,
+  ChevronDown,
+  ChevronRight,
+  ImageIcon,
+  Calendar,
+  Trophy,
 } from "lucide-react";
 import { Anime } from "@/types/anime";
 import { cn } from "@/lib/utils";
+import { GalleryLightbox } from "./common/Gallery";
+import { MinimalShelf } from "./Shelf";
+import { ImagePlaceholder } from "./common/ImagePlaceholder";
 
 export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
   const ref = useRef(null);
+  const [activeTab, setActiveTab] = useState<string>("Detalles");
+  const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end start"],
   });
+  const bgDarken = useTransform(
+    scrollYProgress,
+    [0, 0.5],
+    ["rgba(0,0,0,0)", "rgba(0,0,0,0.85)"],
+  );
 
-  // Parallax suave para el banner
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
-  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  const uniqueProviders = useMemo(() => {
+    const seen = new Set();
+    return (anime.providers || []).filter((p) => {
+      const base = p.split(" ")[0];
+      if (seen.has(base)) return false;
+      seen.add(base);
+      return true;
+    });
+  }, [anime.providers]);
 
-  // 1. DETERMINAMOS LA IMAGEN HERO
-  // Buscamos cualquier imagen horizontal de alta calidad
   const heroImage =
-    anime.images.backdrop || anime.images.banner || anime.images.artworkCandidates?.[0]?.url_1280;
+    anime.images.backdrop || anime.images.banner || anime.images.poster;
 
-  // 2. DECIDIMOS QUÉ IMAGEN MOSTRAR REALMENTE
-  // Si no hay ninguna horizontal, caemos al póster (que es vertical y necesitará blur)
-  const displayImage = heroImage || anime.images.poster;
+  const availableTabs = ["Detalles"];
+  if (anime.episodesData && anime.episodesData.length > 0) {
+    availableTabs.push("Episodios");
+  }
+  if (
+    anime.images.artworkCandidates &&
+    anime.images.artworkCandidates.length > 0
+  ) {
+    availableTabs.push("Galeria");
+  }
 
-  // 3. ¿NECESITAMOS BLUR?
-  // Solo aplicamos el "Blur Extremo" si NO encontramos una imagen Hero (es decir, estamos usando el póster)
-  const needsBlur = !heroImage;
+  // Si por alguna razón la tab activa ya no está disponible, regresamos a Detalles
+  if (!availableTabs.includes(activeTab)) {
+    setActiveTab("Detalles");
+  }
 
   return (
     <div
       ref={ref}
-      className="min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary selection:text-primary-foreground"
+      className="min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary"
     >
-      {/* ================= HERO SECTION (CINEMÁTICO) ================= */}
-      <section className="relative h-[85vh] w-full overflow-hidden">
-        {/* Backdrop Image con Parallax */}
-        {/* 1. LAYER DE FONDO (Imagen con Máscara) */}
-        <motion.div style={{ y, opacity }} className="absolute inset-0 z-0">
-          {/* WRAPPER CON MÁSCARA: La magia ocurre aquí */}
-          <div className="absolute inset-0 [mask-image:linear-gradient(to_bottom,black_40%,transparent_100%)]">
-            {displayImage ? (
-              <Image
-                // 1. Backdrop (Calidad Premium TMDB)
-                // 2. Banner (AniList, suele ser peor calidad)
-                // 3. Fallback
-                src={heroImage || ""}
-                alt="Backdrop"
-                quality={95} // Forzar calidad alta en Next.js
-                priority
-                fill
-                className={cn(
-                  "object-cover object-[center_25%] transition-all duration-700",
-                  needsBlur
-                    ? "blur-[80px] scale-110 opacity-50"
-                    : "opacity-100",
-                )}
-              />
-            ) : null}
+      {/* LIGHTBOX */}
+      {lightboxIndex !== null && anime.images.artworkCandidates && (
+        <GalleryLightbox
+          images={anime.images.artworkCandidates}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
 
-            {/* Overlay Gradiente: Se funde con el color de fondo exacto del tema */}
-            <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
+      {/* BACKGROUND FIXED */}
+      <div className="fixed top-0 left-0 w-full h-[85vh] z-0 pointer-events-none">
+        <div className="absolute inset-0 [mask-image:linear-gradient(to_bottom,black_40%,transparent_100%)]">
+          <Image
+            src={heroImage || ""}
+            alt="Backdrop"
+            fill
+            priority
+            className="object-cover object-[center_20%] opacity-40 md:opacity-50"
+          />
+        </div>
+        <motion.div
+          style={{ backgroundColor: bgDarken }}
+          className="absolute inset-0 z-10"
+        />
+      </div>
 
-            {/* Overlay de Grano dentro de la máscara para que también se desvanezca */}
-            <div className="absolute inset-0 opacity-[0.05] pointer-events-none mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
-          </div>
-
-          {/* Gradiente inferior de seguridad (para asegurar que el texto sea legible) */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-
-          {/* Viñeta lateral (opcional, da profundidad) */}
-          <div className="absolute inset-0 bg-radial-gradient from-transparent to-background/80" />
-        </motion.div>
-
-        {/* Hero Content */}
-        <div className="absolute bottom-0 left-0 w-full z-10 px-6 md:px-16 pb-12 md:pb-20">
-          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-end">
-            {/* Columna vacía para dejar espacio al póster que viene abajo */}
-            <div className="hidden md:block md:col-span-3 lg:col-span-3" />
-
-            {/* Título y Metadatos Gigantes */}
-            <div className="md:col-span-9 lg:col-span-9 space-y-6">
-              <motion.div
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-              >
-                {/* Badges estéticos */}
-                <div className="flex flex-wrap items-center gap-3 mb-4 text-sm font-medium tracking-wide text-muted-foreground uppercase">
-                  <span className="bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-white border border-white/10">
-                    {anime?.meta?.status}
+      <div className="relative z-10 w-full">
+        {/* HERO CONTENT */}
+        <section className="h-[70vh] md:h-[75vh] w-full relative">
+          <div className="absolute bottom-32 md:bottom-40 left-0 w-full z-10">
+            <div className="max-w-7xl mx-auto px-6 md:px-16 lg:px-24 grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16">
+              <div className="hidden md:block md:col-span-3 lg:col-span-3" />
+              <div className="md:col-span-9 lg:col-span-9 flex flex-col items-start text-left">
+                <div className="flex flex-wrap items-center gap-3 mb-6 text-[11px] font-semibold tracking-widest uppercase">
+                  <span
+                    className={cn(
+                      "px-3 py-1 rounded-md border backdrop-blur-md transition-colors",
+                      anime?.meta?.status === "RELEASING"
+                        ? "bg-primary/10 text-primary border-primary/30"
+                        : "bg-white/5 text-white/50 border-white/10",
+                    )}
+                  >
+                    {anime?.meta?.status === "RELEASING"
+                      ? "En Emisión"
+                      : "Finalizado"}
                   </span>
-                  <span>{anime.meta?.year}</span>
-                  <span className="w-1 h-1 bg-primary rounded-full" />
-                  <span>{anime.meta?.studio}</span>
-                  <span className="w-1 h-1 bg-primary rounded-full" />
-                  <span>TV Series</span>
+                  <span className="text-white/70">{anime.meta?.year}</span>
+                  <span className="w-1 h-1 bg-white/30 rounded-full" />
+                  <span className="text-white/70">{anime.meta?.studio}</span>
+                  <span className="w-1 h-1 bg-white/30 rounded-full" />
+                  <span className="text-white/70">
+                    {anime.meta?.type || "TV"}
+                  </span>
                 </div>
 
-                {/* Título Principal */}
                 {anime.images?.logo ? (
-                              <motion.div
-                                key={`logo-${anime.id.anilist}`}
-                                initial={{ opacity: 0, x: -50 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-                                className="relative h-24 md:h-40 lg:h-48 w-full max-w-2xl mb-6"
-                              >
-                                <Image
-                                  src={anime.images.logo}
-                                  alt={anime.title}
-                                  fill
-                                  // object-left-bottom: Alineado a la izquierda y abajo.
-                                  className="object-contain object-left-bottom"
-                                  priority
-                                  sizes="(max-width: 768px) 100vw, 50vw"
-                                />
-                              </motion.div>
-                            ) : (
-                              // Fallback Título
-                              <motion.h2
-                                key={`title-${anime.id.anilist}`}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 }}
-                                className="text-3xl md:text-5xl lg:text-6xl font-bold text-white drop-shadow-lg leading-tight mb-4"
-                              >
-                                {anime.title}
-                              </motion.h2>
-                            )}
-
-                {/* Subtítulo (ej. Season name) */}
-                {anime.meta?.season && (
-                  <p className="text-2xl md:text-3xl text-muted-foreground mt-2 font-light">
-                    {anime.meta?.season}
-                  </p>
+                  <div className="relative h-24 md:h-32 lg:h-40 w-full max-w-lg mb-4 mr-auto">
+                    <Image
+                      src={anime.images.logo}
+                      alt={anime.title}
+                      fill
+                      className="object-contain object-left-bottom drop-shadow-2xl"
+                      priority
+                    />
+                  </div>
+                ) : (
+                  <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter uppercase mb-4 drop-shadow-md text-left">
+                    {anime.title}
+                  </h1>
                 )}
-              </motion.div>
 
-              {/* Botones de Acción (Hero) */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4, duration: 0.8 }}
-                className="flex flex-wrap gap-4 pt-4"
-              >
-                <button className="group flex items-center gap-3 bg-primary text-primary-foreground px-8 py-4 rounded-full text-lg font-bold hover:brightness-110 transition-all shadow-[0_0_20px_-5px_var(--color-primary)]">
-                  <Play className="w-6 h-6 fill-current" />
-                  Ver Trailer
-                </button>
-                <button className="group flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 text-white px-6 py-4 rounded-full text-lg font-medium hover:bg-white/10 transition-all">
-                  <Plus className="w-6 h-6" />
-                  Añadir a lista
-                </button>
-              </motion.div>
+                {anime.subtitle && (
+                  <h2 className="text-xs md:text-sm font-medium text-white/40 tracking-widest mb-4 drop-shadow-md">
+                    {anime.subtitle}
+                  </h2>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ================= CONTENIDO PRINCIPAL (THE BODY) ================= */}
-      <main className="relative z-20 max-w-7xl mx-auto px-6 md:px-16 pb-32">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
-          {/* --- COLUMNA IZQUIERDA (STICKY) --- */}
-          <div className="md:col-span-3 lg:col-span-3 relative">
-            <div className="md:-mt-48 sticky top-8">
-              {" "}
-              {/* Margen negativo para el efecto "Bridge" */}
-              {/* El Póster Flotante */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.8 }}
-                className="relative aspect-[2/3] w-full rounded-2xl overflow-hidden shadow-2xl border border-white/5 group"
-              >
-                <Image
-                  src={anime.images.poster || ""}
-                  alt={anime.title}
-                  fill
-                  className="object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-                {/* Brillo en hover */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              </motion.div>
-              {/* Stats Rápidos debajo del poster */}
-              <div className="mt-8 space-y-6">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-card border border-white/5">
-                  <div className="flex items-center gap-3">
-                    <Star className="w-6 h-6 text-primary fill-primary" />
-                    <span className="text-xl font-bold text-white">
-                      {anime.meta?.score}
-                    </span>
+        {/* MAIN CONTENT */}
+        <main className="relative z-20 bg-gradient-to-b from-transparent via-background to-background pt-12 -mt-24 md:-mt-32">
+          <div className="max-w-7xl mx-auto px-6 md:px-16 lg:px-24 pb-14">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16">
+              {/* COLUMNA IZQ (Póster) */}
+              <div className="md:col-span-3 lg:col-span-3 relative">
+                <div className="sticky top-28 space-y-6">
+                  <div className="relative aspect-[2/3] w-full rounded-xl overflow-hidden shadow-2xl border border-white/10 group bg-background">
+                    {anime.images.poster ? (
+                      <Image
+                        src={anime.images.poster}
+                        alt={anime.title}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <ImagePlaceholder />
+                    )}
                   </div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-widest">
-                    Score
-                  </span>
+
+                  <div className="p-5 rounded-xl border border-white/5 bg-white/[0.02] backdrop-blur-md">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">
+                        Score
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <Star className="w-4 h-4 text-primary fill-primary" />
+                        <span className="text-lg font-black text-white">
+                          {anime.meta?.rating ? `${anime.meta.rating}` : "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-px bg-white/5 mb-4" />
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-white/40 uppercase tracking-widest">
+                        Formato
+                      </span>
+                      <span className="font-medium text-white">
+                        {anime.meta?.type || "TV"}
+                      </span>
+                    </div>
+                    {/* AQUI QUITAMOS DURACIÓN Y PUSIMOS ESTUDIO */}
+                    <div className="flex justify-between items-center text-xs mt-3 pt-3 border-t border-white/5">
+                      <span className="font-bold text-white/40 uppercase tracking-widest">
+                        Estudio
+                      </span>
+                      <span
+                        className="font-medium text-white truncate max-w-[120px] text-right"
+                        title={anime.meta?.studio || "N/A"}
+                      >
+                        {anime.meta?.studio || "N/A"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* COLUMNA DER */}
+              <div className="md:col-span-9 lg:col-span-9 space-y-16">
+                <div className="flex flex-wrap gap-4 justify-start">
+                  {/* Condicional para el trailer */}
+                  {anime.meta?.trailer && (
+                    <a
+                      href={anime.meta.trailer}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-3 bg-primary/85 text-gray-100 border border-transparent px-7 py-3 rounded-lg text-sm font-bold hover:bg-primary transition-all cursor-pointer"
+                    >
+                      <Play className="w-4 h-4 fill-current" /> Ver trailer
+                    </a>
+                  )}
+
+                  <button className="flex items-center gap-3 bg-transparent border border-white/10 text-white/70 px-7 py-3 rounded-lg text-sm font-semibold hover:text-white hover:bg-white/10 transition-all cursor-pointer">
+                    <Plus className="w-4 h-4" /> Añadir a lista
+                  </button>
                 </div>
 
-                {/* Info Grid Pequeño */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground mb-1">Episodios</p>
-                    <p className="text-white font-semibold">
-                      {anime.meta?.episodes}
+                <section className="space-y-4 text-left">
+                  <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-[0.3em]">
+                    Sinopsis
+                  </h3>
+                  <div className="relative">
+                    <p
+                      className={cn(
+                        "text-[1rem] md:text-[1.05rem] leading-relaxed text-white/80 font-light max-w-4xl text-pretty transition-all duration-300",
+                        !isSynopsisExpanded && "line-clamp-4",
+                      )}
+                    >
+                      {anime.meta?.synopsis || "Sinopsis no disponible."}
+                    </p>
+                    {anime.meta?.synopsis &&
+                      anime.meta.synopsis.length > 300 && (
+                        <button
+                          onClick={() =>
+                            setIsSynopsisExpanded(!isSynopsisExpanded)
+                          }
+                          className="flex items-center gap-1.5 mt-4 text-[11px] font-bold text-primary hover:brightness-125 transition-colors uppercase tracking-[0.2em] cursor-pointer"
+                        >
+                          {isSynopsisExpanded ? "Mostrar menos" : "Leer más"}
+                          <ChevronDown
+                            className={cn(
+                              "w-3.5 h-3.5 transition-transform",
+                              isSynopsisExpanded && "rotate-180",
+                            )}
+                          />
+                        </button>
+                      )}
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-4 justify-start">
+                    {(anime.meta?.genres || []).map((g) => (
+                      <span
+                        key={g}
+                        className="px-4 py-1.5 rounded-md border border-white/10 text-[10px] font-medium text-white/50 uppercase tracking-widest cursor-default hover:border-primary/30 hover:text-primary/80 transition-colors"
+                      >
+                        {g}
+                      </span>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="space-y-6 pt-2">
+                  <h3 className="text-white text-xl font-light tracking-wide flex items-center gap-3">
+                    <MonitorPlay className="w-5 h-5 text-primary" /> Disponible
+                    en
+                  </h3>
+                  <div className="flex flex-wrap gap-3 justify-start">
+                    {uniqueProviders.map((p) => (
+                      <div
+                        key={p}
+                        className="flex items-center px-5 py-2.5 rounded-lg border border-white/10 bg-white/[0.01] hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer group shadow-sm"
+                      >
+                        <span className="text-sm font-medium text-white/70 group-hover:text-white transition-colors">
+                          {p}
+                        </span>
+                      </div>
+                    ))}
+                    {uniqueProviders.length === 0 && (
+                      <div className="px-5 py-2.5 rounded-lg border border-dashed border-white/10 text-white/30 text-sm">
+                        Sin plataformas oficiales
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                {/* TABS Y DETALLES */}
+                {/* TABS Y DETALLES */}
+                <section className="space-y-6 pt-8 border-t border-white/5">
+                  <div className="flex border border-white/10 p-1 rounded-lg bg-white/[0.01] w-fit">
+                    {/* AQUI USAMOS LAS TABS DINÁMICAS */}
+                    {availableTabs.map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={cn(
+                          "px-6 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer",
+                          activeTab === tab
+                            ? "bg-primary/10 text-primary border border-primary/20"
+                            : "text-white/40 hover:text-white/80 border border-transparent",
+                        )}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Le damos un min-h-[250px] para empujar el scroll y que no quede el hueco en blanco */}
+                  <div className="min-h-[140px]">
+                    {/* Detalles (Con info real para rellenar) */}
+                    {/* Detalles */}
+                    {/* Detalles */}
+                    {activeTab === "Detalles" && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01]">
+                          <Tv className="w-5 h-5 text-primary mb-6 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
+                            Total Eps.
+                          </p>
+                          <p className="text-xl font-light text-white">
+                            {anime.meta?.episodes || "??"}
+                          </p>
+                        </div>
+
+                        <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01]">
+                          <Clock className="w-5 h-5 text-primary mb-6 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
+                            Duración
+                          </p>
+                          <p className="text-xl font-light text-white">
+                            {anime.meta?.duration
+                              ? `${anime.meta.duration} min`
+                              : "N/A"}
+                          </p>
+                        </div>
+
+                        {/* TARJETA 3: Ranking (¡La nueva!) */}
+                        <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01]">
+                          <Trophy className="w-5 h-5 text-primary mb-6 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
+                            {anime.meta?.ranking?.type === "RATED"
+                              ? "Mejor Valorado"
+                              : "Más Popular"}
+                          </p>
+                          <p className="text-xl font-light text-white">
+                            {anime.meta?.ranking?.rank
+                              ? `#${anime.meta.ranking.rank} Global`
+                              : "N/A"}
+                          </p>
+                        </div>
+
+                        {/* TARJETA 4: Próximo Ep / Año */}
+                        {anime.meta?.nextAiring ? (
+                          <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01] flex flex-col justify-between shadow-[0_0_15px_rgba(34,197,94,0.03)]">
+                            <MonitorPlay className="w-5 h-5 text-primary mb-6 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                                </span>
+                                <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">
+                                  Próximo Ep.
+                                </p>
+                              </div>
+                              <p className="text-lg font-light text-white">
+                                {anime.meta.nextAiring.replace("in", "En")}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01]">
+                            <Calendar className="w-5 h-5 text-primary mb-6 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                            <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
+                              Año
+                            </p>
+                            <p className="text-xl font-light text-white">
+                              {anime.meta?.year || "N/A"}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* RESTAURADO Y MEJORADO: Episodios con Scroll y Diseño Original */}
+                    {activeTab === "Episodios" && (
+                      <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <p className="text-sm text-white/50">
+                            Episodios disponibles (
+                            {anime.episodesData?.length || 0})
+                          </p>
+                        </div>
+
+                        {/* El contenedor mágico: altura fija, scroll interno y scrollbar invisible/delgada */}
+                        <div
+                          className="space-y-3 max-h-[350px] overflow-y-auto pr-3 overflow-x-hidden 
+                            [&::-webkit-scrollbar]:w-1.5 
+                            [&::-webkit-scrollbar-track]:bg-transparent 
+                            [&::-webkit-scrollbar-thumb]:bg-white/10 
+                            [&::-webkit-scrollbar-thumb]:rounded-full 
+                            hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
+                        >
+                          {anime.episodesData?.map((ep: any, i: number) => (
+                            <a
+                              href={ep.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              key={i}
+                              className="flex items-center gap-4 p-3 rounded-lg border border-white/5 hover:bg-white/[0.04] cursor-pointer group transition-colors bg-white/[0.01]"
+                            >
+                              <div className="w-24 h-16 bg-white/5 rounded-md flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                                {ep.thumbnail ? (
+                                  <Image
+                                    src={ep.thumbnail}
+                                    alt={ep.title}
+                                    fill
+                                    className="object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-300"
+                                  />
+                                ) : (
+                                  <Play className="w-5 h-5 text-white/30 group-hover:text-primary transition-colors" />
+                                )}
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-transparent transition-colors">
+                                  <Play className="w-5 h-5 text-white/80 group-hover:text-primary transition-colors drop-shadow-md" />
+                                </div>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h4
+                                  className="text-sm font-semibold text-white/90 group-hover:text-white line-clamp-1"
+                                  title={ep.title}
+                                >
+                                  {ep.title}
+                                </h4>
+                                <p className="text-xs text-white/40 mt-1 line-clamp-1">
+                                  Ver episodio
+                                </p>
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Galería */}
+                    {activeTab === "Galeria" && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        {anime.images.artworkCandidates
+                          ?.slice(0, 6)
+                          .map((img, i) => (
+                            <div
+                              key={i}
+                              onClick={() => setLightboxIndex(i)}
+                              className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-white/5 group cursor-pointer"
+                            >
+                              {img.url_original ? (
+                                <Image
+                                  src={img.url_original}
+                                  alt="Artwork"
+                                  fill
+                                  className="object-cover transition-transform duration-500 group-hover:scale-110"
+                                />
+                              ) : (
+                                <ImagePlaceholder />
+                              )}
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <ImageIcon className="w-6 h-6 text-white/70" />
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </div>
+            </div>
+
+            {/* SECCIONES INFERIORES */}
+            <div className="mt-20 space-y-10 border-t border-white/5 pt-12">
+              <section className="space-y-4">
+                <div className="flex justify-between items-end">
+                  <h3 className="text-white text-xl font-light tracking-wide">
+                    Animes Similares
+                  </h3>
+                  <button
+                    onClick={() =>
+                      alert(
+                        "¡La página completa de recomendaciones estará disponible en la próxima actualización!",
+                      )
+                    }
+                    className="text-xs text-white/40 uppercase tracking-widest font-bold flex items-center gap-1 cursor-pointer hover:text-white transition-colors"
+                  >
+                    Ver más <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+
+                {anime.meta?.recommendations &&
+                anime.meta?.recommendations.length > 0 ? (
+                  <MinimalShelf items={anime.meta?.recommendations} title="" />
+                ) : (
+                  <div className="border border-dashed border-white/10 p-12 rounded-xl flex items-center justify-center bg-white/[0.01]">
+                    <p className="text-white/30 text-sm font-medium">
+                      Las recomendaciones se cargarán aquí tras conectar el
+                      backend.
                     </p>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground mb-1">Duración</p>
-                    <p className="text-white font-semibold">24m</p>
-                  </div>
-                </div>
-              </div>
+                )}
+              </section>
             </div>
           </div>
-
-          {/* --- COLUMNA DERECHA (SCROLLABLE INFO) --- */}
-          <div className="md:col-span-9 lg:col-span-9 md:pt-12 space-y-16">
-            {/* 1. Sinopsis Editorial */}
-            <section>
-              <h3 className="text-primary text-sm font-bold uppercase tracking-widest mb-6">
-                Sinopsis
-              </h3>
-              <p className="text-lg md:text-xl lg:text-2xl leading-relaxed text-gray-300 font-light text-pretty">
-                {anime.meta?.synopsis}
-              </p>
-
-              {/* Géneros Tags */}
-              <div className="flex flex-wrap gap-2 mt-8">
-                {(anime.meta?.genres ?? []).map((g) => (
-                  <span
-                    key={g}
-                    className="px-4 py-1.5 rounded-lg border border-white/10 text-sm hover:border-primary/50 hover:text-primary transition-colors cursor-default"
-                  >
-                    {g}
-                  </span>
-                ))}
-              </div>
-            </section>
-
-            {/* 2. Providers (Monochrome to Color) */}
-            <section>
-              <h3 className="flex items-center gap-3 text-white text-xl font-semibold mb-6">
-                <MonitorPlay className="w-5 h-5 text-primary" />
-                Disponible en
-              </h3>
-
-              <div className="flex flex-wrap gap-4">
-                {anime.providers.map((p) => (
-                  <a
-                    key={p}
-                    href="#"
-                    className="group relative flex items-center gap-4 pl-4 pr-6 py-3 rounded-xl bg-card border border-white/5 hover:border-white/20 transition-all overflow-hidden"
-                  >
-                    {/* Barra de color lateral (glow) */}
-                    <div
-                      className="absolute left-0 top-0 bottom-0 w-1 transition-colors duration-300"
-                      style={{ backgroundColor: p }}
-                    />
-
-                    {/* Placeholder de Logo (Usa tus logos reales) */}
-                    <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center text-xs font-bold text-white/50 group-hover:text-white transition-colors">
-                      {p}
-                    </div>
-
-                    <span className="text-gray-400 font-medium group-hover:text-white transition-colors">
-                      {p}
-                    </span>
-                  </a>
-                ))}
-
-                {/* Fallback si es pirata */}
-                {anime.providers.length === 0 && (
-                  <div className="px-6 py-3 rounded-xl bg-card border border-white/5 text-gray-500 italic">
-                    No oficial providers found.
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* 3. Bento Grid Stats (Ejemplo) */}
-            <section>
-              <h3 className="text-white text-xl font-semibold mb-6">
-                Detalles Técnicos
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Card 1 */}
-                <div className="p-6 rounded-2xl bg-muted/30 border border-white/5 hover:bg-muted/50 transition-colors">
-                  <Calendar className="w-6 h-6 text-primary mb-4" />
-                  <p className="text-sm text-muted-foreground">Estreno</p>
-                  <p className="text-lg font-medium text-white">Oct 2023</p>
-                </div>
-                {/* Card 2 */}
-                <div className="p-6 rounded-2xl bg-muted/30 border border-white/5 hover:bg-muted/50 transition-colors">
-                  <Tv className="w-6 h-6 text-primary mb-4" />
-                  <p className="text-sm text-muted-foreground">Formato</p>
-                  <p className="text-lg font-medium text-white">TV Show</p>
-                </div>
-                {/* Card 3 */}
-                <div className="p-6 rounded-2xl bg-muted/30 border border-white/5 hover:bg-muted/50 transition-colors">
-                  <Clock className="w-6 h-6 text-primary mb-4" />
-                  <p className="text-sm text-muted-foreground">Emisión</p>
-                  <p className="text-lg font-medium text-white">Jueves</p>
-                </div>
-              </div>
-            </section>
-          </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
