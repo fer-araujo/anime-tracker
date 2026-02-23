@@ -134,6 +134,7 @@ export async function getAnimeDetails(
       country,
       tmdbId,
       title,
+      media.seasonYear,
     );
 
     const spanishSynopsis = tmdbId
