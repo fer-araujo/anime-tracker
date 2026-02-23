@@ -21,7 +21,8 @@ export async function enrichAnimeCore(core: AnimeCore, region = "MX"): Promise<A
       anilistId,       // 1. anilistId: number
       region,          // 2. country: string
       core.ids.tmdb,   // 3. tmdbId?: number | null
-      core.title       // 4. knownTitle?: string
+      core.title,      // 4. knownTitle?: string
+      core.meta.seasonYear, // 5. year?: number | null (nuevo parámetro)
     ).catch(() => null);
 
     if (r?.providers?.length) providers = r.providers;
