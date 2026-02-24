@@ -44,6 +44,7 @@ const tmdbImageUrl = (path: string | null, size = "original") =>
 
 export async function resolveHeroArtwork(
   searchTitle: string,
+  kind: "tv" | "movie",
   media: { bannerImage?: string | null; coverImage?: any },
 ) {
   let tmdbId: number | null = null;
@@ -52,14 +53,14 @@ export async function resolveHeroArtwork(
   let artworkCandidates: any[] = [];
 
   try {
-    const tmdbResults = await tmdbSearch("tv", searchTitle);
+    const tmdbResults = await tmdbSearch(kind, searchTitle);
     const bestTmdb = tmdbResults.find(isAnimeCandidate) ?? tmdbResults[0];
 
     if (bestTmdb) {
       tmdbId = bestTmdb.id;
 
       // Pedimos Backdrops y Logos
-      const imagesData = await getTmdbImages(tmdbId, "tv");
+      const imagesData = await getTmdbImages(tmdbId, kind);
 
       if (imagesData) {
         // --- 1. BACKDROPS ---

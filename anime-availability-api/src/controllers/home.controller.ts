@@ -71,10 +71,10 @@ export async function getHomeHero(
       const title = preferTitle(m.title);
       const cleanTitle = normalizeTitle(title);
       const searchTitle = cleanTitle.length > 0 ? cleanTitle : title;
-
+      const kind = m.type === "MOVIE" ? "movie" : "tv";
       // A) Obtenemos TODO del artwork service
       // PERO NOTA: Aquí extraemos 'artworkCandidates' pero NO lo metemos al return final.
-      const { backdrop, logo, tmdbId } = await resolveHeroArtwork(searchTitle, {
+      const { backdrop, logo, tmdbId } = await resolveHeroArtwork(searchTitle, kind, {
         bannerImage: m.bannerImage,
       });
 
@@ -83,7 +83,7 @@ export async function getHomeHero(
       const spanishSynopsis = tmdbId
         ? await getTmdbSynopsis(
             tmdbId,
-            m.format === "MOVIE" ? "movie" : "tv",
+            kind,
           )
         : null;
       const synopsisRaw = stripHtml(spanishSynopsis || m.description);

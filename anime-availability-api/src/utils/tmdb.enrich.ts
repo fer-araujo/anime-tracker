@@ -16,22 +16,28 @@ export type TmdbEnrichedInfo = BaseAnimeInfo & {
   tmdbId?: number | null;
 };
 
-export function normalizeTitle(raw: string): string {
-  if (!raw) return "";
-  return (
-    raw
-      .toLowerCase()
-      // 1. Quita "Season X", "Cour X", "Part X"
-      .replace(/\b(season|cour|part)\s*\d+\b/gi, "")
-      // 2. Quita "2nd Season", "3rd Season", etc.
-      .replace(/\b\d+(st|nd|rd|th)\s*season\b/gi, "")
-      // 3. Quita subtítulos después de dos puntos (ej: ": The Culling Game")
-      .replace(/:\s*.*$/, "")
-      // 4. Limpieza general de caracteres raros y espacios dobles
-      .replace(/[^\p{Letter}\p{Number}\s]/gu, "")
-      .replace(/\s{2,}/g, " ")
-      .trim()
+export function normalizeTitle(title: string): string {
+  if (!title) return "";
+
+  let clean = title.toLowerCase();
+
+  // 1. GUILLOTINA: Si encuentra "season X", "Xth season", "part X", "cour X" o "final season",
+  // corta esa palabra Y TODO lo que haya después de ella (.*$)
+  clean = clean.replace(
+    /\s*(\d+(st|nd|rd|th)? season|season \d+|final season|part \d+|cour \d+).*$/i,
+    "",
   );
+
+  // 2. Cambiar slashes, guiones y dos puntos por espacios
+  // (Esto arregla: "Fate/stay night" -> "fate stay night", "Re:Zero" -> "Re Zero")
+  clean = clean.replace(/[\/\-\:]/g, " ");
+
+  // 3. Quitar caracteres especiales extraños (!, ?, [], etc)
+  // (Esto deja las películas limpias como "fate stay night heavens feel i presage flower")
+  clean = clean.replace(/[^\w\s]/g, "");
+
+  // 4. Limpiar espacios dobles que hayan quedado
+  return clean.replace(/\s+/g, " ").trim();
 }
 
 function pickBestTmdbMatch(

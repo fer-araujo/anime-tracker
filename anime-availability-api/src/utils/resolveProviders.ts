@@ -86,7 +86,8 @@ export async function resolveProvidersForAnimeDetailed(
   country: string,
   tmdbId?: number | null,
   knownTitle?: string,
-  year?: number | null, // <--- 1. NUEVO PARÁMETRO: AÑO
+  year?: number | null,
+  kind: "tv" | "movie" = "tv"
 ): Promise<ProvidersResolved> {
   const upperCountry = country.toUpperCase();
   const cacheKey = `providers:resolved:${anilistId}:${upperCountry}`;
@@ -103,7 +104,7 @@ export async function resolveProvidersForAnimeDetailed(
   // 1) Intentar vía TMDB (Gratis y Rápido)
   if (tmdbId) {
     try {
-      const provList = await tmdbWatchProviders("tv", tmdbId, upperCountry);
+      const provList = await tmdbWatchProviders(kind, tmdbId, upperCountry);
       if (Array.isArray(provList)) {
         tmdbOk = true;
         const names = provList.map((p) => p.name);

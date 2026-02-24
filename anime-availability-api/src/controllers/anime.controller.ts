@@ -122,9 +122,10 @@ export async function getAnimeDetails(
       "Untitled";
     const cleanTitle = normalizeTitle(title);
     const searchTitle = cleanTitle.length > 0 ? cleanTitle : title;
+    const kind = media.format === "MOVIE" ? "movie" : "tv";
 
     const { backdrop, logo, artworkCandidates, tmdbId } =
-      await resolveHeroArtwork(searchTitle, {
+      await resolveHeroArtwork(searchTitle, kind, {
         bannerImage: media.bannerImage,
         coverImage: media.coverImage,
       });
@@ -135,10 +136,11 @@ export async function getAnimeDetails(
       tmdbId,
       title,
       media.seasonYear,
+      kind,
     );
 
     const spanishSynopsis = tmdbId
-      ? await getTmdbSynopsis(tmdbId, media.format === "MOVIE" ? "movie" : "tv")
+      ? await getTmdbSynopsis(tmdbId, kind)
       : null;
 
     const rawRecommendations =
@@ -201,7 +203,9 @@ export async function getAnimeDetails(
       meta: {
         genres: media.genres ?? [],
         rating: media.averageScore ? media.averageScore / 10 : null,
-        synopsis: htmlToText(spanishSynopsis || media.description || "Sinopsis no disponible."),
+        synopsis: htmlToText(
+          spanishSynopsis || media.description || "Sinopsis no disponible.",
+        ),
         year: media.seasonYear ?? null,
         status: media.status ?? "UNKNOWN",
         episodes: media.episodes ?? null,
