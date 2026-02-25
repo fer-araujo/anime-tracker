@@ -1,14 +1,13 @@
+// src/controllers/home.controller.ts
 import type { Request, Response, NextFunction } from "express";
 import { memoryCache } from "../utils/cache.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
-import { normalizeTitle } from "../utils/tmdb.enrich.js";
-import e from "express";
 import { getTmdbSynopsis } from "../services/tmdb.service.js";
+// Ya no necesitamos importar normalizeTitle aquí, la cascada lo hace por dentro
 
 /* helpers */
 function stripHtml(input?: string | null) {
   if (!input) return null;
-  // Limpieza básica de HTML
   const noTags = input.replace(/<\/?[^>]+(>|$)/g, "");
   return noTags.trim();
 }
@@ -29,11 +28,10 @@ export async function getHomeHero(
   next: NextFunction,
 ) {
   try {
-    const cacheKey = "home:hero:cinematic:v3"; // Nueva key
+    const cacheKey = "home:hero:cinematic:v3";
     const cached = memoryCache.get(cacheKey);
     if (cached) return res.json(cached);
 
-    // 1. Pedimos 10 para filtrar
     const gql = `
       query {
         Page(page: 1, perPage: 15) {
@@ -69,23 +67,20 @@ export async function getHomeHero(
 
     const itemsProm = media.map(async (m: any) => {
       const title = preferTitle(m.title);
-      const cleanTitle = normalizeTitle(title);
-      const searchTitle = cleanTitle.length > 0 ? cleanTitle : title;
       const kind = m.type === "MOVIE" ? "movie" : "tv";
+
       // A) Obtenemos TODO del artwork service
-      // PERO NOTA: Aquí extraemos 'artworkCandidates' pero NO lo metemos al return final.
-      const { backdrop, logo, tmdbId } = await resolveHeroArtwork(searchTitle, kind, {
+      // Mandamos el título directamente, resolveHeroArtwork ya hace la magia de las variaciones.
+      const { backdrop, logo, tmdbId } = await resolveHeroArtwork(title, kind, {
         bannerImage: m.bannerImage,
       });
 
-      // Si no hay backdrop cinemático, este anime no es digno del Hero
       if (!backdrop) return null;
+
       const spanishSynopsis = tmdbId
-        ? await getTmdbSynopsis(
-            tmdbId,
-            kind,
-          )
+        ? await getTmdbSynopsis(tmdbId, kind)
         : null;
+
       const synopsisRaw = stripHtml(spanishSynopsis || m.description);
       const synopsis = synopsisRaw
         ? synopsisRaw.length > 180
@@ -93,40 +88,35 @@ export async function getHomeHero(
           : synopsisRaw
         : "";
 
-      // B) CONSTRUCCIÓN DE RESPUESTA MINIMALISTA (Payload Ligero)
-      // Aquí "recortamos" los datos innecesarios para el Home
+      // B) CONSTRUCCIÓN DE RESPUESTA MINIMALISTA
       return {
         id: { anilist: m.id, tmdb: tmdbId },
         title,
-        // Imágenes Esenciales
         images: {
           banner: m.bannerImage,
-          backdrop: backdrop, // 4K
-          logo: logo, // PNG Transparente (Wow factor)
-          poster: m.coverImage?.extraLarge, // Fallback responsive
+          backdrop: backdrop,
+          logo: logo,
+          poster: m.coverImage?.extraLarge,
         },
-        // Meta Esencial
         meta: {
           synopsis: synopsis,
           year: m.seasonYear,
           rating: m.averageScore ? (m.averageScore / 10).toFixed(1) : null,
           studio: m.studios?.edges?.[0]?.node?.name || null,
-          genres: m.genres?.slice(0, 3) || [], // Solo 3 géneros
+          genres: m.genres?.slice(0, 3) || [],
           status: m.status,
           episodes: m.episodes,
-          type: m.format,
+          type: m.type,
           trailerId: m.trailer?.site === "youtube" ? m.trailer.id : null,
         },
       };
     });
 
     const heroItems = await Promise.all(itemsProm);
-
-    // C) FILTRADO FINAL: Top 5 mejores con imágenes válidas
     const validHeroes = heroItems.filter((h) => h !== null).slice(0, 5);
 
     const response = { data: validHeroes };
-    memoryCache.set(cacheKey, response, 1000 * 60 * 60); // Cache 1 hora
+    memoryCache.set(cacheKey, response, 1000 * 60 * 60);
 
     return res.json(response);
   } catch (err) {

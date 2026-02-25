@@ -27,20 +27,21 @@ export function HeroCarouselCinematic({
 }: Props) {
   const [index, setIndex] = useState(0);
   const [holdAutoplayUntil, setHoldAutoplayUntil] = useState(0);
+  // Estado para guardar dónde empezó a tocar el dedo el usuario (para el Swipe)
+  const [touchStartX, setTouchStartX] = useState(0);
+
   const router = useRouter();
   const total = items.length || 0;
   const prefersReducedMotion =
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-  const { scrollY } = useScroll(); // Usamos scrollY (píxeles reales), no Progress
+  const { scrollY } = useScroll();
 
-  // Parallax del Hero: baja un 20% más lento que el scroll
   const heroY = useTransform(scrollY, [0, 800], ["0%", "20%"]);
-  // Se oscurece gradualmente
   const heroOpacity = useTransform(scrollY, [0, 500], [1, 0.1]);
-  // La UI (flechas y puntos) desaparece rápido en los primeros 300px
   const uiOpacity = useTransform(scrollY, [0, 500], [1, 0]);
+
   // auto-play
   useEffect(() => {
     if (total <= 1) return;
@@ -48,7 +49,7 @@ export function HeroCarouselCinematic({
 
     const id = setInterval(() => {
       const now = Date.now();
-      if (now < holdAutoplayUntil) return; // en pausa
+      if (now < holdAutoplayUntil) return;
       setIndex((i) => (i + 1) % total);
     }, intervalMs);
     return () => clearInterval(id);
@@ -66,21 +67,19 @@ export function HeroCarouselCinematic({
   }, [total]);
 
   useEffect(() => {
-    // precargar la siguiente imagen sin bloquear el render
     const nextIdx = (index + 1) % total;
     const nextSrc =
       items[nextIdx]?.images.backdrop ?? items[nextIdx]?.images.banner;
-    // simple prefetch
     if (typeof nextSrc === "string") {
       const img = new window.Image();
-      img.referrerPolicy = "no-referrer"; // por si TMDB
+      img.referrerPolicy = "no-referrer";
       img.src = nextSrc;
     }
   }, [index, total, items]);
 
   const next = useCallback(() => {
     setIndex((i) => (i + 1) % total);
-    setHoldAutoplayUntil(Date.now() + 2500); // 2.5s de respiro tras la acción
+    setHoldAutoplayUntil(Date.now() + 2500);
   }, [total]);
 
   const prev = useCallback(() => {
@@ -92,6 +91,23 @@ export function HeroCarouselCinematic({
     setIndex(i);
     setHoldAutoplayUntil(Date.now() + 2500);
   }, []);
+
+  // --- LÓGICA DE SWIPE NATIVA ---
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touchEndX = e.changedTouches[0].clientX;
+    const distance = touchStartX - touchEndX;
+
+    // Si el dedo recorrió más de 50px a la izquierda o derecha, cambiamos de slide
+    if (distance > 50) {
+      next(); // Swipe hacia la izquierda -> Siguiente
+    } else if (distance < -50) {
+      prev(); // Swipe hacia la derecha -> Anterior
+    }
+  };
 
   const current = items[index];
 
@@ -107,12 +123,15 @@ export function HeroCarouselCinematic({
   return (
     <>
       <section
+        // Agregamos onTouchStart y onTouchEnd al contenedor principal para que toda el área detecte el swipe
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         className={cn(
           "relative h-[65vh] md:h-[80vh] w-full overflow-hidden bg-background",
           className,
         )}
       >
-        {/* 1. CONTENEDOR PARALLAX: Aquí aplicamos el movimiento y el fade out */}
+        {/* 1. CONTENEDOR PARALLAX */}
         <motion.div
           style={{ y: heroY, opacity: heroOpacity }}
           className="absolute inset-0 w-full h-full z-0"
@@ -138,10 +157,7 @@ export function HeroCarouselCinematic({
                 )}
               />
 
-              {/* Viñeta general para oscurecer */}
               <div className="absolute inset-0 bg-black/20" />
-
-              {/* Viñeta lateral izquierda para asegurar legibilidad del logo */}
               <div className="absolute inset-0 bg-gradient-to-r from-background via-background/40 to-transparent w-[90%] md:w-[60%]" />
             </motion.div>
           </AnimatePresence>
@@ -150,9 +166,14 @@ export function HeroCarouselCinematic({
         {/* Content */}
         <motion.div
           style={{ opacity: uiOpacity }}
-          className="absolute inset-0 z-10 flex items-center justify-start"
+          className="absolute inset-0 z-10 flex items-center justify-start pointer-events-none"
         >
-          <div className="px-6 md:px-16 lg:px-24 pb-20 md:pb-32 w-full max-w-6xl space-y-4">
+          {/* EL FIX DEL PADDING: 
+              Agregamos `mt-24 md:mt-0` para empujar el contenido hacia abajo en celulares, 
+              salvando el espacio que ocupa el Navbar flotante.
+              Y le regresamos `pointer-events-auto` para que los botones sigan funcionando.
+          */}
+          <div className="px-6 md:px-16 lg:px-24 mt-24 md:mt-12 pb-16 md:pb-32 w-full max-w-6xl space-y-4 pointer-events-auto">
             <div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-semibold tracking-widest uppercase">
               {current.meta?.status && (
                 <span
@@ -180,6 +201,7 @@ export function HeroCarouselCinematic({
                 </>
               ) : null}
             </div>
+
             {/* --- LOGO CINEMÁTICO --- */}
             {current.images?.logo ? (
               <motion.div
@@ -187,7 +209,7 @@ export function HeroCarouselCinematic({
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-                className="w-full max-w-[40vw] md:max-w-[25vw] lg:max-w-[30vw] mb-6"
+                className="w-full max-w-[45vw] md:max-w-[25vw] lg:max-w-[30vw] mb-6"
               >
                 <Image
                   src={current.images.logo}
@@ -199,7 +221,6 @@ export function HeroCarouselCinematic({
                 />
               </motion.div>
             ) : (
-              // Fallback Título
               <motion.h2
                 key={`title-${current.id.anilist}`}
                 initial={{ opacity: 0, y: 20 }}
@@ -210,22 +231,19 @@ export function HeroCarouselCinematic({
                 {current.title}
               </motion.h2>
             )}
-            {/* ----------------------- */}
 
-            {/* Nueva fila de Metadatos (Año • Género • Rating) */}
+            {/* Fila de Metadatos */}
             <div className="flex items-center gap-2 text-xs md:text-sm font-medium text-white/80 tracking-wide mb-1">
               {current.meta?.year && <span>{current.meta.year}</span>}
               {current.meta?.year && current.meta?.genres?.[0] && (
                 <span className="text-white/40">•</span>
               )}
-
               {current.meta?.genres?.[0] && (
                 <span>{current.meta.genres[0]}</span>
               )}
               {current.meta?.genres?.[0] && current.meta?.rating && (
                 <span className="text-white/40">•</span>
               )}
-
               {current.meta?.rating && (
                 <span className="flex items-center gap-1">
                   ⭐ {Number(current.meta.rating).toFixed(1)}
@@ -236,6 +254,7 @@ export function HeroCarouselCinematic({
             <p className="mt-4 text-[0.95rem] leading-relaxed text-white/90 max-w-[62ch] [display:-webkit-box] [-webkit-line-clamp:6] [-webkit-box-orient:vertical] overflow-hidden">
               {current.meta?.synopsisShort || current.meta?.synopsis}
             </p>
+
             <div className="mt-5 flex gap-3">
               <ActionButton
                 onClick={() => router.push(`/anime/${current.id.anilist}`)}
@@ -255,26 +274,29 @@ export function HeroCarouselCinematic({
             </div>
           </div>
         </motion.div>
+
         <motion.div
           style={{ opacity: uiOpacity }}
           className="absolute inset-0 z-20 pointer-events-none"
         >
-          {/* nav arrows (les ponemos pointer-events-auto para que sigan siendo clickeables) */}
+          {/* NAV ARROWS (Ocultas en mobile, visibles en md) */}
           {total > 1 && (
             <>
               <button
-                aria-label="Prev"
+                aria-label="Anime anterior"
                 onClick={prev}
-                className="pointer-events-auto group absolute inset-y-0 left-0 w-[15vw] max-w-24 grid place-items-center transition-colors sm:grid"
+                // EL FIX DE LAS FLECHAS: hidden md:grid
+                className="hidden md:grid pointer-events-auto group absolute inset-y-0 left-0 w-[15vw] max-w-24 place-items-center transition-colors"
               >
                 <span className="text-white/60 group-hover:text-white text-4xl cursor-pointer drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
                   ‹
                 </span>
               </button>
               <button
-                aria-label="Next"
+                aria-label="Siguiente anime"
                 onClick={next}
-                className="pointer-events-auto group absolute inset-y-0 right-0 w-[15vw] max-w-24 grid place-items-center transition-colors sm:grid"
+                // EL FIX DE LAS FLECHAS: hidden md:grid
+                className="hidden md:grid pointer-events-auto group absolute inset-y-0 right-0 w-[15vw] max-w-24 place-items-center transition-colors"
               >
                 <span className="text-white/60 group-hover:text-white text-4xl cursor-pointer drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
                   ›
@@ -285,7 +307,7 @@ export function HeroCarouselCinematic({
 
           {/* INDICADORES PREMIUM (Pill Progress) */}
           {total > 1 && (
-            <div className="absolute inset-x-0 bottom-8 flex items-center justify-center gap-3 pointer-events-auto">
+            <div className="absolute inset-x-0 bottom-6 md:bottom-8 flex items-center justify-center gap-3 pointer-events-auto">
               {items.map((_, i) => {
                 const isActive = i === index;
                 return (
@@ -293,7 +315,6 @@ export function HeroCarouselCinematic({
                     key={i}
                     onClick={() => dotSelect(i)}
                     aria-label={`Ir al slide ${i + 1}`}
-                    // Aumentamos el brillo del fondo (bg-white/30 y 50) para que se vean bien
                     className={cn(
                       "relative h-2 rounded-full overflow-hidden transition-all duration-500 ease-out",
                       isActive
@@ -325,7 +346,6 @@ export function HeroCarouselCinematic({
         </motion.div>
 
         {/* 2. EL FOG SUTIL */}
-        {/* Solo 25vh de alto, un degradado más limpio hacia el fondo */}
         <div className="absolute inset-x-0 bottom-0 h-[30vh] bg-gradient-to-t from-background via-background/50 to-transparent pointer-events-none z-10" />
       </section>
     </>

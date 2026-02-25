@@ -8,7 +8,7 @@ export const ActionButton = ({
   icon,
 }: {
   children: React.ReactNode;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   variant?: "solid" | "soft";
   icon?: React.ReactNode;
 }) => {
@@ -31,7 +31,7 @@ export const FavButton = ({
   onClick,
 }: {
   active: boolean;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }) => {
   return (
     <button

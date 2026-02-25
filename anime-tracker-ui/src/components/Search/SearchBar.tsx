@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Loader2, Search } from "lucide-react";
 import SearchOverlay from "@/components/Search/SearchOverlay";
 import { fetchSearch } from "@/lib/api";
@@ -30,15 +28,11 @@ export default function SearchBar({
   const abortRef = useRef<AbortController | null>(null);
   const lastQRef = useRef<string>("");
 
-  // ✅ normaliza espacios (sin perder el contenido)
   const q = useMemo(
     () => query.toLowerCase().replace(/\s+/g, " ").trim(),
     [query],
   );
 
-  // ✅ valida por "caracteres útiles":
-  // - 1 palabra => >= 3 chars (sin espacios)
-  // - 2+ palabras => OK aunque sean cortas (ej: "demon sl")
   const isValid = useMemo(() => {
     if (!q) return false;
     const tokens = q.split(" ").filter(Boolean);
@@ -58,12 +52,9 @@ export default function SearchBar({
   const doFetch = useCallback(
     async (queryNorm: string) => {
       if (!queryNorm) return;
-
-      // evita refetch del mismo query
       if (queryNorm === lastQRef.current) return;
       lastQRef.current = queryNorm;
 
-      // cancela request anterior
       abortRef.current?.abort();
       const ac = new AbortController();
       abortRef.current = ac;
@@ -95,7 +86,6 @@ export default function SearchBar({
     [limit, region],
   );
 
-  // Debounce + gating
   useEffect(() => {
     if (!isValid) {
       abortRef.current?.abort();
@@ -109,7 +99,6 @@ export default function SearchBar({
     return () => clearTimeout(t);
   }, [q, isValid, doFetch]);
 
-  // teclado (↑↓ Enter)
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open) return;
 
@@ -137,7 +126,8 @@ export default function SearchBar({
           else if (isValid) void doFetch(q);
         }}
       >
-        <Input
+        {/* COMPONENTE NATIVO LIMPIO (Adiós shadcn) */}
+        <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={onKeyDown}
@@ -150,22 +140,22 @@ export default function SearchBar({
             }, 200);
           }}
           spellCheck={false}
-          className="h-10 w-full pr-10 bg-white/10 border-white/10 text-white placeholder:text-white/50 backdrop-blur-xs transition-all duration-300 focus-visible:bg-black/40 focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-primary shadow-sm rounded-xl"
+          className="h-10 w-full pl-4 pr-10 bg-white/10 border border-white/10 text-white placeholder:text-white/50 backdrop-blur-xs transition-all duration-300 focus:bg-black/40 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary shadow-sm rounded-xl"
         />
 
-        <Button
+        {/* BOTÓN NATIVO LIMPIO (Adiós shadcn) */}
+        <button
           type="submit"
-          size="icon"
           disabled={!isValid}
           aria-label="Buscar"
-          className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 bg-transparent hover:bg-white/10 text-white/70 hover:text-white border-none rounded-full transition-colors"
+          className="absolute right-1 top-1/2 flex h-8 w-8 items-center justify-center -translate-y-1/2 bg-transparent hover:bg-white/10 text-white/70 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed border-none rounded-full transition-colors cursor-pointer"
         >
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin text-primary" />
           ) : (
             <Search className="h-4 w-4" />
           )}
-        </Button>
+        </button>
       </form>
 
       <SearchOverlay

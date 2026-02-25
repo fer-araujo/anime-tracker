@@ -3,7 +3,10 @@ import type { AnimeCore } from "../../types/animeCore.js";
 import { enrichFromMalAndKitsu } from "../../utils/enrich.js";
 import { resolveProvidersForAnimeDetailed } from "../../utils/resolveProviders.js";
 
-export async function enrichAnimeCore(core: AnimeCore, region = "MX"): Promise<AnimeCore> {
+export async function enrichAnimeCore(
+  core: AnimeCore,
+  region = "MX",
+): Promise<AnimeCore> {
   // 1) MAL/Kitsu (rating/posterAlt/etc)
   const mk = await enrichFromMalAndKitsu(core.title).catch(() => null);
 
@@ -15,14 +18,17 @@ export async function enrichAnimeCore(core: AnimeCore, region = "MX"): Promise<A
   if (!providers.length && core.ids?.tmdb) {
     // Tomamos el ID de AniList (asumo que está en core.id o core.ids.anilist)
     // Si en tu interfaz se llama diferente, ajústalo aquí.
-    const anilistId = core.ids?.anilist || 0; 
+    const anilistId = core.ids?.anilist || 0;
+    const kind = core.meta.format === "MOVIE" ? "movie" : "tv";
 
     const r = await resolveProvidersForAnimeDetailed(
-      anilistId,       // 1. anilistId: number
-      region,          // 2. country: string
-      core.ids.tmdb,   // 3. tmdbId?: number | null
-      core.title,      // 4. knownTitle?: string
+      anilistId, // 1. anilistId: number
+      region, // 2. country: string
+      core.ids.tmdb, // 3. tmdbId?: number | null
+      core.title, // 4. knownTitle?: string
       core.meta.seasonYear, // 5. year?: number | null (nuevo parámetro)
+      kind, // 6. kind: "tv" | "movie"
+      core.meta.status === "RELEASING", // 7. isReleasing: boolean (nuevo parámetro)
     ).catch(() => null);
 
     if (r?.providers?.length) providers = r.providers;
@@ -33,12 +39,12 @@ export async function enrichAnimeCore(core: AnimeCore, region = "MX"): Promise<A
     providers,
     images: {
       ...core.images,
-      poster: core.images.poster ?? (mk?.posterAlt ?? null),
+      poster: core.images.poster ?? mk?.posterAlt ?? null,
     },
     meta: {
       ...core.meta,
-      score: core.meta.score ?? (mk?.rating ?? null),
-      episodes: core.meta.episodes ?? (mk?.episodes ?? null),
+      score: core.meta.score ?? mk?.rating ?? null,
+      episodes: core.meta.episodes ?? mk?.episodes ?? null,
     },
   };
 }

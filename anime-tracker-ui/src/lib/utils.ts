@@ -10,7 +10,7 @@ export function cn(...inputs: ClassValue[]) {
 export const handleImageLoad = (
   e: SyntheticEvent<HTMLImageElement>,
   setOverlayMode: Dispatch<SetStateAction<"base" | "ultra">>,
-  autoContrast: boolean
+  autoContrast: boolean,
 ) => {
   if (!autoContrast) return;
   try {
@@ -34,7 +34,7 @@ export const handleImageLoad = (
       0,
       0,
       sampleW,
-      sampleH
+      sampleH,
     );
     const data = ctx.getImageData(0, 0, sampleW, sampleH).data;
     let sum = 0;
@@ -67,4 +67,48 @@ export function getScaleClass(aspect?: number | null) {
   if (aspect > 2.1) return "scale-[1.08]";
   if (aspect > 1.9) return "scale-[1.05]";
   return "scale-100";
+}
+
+// En tu archivo utils/date.ts (o donde tengas la función)
+export function formatNextAiring(episodeText: string, timestamp?: number) {
+  // Extraemos el número del episodio (Ej: "Episodio 8" -> "8")
+  const epNumber = episodeText.match(/\d+/)?.[0] || "?";
+
+  // Fallback por si no hay timestamp
+  if (!timestamp) {
+    return { ep: epNumber, main: episodeText.replace("in", "En"), sub: "" };
+  }
+
+  const date = new Date(timestamp * 1000);
+  const now = new Date();
+  const diffDays = Math.ceil(
+    (date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  // Formateamos: "jueves" y "26 feb"
+  const dayName = new Intl.DateTimeFormat("es-MX", { weekday: "long" }).format(
+    date,
+  );
+  const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+  const exactDate = new Intl.DateTimeFormat("es-MX", {
+    day: "numeric",
+    month: "short",
+  }).format(date);
+
+  // Lógica de tiempo relativo
+  let relativeText = `En ${diffDays} días`;
+  if (diffDays <= 1) {
+    const hours = Math.ceil(
+      (date.getTime() - now.getTime()) / (1000 * 60 * 60),
+    );
+    relativeText = `En ${hours} horas`;
+  } else if (diffDays === 0) {
+    relativeText = `¡Hoy!`;
+  }
+
+  return {
+    ep: epNumber,
+    main: relativeText, // Ej: "En 2 días"
+    sub: `${capitalizedDay}, ${exactDate}`, // Ej: "Jueves, 26 feb"
+  };
 }

@@ -1,9 +1,20 @@
+// src/utils/resolveProviders.ts
 import { memoryCache } from "../utils/cache.js";
 import { normalizeProviderNames } from "../utils/providers.js";
 import { tmdbWatchProviders } from "../services/tmdb.service.js";
-import { normalizeTitle } from "./tmdb.enrich.js";
+// 1. NUEVO: Importamos el generador de variaciones
+import { getTitleVariations } from "./tmdb.enrich.js";
 
-// --- Definiciones de tipos para RapidAPI (Igual que antes) ---
+const RAPIDAPI_KEY =
+  process.env.STREAMING_AVAILABILITY_KEY ||
+  process.env.STREAMING_AVAIL_KEY ||
+  process.env.RAPIDAPI_KEY ||
+  "";
+
+const SA_BASE_URL = "https://streaming-availability.p.rapidapi.com";
+const SA_API_HOST = "streaming-availability.p.rapidapi.com";
+
+// --- Definiciones de tipos para RapidAPI ---
 type StreamingAvailabilityItem = {
   tmdbId?: string | null;
   title?: string | null;
@@ -17,20 +28,13 @@ type StreamingAvailabilityItem = {
   };
 };
 
-const SA_BASE_URL = "https://streaming-availability.p.rapidapi.com";
-const SA_API_KEY =
-  process.env.STREAMING_AVAILABILITY_KEY ||
-  process.env.STREAMING_AVAIL_KEY ||
-  "";
-const SA_API_HOST = "streaming-availability.p.rapidapi.com";
-
 // --- Helpers internos (Fetch y Parsing) ---
 
 async function fetchStreamingAvailabilityByTitle(
   title: string,
   country: string,
 ): Promise<StreamingAvailabilityItem[]> {
-  if (!SA_API_KEY) return [];
+  if (!RAPIDAPI_KEY) return [];
   const url = new URL(`${SA_BASE_URL}/shows/search/title`);
   url.searchParams.set("country", country.toLowerCase());
   url.searchParams.set("title", title);
@@ -39,7 +43,7 @@ async function fetchStreamingAvailabilityByTitle(
 
   const res = await fetch(url.toString(), {
     headers: {
-      "X-RapidAPI-Key": SA_API_KEY,
+      "X-RapidAPI-Key": RAPIDAPI_KEY,
       "X-RapidAPI-Host": SA_API_HOST,
     },
   });
@@ -87,7 +91,8 @@ export async function resolveProvidersForAnimeDetailed(
   tmdbId?: number | null,
   knownTitle?: string,
   year?: number | null,
-  kind: "tv" | "movie" = "tv"
+  kind: "tv" | "movie" = "tv",
+  isReleasing: boolean = false,
 ): Promise<ProvidersResolved> {
   const upperCountry = country.toUpperCase();
   const cacheKey = `providers:resolved:${anilistId}:${upperCountry}`;
@@ -121,13 +126,9 @@ export async function resolveProvidersForAnimeDetailed(
   }
 
   // 2) Fallback: RapidAPI (CON FILTRO DE AHORRO)
-  // Solo entramos si TMDB falló Y tenemos título
   if (providers.length === 0 && knownTitle) {
-    // --- EL CANDADO DE AHORRO ---
-    // Definimos "Reciente": Año actual o los 2 anteriores (ej: 2026, 2025, 2024).
-    // Si no tenemos año (null), asumimos que es reciente por seguridad.
     const currentYear = new Date().getFullYear();
-    const isRecent = !year || year >= currentYear - 2;
+    const isRecent = !year || year >= currentYear - 6 || isReleasing;
 
     if (isRecent) {
       try {
@@ -135,13 +136,23 @@ export async function resolveProvidersForAnimeDetailed(
           `[RapidAPI] Consultando fallback para: ${knownTitle} (${year || "Año desconocido"})`,
         );
 
-        const cleanTitle = normalizeTitle(knownTitle);
-        const searchTitle = cleanTitle.length > 0 ? cleanTitle : knownTitle;
+        // 2. LA MAGIA: Cascada de títulos para SA
+        const titleVariants = getTitleVariations(knownTitle);
+        if (titleVariants.length === 0) titleVariants.push(knownTitle); // Fallback por si acaso
 
-        const saItems = await fetchStreamingAvailabilityByTitle(
-          searchTitle,
-          upperCountry,
-        );
+        let saItems: StreamingAvailabilityItem[] = [];
+
+        for (const variant of titleVariants) {
+          saItems = await fetchStreamingAvailabilityByTitle(
+            variant,
+            upperCountry,
+          );
+          if (saItems && saItems.length > 0) {
+            console.log(`[RapidAPI] Éxito con la variación: "${variant}"`);
+            break; // Encontramos resultados, rompemos el ciclo
+          }
+        }
+
         saOk = true;
 
         const best = pickBestStreamingAvailItem(saItems, tmdbId);
@@ -160,8 +171,6 @@ export async function resolveProvidersForAnimeDetailed(
         );
       }
     } else {
-      // Si es antiguo y TMDB no tiene nada, asumimos que no hay streaming legal.
-      // NO gastamos crédito.
       console.log(
         `[Ahorro RapidAPI] Omitido por antigüedad: ${knownTitle} (${year})`,
       );
@@ -175,8 +184,7 @@ export async function resolveProvidersForAnimeDetailed(
 
   const payload: ProvidersResolved = { providers, usedSource, tmdbOk, saOk };
 
-  // --- 2. CACHÉ SEMANAL (7 DÍAS) ---
-  // Para que si un usuario busca hoy, no volvamos a gastar créditos en una semana.
+  // Caché semanal
   memoryCache.set(cacheKey, payload, 1000 * 60 * 60 * 24 * 7);
 
   return payload;
