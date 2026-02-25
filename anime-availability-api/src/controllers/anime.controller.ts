@@ -3,7 +3,7 @@ import type { Request, Response, NextFunction } from "express";
 import pLimit from "p-limit";
 
 import { ENV } from "../config/env.js";
-import { normalizeTitle } from "../utils/tmdb.enrich.js";
+// Ya no necesitamos normalizeTitle aquí
 import { htmlToText } from "../utils/sanitize.js";
 import { extractStudio } from "../utils/extractStudio.js";
 import { resolveProvidersForAnimeDetailed } from "../utils/resolveProviders.js";
@@ -11,7 +11,6 @@ import { resolveHeroArtwork } from "../utils/artwork.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
 import { getTmdbSynopsis } from "../services/tmdb.service.js";
 
-const limit = pLimit(5);
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
 export async function getAnimeDetails(
@@ -100,7 +99,6 @@ export async function getAnimeDetails(
       body: JSON.stringify({ query: gql, variables: { id: anilistId } }),
     });
 
-    // BLINDAJE: Si AniList falla, ahora sí veremos EXACTAMENTE por qué en la consola del backend
     if (!aniRes.ok) {
       const errorText = await aniRes.text();
       console.error(`🔥 Error de AniList (${aniRes.status}):`, errorText);
@@ -114,17 +112,19 @@ export async function getAnimeDetails(
 
     if (!media) return res.status(404).json({ error: "Not found" });
 
-    // 2. Normalizar Título y Arte del Anime Principal
+    // 2. Título crudo (Las funciones de abajo ya hacen la cascada)
     const title =
       media.title?.english ??
       media.title?.romaji ??
       media.title?.native ??
       "Untitled";
-    const cleanTitle = normalizeTitle(title);
-    const searchTitle = cleanTitle.length > 0 ? cleanTitle : title;
+      
+    const kind = media.format === "MOVIE" ? "movie" : "tv";
+    const isReleasing = media.status === "RELEASING";
 
+    // Pasamos el title directo
     const { backdrop, logo, artworkCandidates, tmdbId } =
-      await resolveHeroArtwork(searchTitle, {
+      await resolveHeroArtwork(title, kind, {
         bannerImage: media.bannerImage,
         coverImage: media.coverImage,
       });
@@ -133,20 +133,19 @@ export async function getAnimeDetails(
       anilistId,
       country,
       tmdbId,
-      title,
+      title, // Se pasa directo a resolveProviders que ya tiene cascada
       media.seasonYear,
+      kind,
+      isReleasing
     );
 
-    const spanishSynopsis = tmdbId
-      ? await getTmdbSynopsis(tmdbId, media.format === "MOVIE" ? "movie" : "tv")
-      : null;
+    const spanishSynopsis = tmdbId ? await getTmdbSynopsis(tmdbId, kind) : null;
 
     const rawRecommendations =
       media.recommendations?.nodes
         ?.map((node: any) => node.mediaRecommendation)
         .filter(Boolean) || [];
 
-    // Llamamos a tu nueva utilidad para las recomendaciones
     const formattedRecommendations = await formatAnimeList(
       rawRecommendations,
       country,
@@ -172,16 +171,14 @@ export async function getAnimeDetails(
           type: edge.node.format || "TV",
         })) || [];
 
-    // Buscamos los rankings históricos
     const bestRated = media.rankings?.find(
       (r: any) => r.type === "RATED" && r.allTime,
     );
     const mostPopular = media.rankings?.find(
       (r: any) => r.type === "POPULAR" && r.allTime,
     );
-
-    // Priorizamos el de Rating, si no hay, usamos el de Popularidad
     const topRanking = bestRated || mostPopular;
+
     // 5. RESPUESTA ESTRUCTURADA
     const result = {
       id: { anilist: media.id, tmdb: tmdbId },
@@ -201,7 +198,9 @@ export async function getAnimeDetails(
       meta: {
         genres: media.genres ?? [],
         rating: media.averageScore ? media.averageScore / 10 : null,
-        synopsis: htmlToText(spanishSynopsis || media.description || "Sinopsis no disponible."),
+        synopsis: htmlToText(
+          spanishSynopsis || media.description || "Sinopsis no disponible.",
+        ),
         year: media.seasonYear ?? null,
         status: media.status ?? "UNKNOWN",
         episodes: media.episodes ?? null,
@@ -219,6 +218,7 @@ export async function getAnimeDetails(
         nextAiring: media.nextAiringEpisode
           ? `Episodio ${media.nextAiringEpisode.episode} en ${Math.ceil((media.nextAiringEpisode.airingAt * 1000 - Date.now()) / (1000 * 60 * 60 * 24))} días`
           : null,
+        nextEpisodeAt: media.nextAiringEpisode?.airingAt ?? null,
         recommendations: formattedRecommendations,
       },
     };

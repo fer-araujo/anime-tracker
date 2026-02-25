@@ -6,6 +6,8 @@ import {
   isAnimeCandidate,
   getTmdbImages,
 } from "../services/tmdb.service.js";
+// 1. NUEVO: Importamos el generador de variaciones
+import { getTitleVariations } from "./tmdb.enrich.js";
 
 export type BasicAniListMedia = {
   bannerImage?: string | null;
@@ -13,7 +15,7 @@ export type BasicAniListMedia = {
     extraLarge?: string | null;
     large?: string | null;
   } | null;
-  format?: string | null; // opcional, por si quieres inferir kind aquí
+  format?: string | null;
 };
 
 export function pickBestBackdrop(
@@ -44,22 +46,37 @@ const tmdbImageUrl = (path: string | null, size = "original") =>
 
 export async function resolveHeroArtwork(
   searchTitle: string,
+  kind: "tv" | "movie",
   media: { bannerImage?: string | null; coverImage?: any },
 ) {
   let tmdbId: number | null = null;
   let backdrop: string | null = null;
-  let logo: string | null = null; // <--- NUEVO CAMPO
+  let logo: string | null = null;
   let artworkCandidates: any[] = [];
+  let bestTmdb: any = null;
 
   try {
-    const tmdbResults = await tmdbSearch("tv", searchTitle);
-    const bestTmdb = tmdbResults.find(isAnimeCandidate) ?? tmdbResults[0];
+    // 2. LA MAGIA: Probamos la cascada de títulos para el Artwork
+    const titleVariants = getTitleVariations(searchTitle);
 
-    if (bestTmdb) {
+    for (const variant of titleVariants) {
+      const tmdbResults = await tmdbSearch(kind, variant);
+      if (tmdbResults && tmdbResults.length > 0) {
+        bestTmdb = tmdbResults.find(isAnimeCandidate) ?? tmdbResults[0];
+        
+        if (bestTmdb) {
+          console.log(`[artwork] Match encontrado usando: "${variant}"`);
+          break; // Rompemos el ciclo en cuanto encontramos el ID correcto
+        }
+      }
+    }
+
+    // 3. Si encontramos el match, seguimos con la lógica normal
+   if (bestTmdb && bestTmdb.id) { // <-- Agregamos validación del id aquí también por seguridad
       tmdbId = bestTmdb.id;
 
       // Pedimos Backdrops y Logos
-      const imagesData = await getTmdbImages(tmdbId, "tv");
+      const imagesData = await getTmdbImages(tmdbId as number, kind);
 
       if (imagesData) {
         // --- 1. BACKDROPS ---
@@ -67,7 +84,6 @@ export async function resolveHeroArtwork(
           const highQualityArt = imagesData.backdrops
             .filter((img: any) => img.width >= 1920)
             .sort((a: any, b: any) => {
-              // Prioridad: Sin texto > Votos > Voto promedio
               const scoreA =
                 (a.iso_639_1 === null ? 50 : 0) +
                 a.vote_average * 5 +
@@ -91,11 +107,8 @@ export async function resolveHeroArtwork(
           }
         }
 
-        // --- 2. LOGOS (NUEVO) ---
-        // Buscamos el mejor logo (PNG)
+        // --- 2. LOGOS ---
         if (imagesData.logos?.length > 0) {
-          // Filtramos logos en inglés (suelen ser los internacionales) o sin idioma
-          // Ordenamos por votos para sacar el oficial más bonito
           const bestLogo = imagesData.logos
             .filter((l: any) => l.iso_639_1 === "en" || l.iso_639_1 === null)
             .sort((a: any, b: any) => b.vote_average - a.vote_average)[0];
@@ -112,7 +125,7 @@ export async function resolveHeroArtwork(
       }
     }
   } catch (e) {
-    console.warn("Artwork resolution failed", e);
+    console.warn("[artwork] Resolution failed", e);
   }
 
   // Fallback final a AniList banner

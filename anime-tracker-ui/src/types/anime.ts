@@ -65,7 +65,7 @@ export type Anime = {
     duration?: number | null; // <-- NUEVO
     progress?: number | null; // vistos
     nextAiring?: string | null; // e.g. "in 6 days" (texto ya formateado)
-    nextEpisodeAt?: string | null; // fecha ISO del próximo episodio
+    nextEpisodeAt?: number; // fecha ISO del próximo episodio
   };
 };
 

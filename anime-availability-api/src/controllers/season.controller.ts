@@ -1,6 +1,4 @@
 import type { Request, Response, NextFunction } from "express";
-import pLimit from "p-limit";
-
 import { ENV } from "../config/env.js";
 import { SeasonQuery } from "../models/schema.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";

@@ -16,7 +16,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { Anime } from "@/types/anime";
-import { cn } from "@/lib/utils";
+import { cn, formatNextAiring } from "@/lib/utils";
 import { GalleryLightbox } from "./common/Gallery";
 import { MinimalShelf } from "./Shelf";
 import { ImagePlaceholder } from "./common/ImagePlaceholder";
@@ -34,7 +34,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
   const bgDarken = useTransform(
     scrollYProgress,
     [0, 0.5],
-    ["rgba(0,0,0,0)", "rgba(0,0,0,0.85)"],
+    ["rgba(0,0,0,0)", "rgba(0,0,0,0.95)"],
   );
 
   const uniqueProviders = useMemo(() => {
@@ -85,10 +85,10 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
         <div className="absolute inset-0 [mask-image:linear-gradient(to_bottom,black_40%,transparent_100%)]">
           <Image
             src={heroImage || ""}
-            alt="Backdrop"
+            alt="Banner"
             fill
             priority
-            className="object-cover object-[center_20%] opacity-40 md:opacity-50"
+            className="object-cover object-[center_20%] opacity-40 md:opacity-50 xl:opacity-30"
           />
         </div>
         <motion.div
@@ -236,7 +236,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                   <div className="relative">
                     <p
                       className={cn(
-                        "text-[1rem] md:text-[1.05rem] leading-relaxed text-white/80 font-light max-w-4xl text-pretty transition-all duration-300",
+                        "text-[1rem] md:text-[1.05rem] leading-relaxed text-white/80 font-normal max-w-4xl text-pretty transition-all duration-300",
                         !isSynopsisExpanded && "line-clamp-4",
                       )}
                     >
@@ -248,7 +248,9 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                           onClick={() =>
                             setIsSynopsisExpanded(!isSynopsisExpanded)
                           }
-                          className="flex items-center gap-1.5 mt-4 text-[11px] font-bold text-primary hover:brightness-125 transition-colors uppercase tracking-[0.2em] cursor-pointer"
+                          aria-expanded={isSynopsisExpanded}
+                          aria-controls="synopsis-text"
+                          className="flex items-center gap-1.5 mt-4 text-[11px] font-bold text-primary hover:brightness-125 transition-colors uppercase tracking-[0.2em] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
                         >
                           {isSynopsisExpanded ? "Mostrar menos" : "Leer más"}
                           <ChevronDown
@@ -297,16 +299,21 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                 </section>
 
                 {/* TABS Y DETALLES */}
-                {/* TABS Y DETALLES */}
                 <section className="space-y-6 pt-8 border-t border-white/5">
-                  <div className="flex border border-white/10 p-1 rounded-lg bg-white/[0.01] w-fit">
-                    {/* AQUI USAMOS LAS TABS DINÁMICAS */}
+                  <div
+                    role="tablist"
+                    aria-label="Secciones del anime"
+                    className="flex border border-white/10 p-1 rounded-lg bg-white/[0.01] w-fit"
+                  >
                     {availableTabs.map((tab) => (
                       <button
                         key={tab}
+                        role="tab"
+                        aria-selected={activeTab === tab}
+                        aria-controls={`panel-${tab}`} // Conecta el botón con el contenido
                         onClick={() => setActiveTab(tab)}
                         className={cn(
-                          "px-6 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer",
+                          "px-6 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                           activeTab === tab
                             ? "bg-primary/10 text-primary border border-primary/20"
                             : "text-white/40 hover:text-white/80 border border-transparent",
@@ -317,8 +324,12 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     ))}
                   </div>
 
-                  {/* Le damos un min-h-[250px] para empujar el scroll y que no quede el hueco en blanco */}
-                  <div className="min-h-[140px]">
+                  {/* Y a tu div que envuelve el contenido ponle role="tabpanel" */}
+                  <div
+                    role="tabpanel"
+                    id={`panel-${activeTab}`}
+                    className="min-h-[140px]"
+                  >
                     {/* Detalles (Con info real para rellenar) */}
                     {/* Detalles */}
                     {/* Detalles */}
@@ -363,23 +374,44 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
 
                         {/* TARJETA 4: Próximo Ep / Año */}
                         {anime.meta?.nextAiring ? (
-                          <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01] flex flex-col justify-between shadow-[0_0_15px_rgba(34,197,94,0.03)]">
-                            <MonitorPlay className="w-5 h-5 text-primary mb-6 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="relative flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                                </span>
-                                <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">
-                                  Próximo Ep.
-                                </p>
+                          // Nota: Extraemos la info antes del return o directo aquí:
+                          (() => {
+                            const airingInfo = formatNextAiring(
+                              anime.meta.nextAiring,
+                              anime.meta.nextEpisodeAt,
+                            );
+
+                            return (
+                              <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01] flex flex-col justify-between">
+                                {/* 1. Icono arriba (Igual que las demás) */}
+                                <MonitorPlay className="w-5 h-5 text-primary mb-6 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+
+                                <div>
+                                  {/* 2. Título en medio (Con el puntito de "en emisión") */}
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="relative flex h-2 w-2">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                                    </span>
+                                    <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">
+                                      Próx. Ep. {airingInfo.ep}
+                                    </p>
+                                  </div>
+
+                                  {/* 3. Valor principal abajo (Igual que las demás) */}
+                                  <div className="flex flex-col">
+                                    <p className="text-xl font-light text-white">
+                                      {airingInfo.main}
+                                    </p>
+                                    {/* Dato secundario muy sutil para no saturar */}
+                                    <p className="text-[10px] font-medium text-white/40 uppercase tracking-widest mt-0.5">
+                                      {airingInfo.sub}
+                                    </p>
+                                  </div>
+                                </div>
                               </div>
-                              <p className="text-lg font-light text-white">
-                                {anime.meta.nextAiring.replace("in", "En")}
-                              </p>
-                            </div>
-                          </div>
+                            );
+                          })()
                         ) : (
                           <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01]">
                             <Calendar className="w-5 h-5 text-primary mb-6 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
@@ -459,10 +491,11 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                         {anime.images.artworkCandidates
                           ?.slice(0, 6)
                           .map((img, i) => (
-                            <div
+                            <button
                               key={i}
                               onClick={() => setLightboxIndex(i)}
-                              className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-white/5 group cursor-pointer"
+                              aria-label={`Ver imagen ${i + 1} en pantalla completa`}
+                              className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-white/5 group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                             >
                               {img.url_original ? (
                                 <Image
@@ -477,7 +510,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <ImageIcon className="w-6 h-6 text-white/70" />
                               </div>
-                            </div>
+                            </button>
                           ))}
                       </div>
                     )}

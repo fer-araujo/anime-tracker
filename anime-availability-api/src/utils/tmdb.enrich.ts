@@ -16,22 +16,51 @@ export type TmdbEnrichedInfo = BaseAnimeInfo & {
   tmdbId?: number | null;
 };
 
-export function normalizeTitle(raw: string): string {
-  if (!raw) return "";
-  return (
-    raw
-      .toLowerCase()
-      // 1. Quita "Season X", "Cour X", "Part X"
-      .replace(/\b(season|cour|part)\s*\d+\b/gi, "")
-      // 2. Quita "2nd Season", "3rd Season", etc.
-      .replace(/\b\d+(st|nd|rd|th)\s*season\b/gi, "")
-      // 3. Quita subtítulos después de dos puntos (ej: ": The Culling Game")
-      .replace(/:\s*.*$/, "")
-      // 4. Limpieza general de caracteres raros y espacios dobles
-      .replace(/[^\p{Letter}\p{Number}\s]/gu, "")
-      .replace(/\s{2,}/g, " ")
-      .trim()
+// 1. Normalizador base (Mantenido por compatibilidad y para hacer match)
+export function normalizeTitle(title: string): string {
+  if (!title) return "";
+  let clean = title.toLowerCase();
+
+  clean = clean.replace(
+    /\s*(\d+(st|nd|rd|th)? season|season \d+|final season|part \d+|cour \d+).*$/i,
+    "",
   );
+  clean = clean.replace(/[\/\-\:]/g, " ");
+  clean = clean.replace(/[^\w\s]/g, "");
+  return clean.replace(/\s+/g, " ").trim();
+}
+
+// 2. NUEVO: Generador de cascada inteligente (El corta-subtítulos)
+export function getTitleVariations(title: string): string[] {
+  if (!title) return [];
+
+  let clean = title.toLowerCase();
+  clean = clean.replace(
+    /\s*(\d+(st|nd|rd|th)? season|season \d+|final season|part \d+|cour \d+).*$/i,
+    "",
+  );
+
+  const variations = new Set<string>();
+
+  // Variación A: Título completo limpio (Para "Bleach Thousand Year Blood War")
+  const fullTitle = clean
+    .replace(/[\/\-\:]/g, " ")
+    .replace(/[^\w\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (fullTitle) variations.add(fullTitle);
+
+  // Variación B: Título recortado antes del ':' (Para "Yu Yu Hakusho: Ghostfiles")
+  if (clean.includes(":")) {
+    const splitTitle = clean
+      .split(":")[0]
+      .replace(/[^\w\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (splitTitle) variations.add(splitTitle);
+  }
+
+  return Array.from(variations);
 }
 
 function pickBestTmdbMatch(
@@ -41,23 +70,18 @@ function pickBestTmdbMatch(
   if (!results || results.length === 0) return undefined;
 
   const titleNorm = normalizeTitle(title);
-
-  // Filtramos solo candidatos de anime
   const animeOnly = results.filter(isAnimeCandidate);
   const pool = animeOnly.length ? animeOnly : results;
 
-  // Prioridad 1: Match Exacto (título limpio vs título limpio)
   const exact = pool.find((i) => normalizeTitle(i.name) === titleNorm);
   if (exact) return exact;
 
-  // Prioridad 2: Contenido (si "Jujutsu Kaisen" está dentro del título de AniList)
   const contains = pool.find((i) => {
     const tName = normalizeTitle(i.name);
     return titleNorm.includes(tName) || tName.includes(titleNorm);
   });
 
   if (contains) return contains;
-
   return pool[0];
 }
 
@@ -69,12 +93,25 @@ export async function enrichWithTmdb(
   if (!base?.title) return { ...base };
 
   const kind = opts?.kind ?? "tv";
-
   let tmdbResults: TMDBSearchTVItem[] = [];
-  try {
-    tmdbResults = await tmdbSearch(kind, base.title);
-  } catch (err) {
-    console.warn("[tmdb.enrich] search error:", err);
+
+  // 3. LA MAGIA EN ACCIÓN: Probamos la cascada de títulos
+  const titleVariants = getTitleVariations(base.title);
+
+  for (const variant of titleVariants) {
+    try {
+      const results = await tmdbSearch(kind, variant);
+      if (results && results.length > 0) {
+        tmdbResults = results;
+        console.log(`[tmdb.enrich] Éxito con la variación: "${variant}"`);
+        break; // Si TMDB encuentra algo, rompemos el ciclo
+      }
+    } catch (err) {
+      console.warn(
+        `[tmdb.enrich] Error buscando la variante "${variant}":`,
+        err,
+      );
+    }
   }
 
   if (!tmdbResults?.length) return { ...base, tmdbId: null };
