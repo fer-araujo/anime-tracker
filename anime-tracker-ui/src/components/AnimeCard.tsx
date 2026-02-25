@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { ProviderBadge } from "./ProviderBadge";
 import { uniqueNormalizedProviders } from "@/lib/providers";
 import { cn, handleImageLoad } from "@/lib/utils";
-import { Info, Plus, Palette } from "lucide-react"; // <-- Agregué Palette para el estudio
+import { Info, Plus } from "lucide-react"; // <-- Agregué Palette para el estudio
 import { AnimeCardProps } from "@/types/anime";
 import { Pill } from "./common/Pills";
 import { ScoreBadge } from "./common/ScoreBadge";
@@ -33,18 +33,42 @@ export function AnimeCard({
   const isAdult = Boolean(anime.meta?.isAdult || adultByGenre);
   const status = anime.meta?.status;
 
+  // A11Y: Manejador para el teclado (Enter)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // EL FIX: Solo abrimos los detalles si el foco está EXACTAMENTE en la tarjeta principal.
+    // Si el usuario dio Tab y está encima de "Añadir", e.target no será e.currentTarget,
+    // por lo que ignoramos este evento y dejamos que el botón "Añadir" haga su propio trabajo.
+    if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      onOpen?.(anime);
+    }
+  };
+
   return (
     <div className="group relative w-full select-none">
-      {/* Caja Principal. Agregamos cursor-pointer y un onClick global para Mobile */}
+      {/* A11Y MEJORAS:
+        - tabIndex={0}: Permite enfocar con el teclado.
+        - role="button": Le dice al lector de pantalla que esto es clickeable.
+        - aria-label: Le lee el título al usuario ciego en lugar de hacerle leer todo el HTML.
+        - onKeyDown: Permite "hacer clic" con la tecla Enter.
+        - focus-visible:ring...: Dibuja un borde elegante SOLO cuando se usa teclado.
+      */}
       <div
+        tabIndex={0}
+        role="button"
+        aria-label={`Ver detalles de ${anime.title}`}
+        onKeyDown={handleKeyDown}
         className={cn(
           "relative w-full overflow-hidden p-0 isolate rounded-md cursor-pointer",
           // ¡LA MAGIA! En lugar de altura fija, usamos proporción
           variant === "compact" ? "aspect-[3/4]" : "aspect-[2/3]",
-          "border border-white/10 bg-neutral-950 transition-shadow duration-300 ease-out md:hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.5)]",
+          "border border-white/10 bg-neutral-950 transition-all duration-300 ease-out md:hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.5)]",
+          // A11Y: Anillo de foco (Focus Ring) elegante
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
         )}
         onClick={() => {
-          if (window.innerWidth < 768) onOpen?.(anime);
+          // En mobile o en desktop, si hacen clic en la tarjeta (no en un botón interno), se abre
+          onOpen?.(anime);
         }}
       >
         {/* Poster */}
@@ -52,7 +76,7 @@ export function AnimeCard({
           {anime.images.poster ? (
             <Image
               src={anime.images.poster}
-              alt={anime.title}
+              alt={`Póster de ${anime.title}`} // A11Y: alt más descriptivo
               fill
               sizes="(max-width:980px) 100vw, 33vw"
               className="object-cover [image-rendering:auto]"
@@ -68,7 +92,8 @@ export function AnimeCard({
         <div
           className={cn(
             "absolute inset-0 z-[2]",
-            "opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 ease-out",
+            // A11Y: Aseguramos que el overlay se muestre también cuando la tarjeta tiene foco (group-focus-within)
+            "opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity duration-300 ease-out",
             "backdrop-blur-[6px] backdrop-saturate-[125%]",
             overlayMode === "ultra" || overlayTone === "strong"
               ? "bg-[linear-gradient(to_top,rgba(0,0,0,0.90)_20%,rgba(0,0,0,0.66)_65%,rgba(0,0,0,0.52)_100%)]"
@@ -92,7 +117,6 @@ export function AnimeCard({
             {/* Info block: ESTUDIO DE VUELTA A SU LUGAR */}
             <div className="px-3 mt-2 flex flex-col gap-1 text-sm">
               <div className="flex items-center justify-between">
-                {/* Opción A: Con un iconito sutil para dar contexto (quítalo si no te gusta) */}
                 <span className="font-medium text-white/90 truncate flex items-center gap-1.5">
                   {anime.meta?.studio ?? "Unknown Studio"}
                 </span>
@@ -130,9 +154,11 @@ export function AnimeCard({
               <Tooltip.Provider delayDuration={300}>
                 <Tooltip.Root>
                   <Tooltip.Trigger asChild>
-                    <p className="mt-2 px-3 text-[0.78rem] leading-[1.25rem] text-white/90 [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] cursor-help">
+                    {/* EL FIX REAL: Cambiamos <p> por <button> y le agregamos text-left y w-full 
+                        para que se siga viendo exactamente igual que un párrafo, pero siendo semánticamente correcto. */}
+                    <button className="mt-2 px-3 w-full text-left text-[0.78rem] leading-[1.25rem] text-white/90 [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 rounded-sm">
                       {anime.meta.synopsisShort}
-                    </p>
+                    </button>
                   </Tooltip.Trigger>
                   <Tooltip.Portal>
                     <Tooltip.Content
@@ -141,13 +167,10 @@ export function AnimeCard({
                       sideOffset={8}
                       className={cn(
                         "z-[100] max-w-xs md:max-w-sm overflow-hidden rounded-md border border-white/10 bg-neutral-950/95 px-4 py-3 text-xs leading-relaxed text-white/90 shadow-2xl backdrop-blur-md",
-                        // Animaciones de tailwindcss-animate (suaves como mantequilla)
                         "animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2",
                       )}
                     >
-                      {/* Mostramos la sinopsis COMPLETA (o la corta si no hay completa) */}
                       {anime.meta.synopsis || anime.meta.synopsisShort}
-
                       <Tooltip.Arrow
                         className="fill-white/10"
                         width={12}
@@ -170,7 +193,7 @@ export function AnimeCard({
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {/* stopPropagation previene que se lance el evento onClick de la tarjeta principal */}
+                {/* 1. Quitamos los tabIndex={-1} para devolverles la vida */}
                 <ActionButton
                   variant="soft"
                   onClick={(e) => {
@@ -206,10 +229,11 @@ export function AnimeCard({
         </div>
       </div>
 
-      {/* TÍTULO LIMPIO EN SU LUGAR DE SIEMPRE */}
       {showTitleBelow && (
         <div className="mt-2 px-1">
           <h4
+            // A11Y: aria-hidden porque el título ya lo lee el lector de pantalla en la tarjeta principal
+            aria-hidden="true"
             className="text-[0.9rem] font-normal leading-tight text-white/95 line-clamp-2"
             title={anime.title}
           >

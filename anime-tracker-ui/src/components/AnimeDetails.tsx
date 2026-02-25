@@ -248,7 +248,9 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                           onClick={() =>
                             setIsSynopsisExpanded(!isSynopsisExpanded)
                           }
-                          className="flex items-center gap-1.5 mt-4 text-[11px] font-bold text-primary hover:brightness-125 transition-colors uppercase tracking-[0.2em] cursor-pointer"
+                          aria-expanded={isSynopsisExpanded}
+                          aria-controls="synopsis-text"
+                          className="flex items-center gap-1.5 mt-4 text-[11px] font-bold text-primary hover:brightness-125 transition-colors uppercase tracking-[0.2em] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
                         >
                           {isSynopsisExpanded ? "Mostrar menos" : "Leer más"}
                           <ChevronDown
@@ -297,16 +299,21 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                 </section>
 
                 {/* TABS Y DETALLES */}
-                {/* TABS Y DETALLES */}
                 <section className="space-y-6 pt-8 border-t border-white/5">
-                  <div className="flex border border-white/10 p-1 rounded-lg bg-white/[0.01] w-fit">
-                    {/* AQUI USAMOS LAS TABS DINÁMICAS */}
+                  <div
+                    role="tablist"
+                    aria-label="Secciones del anime"
+                    className="flex border border-white/10 p-1 rounded-lg bg-white/[0.01] w-fit"
+                  >
                     {availableTabs.map((tab) => (
                       <button
                         key={tab}
+                        role="tab"
+                        aria-selected={activeTab === tab}
+                        aria-controls={`panel-${tab}`} // Conecta el botón con el contenido
                         onClick={() => setActiveTab(tab)}
                         className={cn(
-                          "px-6 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer",
+                          "px-6 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                           activeTab === tab
                             ? "bg-primary/10 text-primary border border-primary/20"
                             : "text-white/40 hover:text-white/80 border border-transparent",
@@ -317,8 +324,12 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     ))}
                   </div>
 
-                  {/* Le damos un min-h-[250px] para empujar el scroll y que no quede el hueco en blanco */}
-                  <div className="min-h-[140px]">
+                  {/* Y a tu div que envuelve el contenido ponle role="tabpanel" */}
+                  <div
+                    role="tabpanel"
+                    id={`panel-${activeTab}`}
+                    className="min-h-[140px]"
+                  >
                     {/* Detalles (Con info real para rellenar) */}
                     {/* Detalles */}
                     {/* Detalles */}
@@ -480,10 +491,11 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                         {anime.images.artworkCandidates
                           ?.slice(0, 6)
                           .map((img, i) => (
-                            <div
+                            <button
                               key={i}
                               onClick={() => setLightboxIndex(i)}
-                              className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-white/5 group cursor-pointer"
+                              aria-label={`Ver imagen ${i + 1} en pantalla completa`}
+                              className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-white/5 group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                             >
                               {img.url_original ? (
                                 <Image
@@ -498,7 +510,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <ImageIcon className="w-6 h-6 text-white/70" />
                               </div>
-                            </div>
+                            </button>
                           ))}
                       </div>
                     )}
