@@ -210,7 +210,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
               </div>
 
               {/* COLUMNA DER */}
-              <div className="md:col-span-9 lg:col-span-9 space-y-16">
+              <div className="md:col-span-9 lg:col-span-9 space-y-16 min-w-0">
                 <div className="flex flex-wrap gap-4 justify-start">
                   {/* Condicional para el trailer */}
                   {anime.meta?.trailer && (
@@ -228,15 +228,15 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     <Plus className="w-4 h-4" /> Añadir a lista
                   </button>
                 </div>
-
                 <section className="space-y-4 text-left">
                   <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-[0.3em]">
                     Sinopsis
                   </h3>
                   <div className="relative">
                     <p
+                      id="synopsis-text"
                       className={cn(
-                        "text-[1rem] md:text-[1.05rem] leading-relaxed text-white/80 font-normal max-w-4xl text-pretty transition-all duration-300",
+                        "text-[0.95rem] md:text-[1.05rem] leading-[1.6] text-white/80 font-normal transition-all duration-300",
                         !isSynopsisExpanded && "line-clamp-4",
                       )}
                     >
@@ -273,7 +273,6 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     ))}
                   </div>
                 </section>
-
                 <section className="space-y-6 pt-2">
                   <h3 className="text-white text-xl font-light tracking-wide flex items-center gap-3">
                     <MonitorPlay className="w-5 h-5 text-primary" /> Disponible
@@ -297,26 +296,27 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     )}
                   </div>
                 </section>
-
                 {/* TABS Y DETALLES */}
                 <section className="space-y-6 pt-8 border-t border-white/5">
                   <div
                     role="tablist"
                     aria-label="Secciones del anime"
-                    className="flex border border-white/10 p-1 rounded-lg bg-white/[0.01] w-fit"
+                    // EL FIX: En móvil es w-full, pero en escritorio (md:) vuelve a ser w-fit (ajustado a su contenido)
+                    className="flex w-full md:w-fit border border-white/10 p-1 rounded-lg bg-white/[0.01]"
                   >
                     {availableTabs.map((tab) => (
                       <button
                         key={tab}
                         role="tab"
                         aria-selected={activeTab === tab}
-                        aria-controls={`panel-${tab}`} // Conecta el botón con el contenido
+                        aria-controls={`panel-${tab}`}
                         onClick={() => setActiveTab(tab)}
                         className={cn(
-                          "px-6 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                          // EL FIX: En móvil usa flex-1 (se reparten el 100%), pero en escritorio usa md:flex-none (toman solo su tamaño)
+                          "flex-1 md:flex-none flex justify-center px-2 md:px-8 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                           activeTab === tab
                             ? "bg-primary/10 text-primary border border-primary/20"
-                            : "text-white/40 hover:text-white/80 border border-transparent",
+                            : "text-white/40 hover:text-white/80 border border-transparent hover:bg-white/5",
                         )}
                       >
                         {tab}
@@ -324,7 +324,6 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     ))}
                   </div>
 
-                  {/* Y a tu div que envuelve el contenido ponle role="tabpanel" */}
                   <div
                     role="tabpanel"
                     id={`panel-${activeTab}`}
