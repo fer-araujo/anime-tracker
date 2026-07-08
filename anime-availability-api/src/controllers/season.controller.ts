@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { ENV } from "../config/env.js";
 import { SeasonQuery } from "../models/schema.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
+import { setCacheControl } from "../utils/cache.js";
 
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
@@ -34,13 +35,21 @@ export async function getSeason(
       "MX"
     ).toUpperCase();
 
-    const sortParam =
-      query.rank === "trending" ? "TRENDING_DESC" : "POPULARITY_DESC";
+    // --- Punto 3: "Populares" busca en todo el año, no solo una temporada ---
+    const isPopularYearQuery = query.rank === "popular";
+    const sortParam = isPopularYearQuery ? "POPULARITY_DESC"
+      : query.rank === "trending" ? "TRENDING_DESC"
+      : "POPULARITY_DESC";
+
+    // Cuando rank=popular, omitimos el filtro `season` para abarcar el año completo.
+    // Así "Animes populares" y "Trending esta temporada" no duplican contenido.
+    const seasonFilter = isPopularYearQuery ? "" : "season: $season,";
+    const seasonVarDecl = isPopularYearQuery ? "" : "$season: MediaSeason, ";
 
     const gql = `
-      query ($season: MediaSeason, $seasonYear: Int, $page: Int, $sort: [MediaSort]) {
+      query (${seasonVarDecl}$seasonYear: Int, $page: Int, $sort: [MediaSort]) {
         Page(page: $page, perPage: 50) {
-          media(season: $season, seasonYear: $seasonYear, type: ANIME, sort: $sort, isAdult: false) {
+          media(${seasonFilter} seasonYear: $seasonYear, type: ANIME, sort: $sort, isAdult: false) {
             id
             title { romaji english native }
             coverImage { extraLarge large }
@@ -58,12 +67,21 @@ export async function getSeason(
       }
     `;
 
+    const gqlVariables: Record<string, unknown> = {
+      seasonYear: year,
+      page: 1,
+      sort: [sortParam],
+    };
+    if (!isPopularYearQuery) {
+      gqlVariables.season = season;
+    }
+
     const aniRes = await fetch(ANILIST_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query: gql,
-        variables: { season, seasonYear: year, page: 1, sort: [sortParam] },
+        variables: gqlVariables,
       }),
     });
 
@@ -74,6 +92,7 @@ export async function getSeason(
     const rawMedia = json?.data?.Page?.media;
 
     if (!rawMedia || rawMedia.length === 0) {
+      setCacheControl(res, 'season');
       return res.json({ meta: { season, year, count: 0 }, data: [] });
     }
 
@@ -93,6 +112,7 @@ export async function getSeason(
       return a.title.localeCompare(b.title);
     });
 
+    setCacheControl(res, 'season');
     return res.json({
       meta: {
         country: resolvedCountry,

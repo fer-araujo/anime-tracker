@@ -1,5 +1,6 @@
 // src/services/tmdb.service.ts
-import { memoryCache } from "../utils/cache.js";
+import { hybridCache } from "../utils/cache.js";
+import { fetchWithRetry } from "../utils/fetch.js";
 import type {
   ProviderInfo,
   TMDBProvidersResponse,
@@ -13,6 +14,29 @@ import {
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const TMDB_API_KEY = process.env.TMDB_KEY ?? "";
 
+// --- INTERFACES AUXILIARES PARA SEASON-SPECIFIC SYNOPSIS ---
+
+/** Estructura de una temporada dentro de la respuesta de /tv/{id} */
+interface TMDBSeasonSummary {
+  air_date?: string | null;
+  season_number: number;
+  name?: string;
+  overview?: string;
+}
+
+/** Estructura de la respuesta de /tv/{id} */
+interface TMDBTVDetails {
+  seasons?: TMDBSeasonSummary[];
+  overview?: string | null;
+}
+
+/** Estructura de la respuesta de /tv/{id}/season/{n} */
+interface TMDBSeasonDetail {
+  overview?: string | null;
+  name?: string;
+  air_date?: string | null;
+}
+
 // --- HELPERS DE IMÁGENES ---
 
 export const tmdbPosterUrl = (path?: string | null, size = "w780") =>
@@ -25,15 +49,34 @@ export const tmdbImageUrl = (path?: string | null, size = "original") =>
 export const tmdbBackdropUrl = (path?: string | null, size = "original") =>
   path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined;
 
+// ─── In-flight request deduplication ──────────────────────────────────────────
+
+function withDedup<T extends (...args: any[]) => Promise<any>>(
+  fn: T,
+  keyFn?: (...args: any[]) => string,
+): T {
+  const inFlight = new Map<string, Promise<any>>();
+  const getKey = keyFn ?? ((...args: any[]) => JSON.stringify(args));
+  
+  return ((...args: any[]) => {
+    const key = getKey(...args);
+    const existing = inFlight.get(key);
+    if (existing) return existing;
+    
+    const promise = fn(...args).finally(() => inFlight.delete(key));
+    inFlight.set(key, promise);
+    return promise;
+  }) as T;
+}
 
 // --- FUNCIONES API ---
 
-export async function tmdbSearch(kind: "tv" | "movie", query: string) {
+async function _tmdbSearch(kind: "tv" | "movie", query: string) {
   const url = new URL(`${TMDB_BASE}/search/${kind}`);
   url.searchParams.set("query", query);
   url.searchParams.set("include_adult", "false");
 
-  const res = await fetch(url.toString(), {
+  const res = await fetchWithRetry(url.toString(), {
     headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
   });
 
@@ -46,14 +89,14 @@ export async function tmdbSearch(kind: "tv" | "movie", query: string) {
  * NUEVA FUNCIÓN: Obtiene todas las imágenes de una serie.
  * Filtra por idiomas para buscar "textless" (null) o arte original.
  */
-export async function getTmdbImages(id: number, kind: "tv" | "movie" = "tv") {
+async function _getTmdbImages(id: number, kind: "tv" | "movie" = "tv") {
   const url = new URL(`${TMDB_BASE}/${kind}/${id}/images`);
   
   // Pedimos imágenes sin texto (null), en inglés (en) o japonés (ja)
   url.searchParams.set("include_image_language", "null,en,ja");
 
   try {
-    const res = await fetch(url.toString(), {
+    const res = await fetchWithRetry(url.toString(), {
       headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
     });
     
@@ -77,7 +120,7 @@ export async function getTmdbSynopsis(
   url.searchParams.set("language", language);
 
   try {
-    const res = await fetch(url.toString(), {
+    const res = await fetchWithRetry(url.toString(), {
       headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
     });
     
@@ -90,17 +133,193 @@ export async function getTmdbSynopsis(
   }
 }
 
+/**
+ * Obtiene la sinopsis de TMDB, pero para "tv" busca la sinopsis específica
+ * de la temporada/cour cuyo año de emisión coincida con `aniYear`.
+ * - Para "movie" delega directamente a getTmdbSynopsis.
+ * - Para "tv" busca en el array `seasons` de /tv/{id} la temporada
+ *   cuyo `air_date` calce con `aniYear` (+/- 2 meses si hay
+ *   ambigüedad con `aniMonth`). Si la encuentra, hace un segundo fetch
+ *   a /tv/{id}/season/{n} para obtener su `overview`. Sino, fallback al
+ *   overview general del TV Show.
+ */
+export async function getTmdbSpecificSynopsis(
+  id: number,
+  kind: "tv" | "movie",
+  language: string = "es-MX",
+  aniYear?: number | null,
+  aniMonth?: number | null,
+): Promise<string | null> {
+  // --- Movie: mismo comportamiento de siempre ---
+  if (kind === "movie") {
+    return getTmdbSynopsis(id, kind, language);
+  }
+
+  // --- TV: buscar temporada específica por año/mes ---
+  try {
+    // 1. Obtener datos generales del TV Show (incluye "seasons")
+    const tvUrl = new URL(`${TMDB_BASE}/tv/${id}`);
+    tvUrl.searchParams.set("language", language);
+
+    const tvRes = await fetchWithRetry(tvUrl.toString(), {
+      headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
+    });
+    if (!tvRes.ok) return getTmdbSynopsis(id, kind, language);
+
+    const tvData: TMDBTVDetails = await tvRes.json();
+    const seasons = tvData.seasons;
+
+    // 2. Sin seasons o sin año de referencia → fallback
+    if (!seasons?.length || !aniYear) {
+      return tvData.overview ?? getTmdbSynopsis(id, kind, language);
+    }
+
+    // 3. Buscar temporada cuyo air_date coincida con aniYear
+    //    Primero filtramos por año exacto
+    let candidates = seasons.filter((s) => {
+      if (!s.air_date) return false;
+      const y = new Date(s.air_date).getFullYear();
+      return !isNaN(y) && y === aniYear;
+    });
+
+    // 3b. Si hay mes y múltiples candidatos, desempatar con +/- 2 meses
+    if (candidates.length > 1 && aniMonth) {
+      const monthMin = aniMonth - 2; // puede ser < 1, Date lo maneja
+      const monthMax = aniMonth + 2;
+
+      candidates = candidates.filter((s) => {
+        if (!s.air_date) return false;
+        const d = new Date(s.air_date);
+        const m = d.getMonth() + 1; // getMonth() es 0-indexed
+        return !isNaN(m) && m >= monthMin && m <= monthMax;
+      });
+    }
+
+    // 3c. Si no hay candidatos después del filtro → fallback
+    if (candidates.length === 0) {
+      return tvData.overview ?? getTmdbSynopsis(id, kind, language);
+    }
+
+    // 4. Ordenar por season_number (la primera chronológicamente)
+    candidates.sort((a, b) => a.season_number - b.season_number);
+    const targetSeason = candidates[0];
+
+    // 5. Si la temporada elegida tiene overview en la lista, úsalo
+    //    (TMDB a veces ya incluye overview en la lista de seasons)
+    if (targetSeason.overview) return targetSeason.overview;
+
+    // 6. Fetch específico a /tv/{id}/season/{season_number}
+    const seasonUrl = new URL(
+      `${TMDB_BASE}/tv/${id}/season/${targetSeason.season_number}`,
+    );
+    seasonUrl.searchParams.set("language", language);
+
+    const sRes = await fetchWithRetry(seasonUrl.toString(), {
+      headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
+    });
+    if (!sRes.ok) {
+      return tvData.overview ?? getTmdbSynopsis(id, kind, language);
+    }
+
+    const seasonData: TMDBSeasonDetail = await sRes.json();
+    return seasonData.overview ?? tvData.overview ?? getTmdbSynopsis(id, kind, language);
+  } catch (e) {
+    console.warn(`Error fetching TMDB specific synopsis for ID ${id}`, e);
+    return getTmdbSynopsis(id, kind, language);
+  }
+}
+
+/**
+ * Resuelve el season_number de TMDB que coincide con el año/mes de AniList.
+ * Útil para obtener artwork o sinopsis específica de una temporada/cour.
+ * Lógica equivalente a la búsqueda interna de getTmdbSpecificSynopsis.
+ */
+async function _resolveTmdbSeasonNumber(
+  id: number,
+  aniYear?: number | null,
+  aniMonth?: number | null,
+): Promise<number | null> {
+  if (!aniYear) return null;
+
+  try {
+    const tvUrl = new URL(`${TMDB_BASE}/tv/${id}`);
+    const tvRes = await fetchWithRetry(tvUrl.toString(), {
+      headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
+    });
+    if (!tvRes.ok) return null;
+
+    const tvData: TMDBTVDetails = await tvRes.json();
+    const seasons = tvData.seasons;
+    if (!seasons?.length) return null;
+
+    // Filtrar por año exacto
+    let candidates = seasons.filter((s) => {
+      if (!s.air_date) return false;
+      const y = new Date(s.air_date).getFullYear();
+      return !isNaN(y) && y === aniYear;
+    });
+
+    // Desempatar por mes si hay múltiples candidatos
+    if (candidates.length > 1 && aniMonth) {
+      const monthMin = aniMonth - 2;
+      const monthMax = aniMonth + 2;
+      candidates = candidates.filter((s) => {
+        if (!s.air_date) return false;
+        const d = new Date(s.air_date);
+        const m = d.getMonth() + 1;
+        return !isNaN(m) && m >= monthMin && m <= monthMax;
+      });
+    }
+
+    if (candidates.length === 0) return null;
+
+    candidates.sort((a, b) => a.season_number - b.season_number);
+    return candidates[0].season_number;
+  } catch (e) {
+    console.warn(`Error resolving TMDB season number for ID ${id}`, e);
+    return null;
+  }
+}
+
+/**
+ * Obtiene imágenes (backdrops, logos, posters) específicas de una temporada/cour
+ * desde el endpoint /tv/{id}/season/{season_number}/images de TMDB.
+ */
+async function _getTmdbSeasonImages(
+  id: number,
+  seasonNumber: number,
+): Promise<{ backdrops?: any[]; logos?: any[]; posters?: any[] } | null> {
+  try {
+    const url = new URL(
+      `${TMDB_BASE}/tv/${id}/season/${seasonNumber}/images`,
+    );
+    url.searchParams.set("include_image_language", "null,en,ja");
+
+    const res = await fetchWithRetry(url.toString(), {
+      headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    console.warn(
+      `Error fetching TMDB season images for TV ${id} S${seasonNumber}`,
+      e,
+    );
+    return null;
+  }
+}
+
 export async function tmdbWatchProviders(
   kind: "tv" | "movie",
   id: number,
   region = "MX"
 ): Promise<ProviderInfo[]> {
   const cacheKey = `providers:${kind}:${id}:${region}`;
-  const cached = memoryCache.get(cacheKey);
-  if (cached) return cached as ProviderInfo[];
+  const cached = await hybridCache.get<ProviderInfo[]>(cacheKey);
+  if (cached) return cached;
 
   const url = `${TMDB_BASE}/${kind}/${id}/watch/providers`;
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
   });
   if (!res.ok) return [];
@@ -114,7 +333,7 @@ export async function tmdbWatchProviders(
     name,
   }));
   
-  memoryCache.set(cacheKey, normalized, 1000 * 60 * 60 * 12);
+  await hybridCache.set(cacheKey, normalized, 1000 * 60 * 60 * 12);
   return normalized;
 }
 
@@ -131,3 +350,10 @@ export function isAnimeCandidate(item: TMDBSearchTVItem) {
 
   return isAnimation || fromAnimeRegions;
 }
+
+// ─── Deduplicated exports ────────────────────────────────────────────────────
+
+export const tmdbSearch = withDedup(_tmdbSearch, (kind, query) => `tmdbSearch:${kind}:${query}`);
+export const getTmdbImages = withDedup(_getTmdbImages, (id, kind) => `getTmdbImages:${kind}:${id}`);
+export const getTmdbSeasonImages = withDedup(_getTmdbSeasonImages, (id, season) => `getTmdbSeasonImages:${id}:S${season}`);
+export const resolveTmdbSeasonNumber = withDedup(_resolveTmdbSeasonNumber, (id, y, m) => `resolveTmdbSeasonNumber:${id}:${y}:${m}`);

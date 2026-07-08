@@ -5,11 +5,12 @@ import pLimit from "p-limit";
 import { ENV } from "../config/env.js";
 // Ya no necesitamos normalizeTitle aquí
 import { htmlToText } from "../utils/sanitize.js";
+import { setCacheControl } from "../utils/cache.js";
 import { extractStudio } from "../utils/extractStudio.js";
 import { resolveProvidersForAnimeDetailed } from "../utils/resolveProviders.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
-import { getTmdbSynopsis } from "../services/tmdb.service.js";
+import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
 
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
@@ -122,12 +123,12 @@ export async function getAnimeDetails(
     const kind = media.format === "MOVIE" ? "movie" : "tv";
     const isReleasing = media.status === "RELEASING";
 
-    // Pasamos el title directo
+    // Pasamos el title directo + startDate para artwork de temporada específica
     const { backdrop, logo, artworkCandidates, tmdbId } =
       await resolveHeroArtwork(title, kind, {
         bannerImage: media.bannerImage,
         coverImage: media.coverImage,
-      });
+      }, media.startDate);
 
     const providersData = await resolveProvidersForAnimeDetailed(
       anilistId,
@@ -139,7 +140,12 @@ export async function getAnimeDetails(
       isReleasing
     );
 
-    const spanishSynopsis = tmdbId ? await getTmdbSynopsis(tmdbId, kind) : null;
+    // Extraer año/mes desde AniList para sinopsis específica de temporada/cour
+    const aniYear = media.startDate?.year ?? media.seasonYear ?? null;
+    const aniMonth = media.startDate?.month ?? null;
+    const spanishSynopsis = tmdbId
+      ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", aniYear, aniMonth)
+      : null;
 
     const rawRecommendations =
       media.recommendations?.nodes
@@ -223,6 +229,7 @@ export async function getAnimeDetails(
       },
     };
 
+    setCacheControl(res, 'anime');
     return res.json({ data: result });
   } catch (err) {
     console.error("🔥 Error crítico en getAnimeDetails:", err);
