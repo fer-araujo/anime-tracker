@@ -30,6 +30,20 @@ export function normalizeTitle(title: string): string {
   return clean.replace(/\s+/g, " ").trim();
 }
 
+/** Regex para detectar si un título de AniList corresponde a una secuela/season/cour */
+const SEASON_SEQUEL_RE =
+  /\d+(st|nd|rd|th)? season|season \d+|final season|part \d+|cour \d+/i;
+
+/**
+ * Detecta si el título indica una temporada/secuela específica.
+ * Útil para que resolveHeroArtwork decida si debe priorizar assets
+ * nativos de AniList sobre los del TV Show padre en TMDB.
+ */
+export function isSeasonSequel(title: string): boolean {
+  if (!title) return false;
+  return SEASON_SEQUEL_RE.test(title);
+}
+
 // 2. NUEVO: Generador de cascada inteligente (El corta-subtítulos)
 export function getTitleVariations(title: string): string[] {
   if (!title) return [];
