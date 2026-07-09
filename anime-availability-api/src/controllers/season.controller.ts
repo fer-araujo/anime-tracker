@@ -1,8 +1,10 @@
+import { logger } from "../utils/logger.js";
 import type { Request, Response, NextFunction } from "express";
 import { ENV } from "../config/env.js";
 import { SeasonQuery } from "../models/schema.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
 import { setCacheControl } from "../utils/cache.js";
+import { buildSeasonPageQuery } from "../graphql/queries/seasonPage.gql.js";
 
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
@@ -43,29 +45,7 @@ export async function getSeason(
 
     // Cuando rank=popular, omitimos el filtro `season` para abarcar el año completo.
     // Así "Animes populares" y "Trending esta temporada" no duplican contenido.
-    const seasonFilter = isPopularYearQuery ? "" : "season: $season,";
-    const seasonVarDecl = isPopularYearQuery ? "" : "$season: MediaSeason, ";
-
-    const gql = `
-      query (${seasonVarDecl}$seasonYear: Int, $page: Int, $sort: [MediaSort]) {
-        Page(page: $page, perPage: 50) {
-          media(${seasonFilter} seasonYear: $seasonYear, type: ANIME, sort: $sort, isAdult: false) {
-            id
-            title { romaji english native }
-            coverImage { extraLarge large }
-            bannerImage
-            description
-            episodes
-            status
-            format
-            genres
-            averageScore
-            nextAiringEpisode { episode airingAt }
-            studios(isMain: true) { edges { isMain node { name } } }
-          }
-        }
-      }
-    `;
+    const gql = buildSeasonPageQuery(isPopularYearQuery);
 
     const gqlVariables: Record<string, unknown> = {
       seasonYear: year,
