@@ -1,9 +1,13 @@
 import { NextFunction, Request, Response } from "express";
 import { AppError } from "../errors/AppError.js";
 
-export function notFound(_req: Request, res: Response, _next: NextFunction) {
+export function notFound(req: Request, res: Response, _next: NextFunction) {
   res.status(404).json({
-    error: { code: "NOT_FOUND", message: "Resource not found" },
+    error: {
+      code: "NOT_FOUND",
+      message: "Resource not found",
+      requestId: req.requestId,
+    },
   });
 }
 
