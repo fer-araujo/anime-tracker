@@ -64,7 +64,7 @@ export async function getAnimeDetails(
       await resolveHeroArtwork(title, kind, {
         bannerImage: media.bannerImage,
         coverImage: media.coverImage,
-      }, media.startDate);
+      }, media.startDate, { allowSeasonBackdrop: true });
 
     const providersData = await resolveProvidersForAnimeDetailed(
       anilistId,

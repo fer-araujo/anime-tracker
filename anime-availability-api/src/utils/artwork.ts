@@ -67,7 +67,8 @@ export async function resolveHeroArtwork(
   kind: "tv" | "movie",
   media: { bannerImage?: string | null; coverImage?: any },
   aniStartDate?: { year?: number; month?: number } | null,
-) {
+  opts?: { allowSeasonBackdrop?: boolean },
+): Promise<{ backdrop: string | null; logo: string | null; artworkCandidates: any[]; tmdbId: number | null }> {
   let tmdbId: number | null = null;
   let backdrop: string | null = null;
   let logo: string | null = null;
@@ -171,6 +172,47 @@ export async function resolveHeroArtwork(
               .sort((a: any, b: any) => b.vote_average - a.vote_average)[0];
             if (bestSeasonLogo) {
               logo = tmdbImageUrl(bestSeasonLogo.file_path, "original");
+            }
+          }
+        }
+      }
+
+      // ----------------------------------------------------------------
+      // PASO 3: BACKDROP DE TEMPORADA (solo detail pages, con quality gate)
+      // ----------------------------------------------------------------
+      // Cuando allowSeasonBackdrop=true (anime detail pages), intentamos
+      // backdrop específico de la temporada. Quality gate: width >= 1280
+      // y aspect ratio >= 1.5 (landscape). Si no pasa, queda el root.
+      // ----------------------------------------------------------------
+      if (opts?.allowSeasonBackdrop && kind === "tv" && tmdbId) {
+        const seasonNumber = await resolveTmdbSeasonNumber(
+          tmdbId,
+          aniStartDate?.year,
+          aniStartDate?.month,
+        );
+
+        if (seasonNumber) {
+          const seasonImages = await getTmdbSeasonImages(tmdbId, seasonNumber);
+
+          if (seasonImages?.backdrops?.length) {
+            // Quality gate: filtrar por resolución mínima y aspecto landscape
+            const usableBackdrops = seasonImages.backdrops
+              .filter((img: any) => {
+                if (!img.width || img.width < 1280) return false;
+                const aspect = img.width / (img.height || 1);
+                return aspect >= 1.5;
+              })
+              .sort(
+                (a: any, b: any) =>
+                  ((b.vote_average || 0) * (b.vote_count || 0)) -
+                  ((a.vote_average || 0) * (a.vote_count || 0)),
+              );
+
+            if (usableBackdrops.length > 0) {
+              backdrop = tmdbBackdropUrl(usableBackdrops[0].file_path, "w1280") ?? null;
+              logger.info(
+                `[artwork] Using season-specific backdrop (S${seasonNumber}) for "${searchTitle}"`,
+              );
             }
           }
         }
