@@ -1,3 +1,5 @@
+import { logger } from "../utils/logger.js";
+
 const SHIKI_BASE = "https://shikimori.one";
 
 export type ShikiAnime = {
@@ -37,7 +39,7 @@ export async function shikiSearchAnime(
   });
 
   if (!res.ok) {
-    console.warn("[shikimori] search error:", res.status);
+    logger.warn({ status: res.status }, "[shikimori] search error");
     return [];
   }
 
@@ -60,10 +62,7 @@ export async function shikiGetScreenshots(
   });
 
   if (!res.ok) {
-    console.warn(
-      `[shikimori] screenshots error for ${animeId}:`,
-      res.status
-    );
+    logger.warn({ status: res.status }, `[shikimori] screenshots error for ${animeId}`);
     return [];
   }
 

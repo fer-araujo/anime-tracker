@@ -1,10 +1,11 @@
 import { config } from "dotenv";
+import { logger } from "../utils/logger.js";
 config();
 
 const required: string[] = ["PORT"];
 for (const k of required) {
   if (!process.env[k]) {
-    console.warn(`[env] Missing ${k} (using defaults if available)`);
+    logger.warn(`[env] Missing ${k} (using defaults if available)`);
   }
 }
 

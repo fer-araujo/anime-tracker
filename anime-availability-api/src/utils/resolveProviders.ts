@@ -1,4 +1,5 @@
 // src/utils/resolveProviders.ts
+import { logger } from "../utils/logger.js";
 import { memoryCache } from "../utils/cache.js";
 import { normalizeProviderNames } from "../utils/providers.js";
 import { tmdbWatchProviders } from "../services/tmdb.service.js";
@@ -133,7 +134,7 @@ export async function resolveProvidersForAnimeDetailed(
         }
       }
     } catch (err) {
-      console.warn("[resolveProviders] TMDB error:", err);
+      logger.warn({ err }, "[resolveProviders] TMDB error");
     }
   }
 
@@ -144,9 +145,7 @@ export async function resolveProvidersForAnimeDetailed(
 
     if (isRecent) {
       try {
-        console.log(
-          `[RapidAPI] Consultando fallback para: ${knownTitle} (${year || "Año desconocido"})`,
-        );
+        logger.info(`[RapidAPI] Consultando fallback para: ${knownTitle} (${year || "Año desconocido"})`);
 
         const titleVariants = getTitleVariations(knownTitle);
         if (titleVariants.length === 0) titleVariants.push(knownTitle);
@@ -161,7 +160,7 @@ export async function resolveProvidersForAnimeDetailed(
             kind,
           );
           if (saItems && saItems.length > 0) {
-            console.log(`[RapidAPI] Éxito con la variación: "${variant}"`);
+            logger.info(`[RapidAPI] Éxito con la variación: "${variant}"`);
             break;
           }
         }
@@ -178,15 +177,10 @@ export async function resolveProvidersForAnimeDetailed(
         }
       } catch (err) {
         saOk = false;
-        console.warn(
-          "[resolveProviders] SA error (Quota might be exceeded):",
-          err,
-        );
+        logger.warn({ err }, "[resolveProviders] SA error (Quota might be exceeded)");
       }
     } else {
-      console.log(
-        `[Ahorro RapidAPI] Omitido por antigüedad: ${knownTitle} (${year})`,
-      );
+      logger.info(`[Ahorro RapidAPI] Omitido por antigüedad: ${knownTitle} (${year})`);
     }
   }
 

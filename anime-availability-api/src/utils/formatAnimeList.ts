@@ -1,4 +1,5 @@
 // src/utils/formatAnimeList.ts
+import { logger } from "../utils/logger.js";
 import pLimit from "p-limit";
 import { getTitleVariations } from "./tmdb.enrich.js"; // NUEVO
 import {
@@ -46,7 +47,7 @@ export async function formatAnimeList(
             }
           }
         } catch (e) {
-          console.warn(`[formatAnimeList] TMDB search fail for ${title}`, e);
+          logger.warn({ err: e }, `[formatAnimeList] TMDB search fail for ${title}`);
         }
 
         const yearFromSeason = anime.seasonYear;

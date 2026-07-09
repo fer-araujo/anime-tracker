@@ -1,4 +1,5 @@
 // src/services/tmdb.service.ts
+import { logger } from "../utils/logger.js";
 import { hybridCache } from "../utils/cache.js";
 import { fetchWithRetry } from "../utils/fetch.js";
 import type {
@@ -103,8 +104,8 @@ async function _getTmdbImages(id: number, kind: "tv" | "movie" = "tv") {
     if (!res.ok) return null;
     return await res.json(); // Retorna { backdrops: [], posters: [] }
   } catch (e) {
-    console.warn(`Error fetching TMDB images for ID ${id}`, e);
-    return null;
+logger.warn({ err: e, id }, "Error fetching TMDB images");
+      return null;
   }
 }
 
@@ -128,7 +129,7 @@ export async function getTmdbSynopsis(
     const data = await res.json();
     return data.overview || null;
   } catch (e) {
-    console.warn(`Error fetching TMDB synopsis for ID ${id}`, e);
+    logger.warn({ err: e, id }, "Error fetching TMDB synopsis");
     return null;
   }
 }
@@ -224,7 +225,7 @@ export async function getTmdbSpecificSynopsis(
     const seasonData: TMDBSeasonDetail = await sRes.json();
     return seasonData.overview ?? tvData.overview ?? getTmdbSynopsis(id, kind, language);
   } catch (e) {
-    console.warn(`Error fetching TMDB specific synopsis for ID ${id}`, e);
+    logger.warn({ err: e, id }, "Error fetching TMDB specific synopsis");
     return getTmdbSynopsis(id, kind, language);
   }
 }
@@ -276,7 +277,7 @@ async function _resolveTmdbSeasonNumber(
     candidates.sort((a, b) => a.season_number - b.season_number);
     return candidates[0].season_number;
   } catch (e) {
-    console.warn(`Error resolving TMDB season number for ID ${id}`, e);
+    logger.warn({ err: e, id }, "Error resolving TMDB season number");
     return null;
   }
 }
@@ -301,10 +302,7 @@ async function _getTmdbSeasonImages(
     if (!res.ok) return null;
     return await res.json();
   } catch (e) {
-    console.warn(
-      `Error fetching TMDB season images for TV ${id} S${seasonNumber}`,
-      e,
-    );
+    logger.warn({ err: e, id, seasonNumber }, "Error fetching TMDB season images");
     return null;
   }
 }

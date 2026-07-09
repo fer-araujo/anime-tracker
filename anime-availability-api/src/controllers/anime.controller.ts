@@ -2,6 +2,7 @@
 import type { Request, Response, NextFunction } from "express";
 import pLimit from "p-limit";
 
+import { logger } from "../utils/logger.js";
 import { ENV } from "../config/env.js";
 // Ya no necesitamos normalizeTitle aquí
 import { htmlToText } from "../utils/sanitize.js";
@@ -102,7 +103,7 @@ export async function getAnimeDetails(
 
     if (!aniRes.ok) {
       const errorText = await aniRes.text();
-      console.error(`🔥 Error de AniList (${aniRes.status}):`, errorText);
+      logger.error({ status: aniRes.status }, `AniList error for ID ${anilistId}`);
       return res.status(aniRes.status).json({
         error: "Anime not found in AniList or GraphQL Error",
         details: errorText,
@@ -232,7 +233,7 @@ export async function getAnimeDetails(
     setCacheControl(res, 'anime');
     return res.json({ data: result });
   } catch (err) {
-    console.error("🔥 Error crítico en getAnimeDetails:", err);
+    logger.error({ err }, "Error crítico en getAnimeDetails");
     next(err);
   }
 }
