@@ -1,4 +1,5 @@
 import { ENV } from "../config/env.js";
+import { logger } from "./logger.js";
 
 // ─── Existing TTLCache (unchanged) ───────────────────────────────────────────
 
@@ -63,9 +64,9 @@ export class HybridCache {
           await client.set(key, value, { px: ttlMs });
         },
       };
-      console.log("[cache] Redis adapter initialised");
+      logger.info("[cache] Redis adapter initialised");
     } catch (err) {
-      console.warn("[cache] Failed to initialise Redis adapter, falling back to memory-only", err);
+      logger.warn({ err }, "[cache] Failed to initialise Redis adapter, falling back to memory-only");
     }
     return this.redis;
   }
@@ -97,7 +98,7 @@ export class HybridCache {
     const redis = await this.getRedis();
     if (redis) {
       await Promise.resolve(redis.set(key, value, ttlMs)).catch((err: unknown) => {
-        console.warn(`[cache] Redis set failed for key "${key}":`, err);
+        logger.warn({ err }, `[cache] Redis set failed for key "${key}"`);
       });
     }
   }

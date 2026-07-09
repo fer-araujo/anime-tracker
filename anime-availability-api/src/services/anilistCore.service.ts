@@ -1,4 +1,5 @@
 // src/services/anilistCore.service.ts
+import { preferTitle } from "../utils/title.js";
 import { ENV } from "../config/env.js";
 import {
   AnimeCore,
@@ -22,9 +23,6 @@ const STREAMING_SITES = new Set([
   "Funimation",
 ]);
 
-function preferTitle(titles: AnimeTitleSet): string {
-  return titles.english ?? titles.romaji ?? titles.native ?? "Untitled";
-}
 
 function fuzzyToISO(fd: AniMedia["startDate"]): string | null {
   if (!fd?.year) return null;

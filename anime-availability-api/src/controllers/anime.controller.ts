@@ -2,7 +2,9 @@
 import type { Request, Response, NextFunction } from "express";
 import pLimit from "p-limit";
 
+import { logger } from "../utils/logger.js";
 import { ENV } from "../config/env.js";
+import { ANIME_DETAILS_GQL } from "../graphql/queries/animeDetails.gql.js";
 // Ya no necesitamos normalizeTitle aquí
 import { htmlToText } from "../utils/sanitize.js";
 import { setCacheControl } from "../utils/cache.js";
@@ -27,73 +29,7 @@ export async function getAnimeDetails(
       "MX"
     ).toUpperCase();
 
-    const gql = `
-      query ($id: Int) {
-        Media(id: $id, type: ANIME) {
-          id
-          title { romaji english native }
-          coverImage { extraLarge large }
-          bannerImage
-          description
-          episodes
-          duration
-          status
-          season
-          seasonYear
-          format
-          genres
-          averageScore
-          rankings {
-            allTime
-            rank
-            type
-          }
-          isAdult
-          studios(isMain: true) { edges { isMain node { name } } }
-          nextAiringEpisode { episode airingAt }
-          startDate { year month day }
-          trailer { id site thumbnail } 
-          streamingEpisodes { 
-            title
-            thumbnail
-            url
-          }
-          relations {
-            edges {
-              relationType
-              node {
-                id
-                title { romaji english native }
-                coverImage { large }
-                format
-                status
-              }
-            }
-          }
-          recommendations(sort: [RATING_DESC], page: 1, perPage: 10) {
-            nodes {
-              mediaRecommendation {
-                id
-                title { romaji english native }
-                coverImage { extraLarge large }
-                bannerImage
-                description
-                episodes
-                status
-                format
-                genres
-                averageScore
-                season
-                seasonYear
-                isAdult
-                nextAiringEpisode { episode airingAt }
-                studios(isMain: true) { nodes { name } } 
-              }
-            }
-          }
-        }
-      }
-    `;
+    const gql = ANIME_DETAILS_GQL;
     const aniRes = await fetch(ANILIST_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -102,7 +38,7 @@ export async function getAnimeDetails(
 
     if (!aniRes.ok) {
       const errorText = await aniRes.text();
-      console.error(`🔥 Error de AniList (${aniRes.status}):`, errorText);
+      logger.error({ status: aniRes.status }, `AniList error for ID ${anilistId}`);
       return res.status(aniRes.status).json({
         error: "Anime not found in AniList or GraphQL Error",
         details: errorText,
@@ -232,7 +168,7 @@ export async function getAnimeDetails(
     setCacheControl(res, 'anime');
     return res.json({ data: result });
   } catch (err) {
-    console.error("🔥 Error crítico en getAnimeDetails:", err);
+    logger.error({ err }, "Error crítico en getAnimeDetails");
     next(err);
   }
 }

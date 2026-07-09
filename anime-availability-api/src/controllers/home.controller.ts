@@ -3,7 +3,8 @@ import type { Request, Response, NextFunction } from "express";
 import { hybridCache, setCacheControl } from "../utils/cache.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
 import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
-// Ya no necesitamos importar normalizeTitle aquí, la cascada lo hace por dentro
+import { preferTitle } from "../utils/title.js";
+import { HOME_HERO_GQL } from "../graphql/queries/homeHero.gql.js";
 
 /* helpers */
 function stripHtml(input?: string | null) {
@@ -12,53 +13,22 @@ function stripHtml(input?: string | null) {
   return noTags.trim();
 }
 
-function preferTitle(t?: {
-  english?: string | null;
-  romaji?: string | null;
-  native?: string | null;
-}) {
-  return t?.english ?? t?.romaji ?? t?.native ?? "Untitled";
-}
-
-const ANILIST_ENDPOINT = "https://graphql.anilist.co";
+const ANILIST_ENDPOINT = process.env.ANILIST_URL || "https://graphql.anilist.co";
 
 export async function getHomeHero(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ) {
   try {
     const cacheKey = "home:hero:cinematic:v3";
     const cached = await hybridCache.get<any>(cacheKey);
     if (cached) return res.json(cached);
 
-    const gql = `
-      query {
-        Page(page: 1, perPage: 15) {
-          media(type: ANIME, sort: [POPULARITY_DESC], status: RELEASING) {
-            id
-            title { romaji english native }
-            coverImage { extraLarge }
-            bannerImage
-            description
-            episodes
-            genres
-            averageScore
-            seasonYear
-            startDate { year month day }
-            status
-            studios(isMain: true) { edges { isMain node { name } } }
-            trailer { id site }
-            type
-          }
-        }
-      }
-    `;
-
     const aniRes = await fetch(ANILIST_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: gql }),
+      body: JSON.stringify({ query: HOME_HERO_GQL }),
     });
 
     if (!aniRes.ok)
@@ -71,58 +41,39 @@ export async function getHomeHero(
       const kind = m.type === "MOVIE" ? "movie" : "tv";
 
       // A) Obtenemos TODO del artwork service
-      // Mandamos el título directamente + startDate para secuelas
       const { backdrop, logo, tmdbId } = await resolveHeroArtwork(title, kind, {
         bannerImage: m.bannerImage,
       }, m.startDate);
 
       if (!backdrop) return null;
 
-      const aniYear = m.startDate?.year ?? m.seasonYear ?? null;
+      // B) Synopsis con season-awareness
       const aniMonth = m.startDate?.month ?? null;
-      const spanishSynopsis = tmdbId
-        ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", aniYear, aniMonth)
+      const synopsis = tmdbId
+        ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", m.seasonYear, aniMonth)
         : null;
 
-      const synopsisRaw = stripHtml(spanishSynopsis || m.description);
-      const synopsis = synopsisRaw
-        ? synopsisRaw.length > 180
-          ? synopsisRaw.slice(0, 180) + "..."
-          : synopsisRaw
-        : "";
-
-      // B) CONSTRUCCIÓN DE RESPUESTA MINIMALISTA
-      return {
-        id: { anilist: m.id, tmdb: tmdbId },
+      const item = {
+        id: m.id,
         title,
-        images: {
-          banner: m.bannerImage,
-          backdrop: backdrop,
-          logo: logo,
-          poster: m.coverImage?.extraLarge,
-        },
-        meta: {
-          synopsis: synopsis,
-          year: m.seasonYear,
-          rating: m.averageScore ? (m.averageScore / 10).toFixed(1) : null,
-          studio: m.studios?.edges?.[0]?.node?.name || null,
-          genres: m.genres?.slice(0, 3) || [],
-          status: m.status,
-          episodes: m.episodes,
-          type: m.type,
-          trailerId: m.trailer?.site === "youtube" ? m.trailer.id : null,
-        },
+        image: m.coverImage?.extraLarge ?? m.bannerImage,
+        backdrop,
+        logo,
+        description: synopsis ?? stripHtml(m.description),
+        episodes: m.episodes,
+        genres: m.genres,
+        score: m.averageScore,
+        trailer: m.trailer,
       };
+      return item;
     });
 
-    const heroItems = await Promise.all(itemsProm);
-    const validHeroes = heroItems.filter((h) => h !== null).slice(0, 5);
+    const items = (await Promise.all(itemsProm)).filter(Boolean).slice(0, 10);
 
-    const response = { data: validHeroes };
-    await hybridCache.set(cacheKey, response, 1000 * 60 * 60);
+    const payload = { data: items };
+    await hybridCache.set(cacheKey, payload, 1000 * 60 * 5);
     setCacheControl(res, 'hero');
-
-    return res.json(response);
+    return res.json(payload);
   } catch (err) {
     next(err);
   }

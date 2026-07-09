@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +25,7 @@
     "helmet": "^8.1.0",
     "morgan": "^1.10.1",
     "p-limit": "^7.1.1",
+    "pino": "^10.3.1",
     "zod": "^4.1.12"
   },
   "devDependencies": {
@@ -32,8 +35,11 @@
     "@types/helmet": "^0.0.48",
     "@types/morgan": "^1.9.10",
     "@types/node": "^24.7.0",
+    "@types/supertest": "^7.2.0",
     "nodemon": "^3.1.10",
+    "supertest": "^7.2.2",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
   }
 }

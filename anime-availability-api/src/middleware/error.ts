@@ -1,19 +1,38 @@
 import { NextFunction, Request, Response } from "express";
+import { AppError } from "../errors/AppError.js";
 
-export function notFound(_req: Request, res: Response, _next: NextFunction) {
-  res.status(404).json({ error: "NOT_FOUND" });
+export function notFound(req: Request, res: Response, _next: NextFunction) {
+  res.status(404).json({
+    error: {
+      code: "NOT_FOUND",
+      message: "Resource not found",
+      requestId: req.requestId,
+    },
+  });
 }
 
 export function errorHandler(
-  err: any,
-  _req: Request,
+  err: Error,
+  req: Request,
   res: Response,
   _next: NextFunction
 ) {
-  // eslint-disable-next-line no-console
-  console.error(err);
-  res.status(err?.status || 500).json({
-    error: err?.code || "INTERNAL_ERROR",
-    message: err?.message || "Something went wrong"
+  if (err instanceof AppError) {
+    res.status(err.statusCode).json({
+      error: {
+        code: err.code,
+        message: err.message,
+        requestId: req.requestId,
+      },
+    });
+    return;
+  }
+
+  res.status(500).json({
+    error: {
+      code: "INTERNAL_ERROR",
+      message: "Something went wrong",
+      requestId: req.requestId,
+    },
   });
 }

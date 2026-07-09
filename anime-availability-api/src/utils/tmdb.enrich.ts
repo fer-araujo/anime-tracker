@@ -1,4 +1,5 @@
 // src/utils/tmdb.enrich.ts
+import { logger } from "../utils/logger.js";
 import type {
   BaseAnimeInfo,
   ProviderInfo,
@@ -117,14 +118,11 @@ export async function enrichWithTmdb(
       const results = await tmdbSearch(kind, variant);
       if (results && results.length > 0) {
         tmdbResults = results;
-        console.log(`[tmdb.enrich] Éxito con la variación: "${variant}"`);
+        logger.info(`[tmdb.enrich] Éxito con la variación: "${variant}"`);
         break; // Si TMDB encuentra algo, rompemos el ciclo
       }
     } catch (err) {
-      console.warn(
-        `[tmdb.enrich] Error buscando la variante "${variant}":`,
-        err,
-      );
+      logger.warn({ err }, `[tmdb.enrich] Error buscando la variante "${variant}"`);
     }
   }
 
@@ -153,7 +151,7 @@ export async function enrichWithTmdb(
       if (Array.isArray(provList) && provList.length) providers = provList;
     }
   } catch (err) {
-    console.warn("[tmdb.enrich] providers error:", err);
+    logger.warn({ err }, "[tmdb.enrich] providers error");
   }
 
   return {

@@ -1,4 +1,5 @@
 // src/services/anilist.service.ts
+import { logger } from "../utils/logger.js";
 import { memoryCache } from "../utils/cache.js";
 import type {
   AiringStatus,
@@ -58,7 +59,7 @@ export async function fetchAniListBySearch(
 
   if (!res.ok) {
     const text = await res.text();
-    console.warn("[AniList] search error:", res.status, text);
+    logger.warn({ status: res.status }, `[AniList] search error: ${text}`);
     return null;
   }
 

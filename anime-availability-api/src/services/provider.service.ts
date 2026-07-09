@@ -1,4 +1,5 @@
 // src/services/provider.service.ts
+import { preferTitle } from "../utils/title.js";
 import { ENV } from "../config/env.js";
 import { tmdbSearch, tmdbWatchProviders, isAnimeCandidate } from "./tmdb.service.js";
 import type { ProviderInfo } from "../types/types.js";
@@ -16,14 +17,6 @@ type AniListTitleResp = {
     } | null;
   };
 };
-
-function preferTitle(t?: {
-  romaji?: string | null;
-  english?: string | null;
-  native?: string | null;
-}) {
-  return t?.english ?? t?.romaji ?? t?.native ?? "Untitled";
-}
 
 function inferKind(format?: string | null): "tv" | "movie" {
   return String(format).toUpperCase() === "MOVIE" ? "movie" : "tv";
@@ -62,7 +55,7 @@ async function fetchAniListTitleAndKind(
   if (!media) throw new Error("AniList: Media not found");
 
   return {
-    title: preferTitle(media.title ?? undefined),
+    title: preferTitle(media.title ?? { native: "Untitled" }),
     kind: inferKind(media.format),
   };
 }

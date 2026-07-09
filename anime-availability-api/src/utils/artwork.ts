@@ -1,4 +1,5 @@
 // src/utils/artwork.ts
+import { logger } from "../utils/logger.js";
 import type { ArtworkCandidate } from "../types/animeCore.js";
 import {
   tmdbSearch,
@@ -83,7 +84,7 @@ export async function resolveHeroArtwork(
         bestTmdb = tmdbResults.find(isAnimeCandidate) ?? tmdbResults[0];
 
         if (bestTmdb) {
-          console.log(`[artwork] Match encontrado usando: "${variant}"`);
+          logger.info(`[artwork] Match encontrado usando: "${variant}"`);
           break;
         }
       }
@@ -176,7 +177,7 @@ export async function resolveHeroArtwork(
       }
     }
   } catch (e) {
-    console.warn("[artwork] Resolution failed", e);
+    logger.warn({ err: e }, "[artwork] Resolution failed");
   }
 
   // Fallback global a AniList banner (cubre casos sin TMDB)

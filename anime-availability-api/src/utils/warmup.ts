@@ -1,4 +1,5 @@
 import { ENV } from "../config/env.js";
+import { logger } from "./logger.js";
 
 interface WarmupTarget {
   path: string;
@@ -23,7 +24,7 @@ export async function warmupCache(): Promise<void> {
   const port = ENV.PORT;
   const baseUrl = `http://localhost:${port}`;
 
-  console.log(`[warmup] Warming cache for ${WARMUP_TARGETS.length} targets...`);
+  logger.info(`[warmup] Warming cache for ${WARMUP_TARGETS.length} targets...`);
 
   const results = await Promise.allSettled(
     WARMUP_TARGETS.map(async ({ path, label }) => {
@@ -35,20 +36,18 @@ export async function warmupCache(): Promise<void> {
         const duration = Date.now() - start;
 
         if (res.ok) {
-          console.log(`[warmup] ✓ ${label} — ${res.status} (${duration}ms)`);
+          logger.info(`[warmup] ✓ ${label} — ${res.status} (${duration}ms)`);
         } else {
-          console.warn(
-            `[warmup] ✗ ${label} — ${res.status} ${res.statusText} (${duration}ms)`,
-          );
+          logger.warn(`[warmup] ✗ ${label} — ${res.status} ${res.statusText} (${duration}ms)`);
         }
       } catch (err) {
         const duration = Date.now() - start;
         const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`[warmup] ✗ ${label} — error (${duration}ms): ${msg}`);
+        logger.warn(`[warmup] ✗ ${label} — error (${duration}ms): ${msg}`);
       }
     }),
   );
 
   const succeeded = results.filter((r) => r.status === "fulfilled").length;
-  console.log(`[warmup] Done — ${succeeded}/${WARMUP_TARGETS.length} targets`);
+  logger.info(`[warmup] Done — ${succeeded}/${WARMUP_TARGETS.length} targets`);
 }
