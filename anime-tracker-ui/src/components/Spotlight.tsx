@@ -31,6 +31,8 @@ export function HeroCarouselCinematic({
 
   const router = useRouter();
   const total = items.length || 0;
+
+  if (total === 0) return null;
   const prefersReducedMotion =
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
