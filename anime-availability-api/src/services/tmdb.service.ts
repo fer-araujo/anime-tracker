@@ -163,10 +163,21 @@ export async function getTmdbSpecificSynopsis(
   language: string = "es-MX",
   aniYear?: number | null,
   aniMonth?: number | null,
+  nextAiringAt?: number | null,
 ): Promise<string | null> {
   // --- Movie: mismo comportamiento de siempre ---
   if (kind === "movie") {
     return getTmdbSynopsis(id, kind, language);
+  }
+
+  // --- TV: derivar año/mes del próximo episodio si está disponible ---
+  // nextAiringAt es un timestamp Unix de AniList. Al usarlo en vez de
+  // seasonYear/startDate, obtenemos la temporada/cour ACTUAL, no la primera.
+  if (nextAiringAt && kind === "tv") {
+    const airDate = new Date(nextAiringAt * 1000);
+    aniYear = airDate.getFullYear();
+    aniMonth = airDate.getMonth() + 1;
+    logger.debug({ aniYear, aniMonth, nextAiringAt }, "[tmdb] season derived from nextAiringEpisode");
   }
 
   // --- TV: buscar temporada específica por año/mes ---
