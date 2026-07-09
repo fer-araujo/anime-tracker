@@ -50,7 +50,7 @@ export async function getHomeHero(
       // B) Synopsis con season-awareness
       const aniMonth = m.startDate?.month ?? null;
       const synopsis = tmdbId
-        ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", m.seasonYear, aniMonth)
+        ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", m.seasonYear, aniMonth, m.nextAiringEpisode?.airingAt)
         : null;
 
       const synopsisText = synopsis || stripHtml(m.description) || "";
