@@ -46,8 +46,8 @@ export default function Tooltip({
         id={tooltipId}
         className={`
           pointer-events-none absolute z-50
-          whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1
-          text-xs text-neutral-100 shadow-lg
+          whitespace-normal break-words max-w-[min(90vw,35rem)] rounded-md bg-neutral-900 px-2.5 py-1.5
+          text-xs text-neutral-100 shadow-lg leading-relaxed
           opacity-0 transition-opacity duration-150
           group-hover/tooltip:opacity-100
           ${positionClasses}

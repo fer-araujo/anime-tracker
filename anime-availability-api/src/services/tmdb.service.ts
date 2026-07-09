@@ -110,28 +110,41 @@ logger.warn({ err: e, id }, "Error fetching TMDB images");
 }
 
 /**
- * NUEVA FUNCIÓN: Obtiene la sinopsis en un idioma específico (por defecto es-MX)
+ * Obtiene la sinopsis en un idioma específico, con fallback automático
+ * a otros idiomas si el solicitado no tiene overview.
+ * 
+ * Cadena de fallback: "es-MX" → "es-ES" → "en"
  */
+const SYNOPSIS_LANG_FALLBACKS = ["es-MX", "es-ES", "en"];
+
 export async function getTmdbSynopsis(
   id: number,
   kind: "tv" | "movie" = "tv",
   language: string = "es-MX"
 ): Promise<string | null> {
-  const url = new URL(`${TMDB_BASE}/${kind}/${id}`);
-  url.searchParams.set("language", language);
+  const languages = language === "es-MX"
+    ? SYNOPSIS_LANG_FALLBACKS
+    : [language];
 
-  try {
-    const res = await fetchWithRetry(url.toString(), {
-      headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
-    });
-    
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.overview || null;
-  } catch (e) {
-    logger.warn({ err: e, id }, "Error fetching TMDB synopsis");
-    return null;
+  for (const lang of languages) {
+    try {
+      const url = new URL(`${TMDB_BASE}/${kind}/${id}`);
+      url.searchParams.set("language", lang);
+
+      const res = await fetchWithRetry(url.toString(), {
+        headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
+      });
+
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.overview?.trim()) return data.overview.trim();
+    } catch (e) {
+      logger.warn({ err: e, id, language: lang }, "Error fetching TMDB synopsis");
+      continue;
+    }
   }
+
+  return null;
 }
 
 /**
@@ -172,7 +185,7 @@ export async function getTmdbSpecificSynopsis(
 
     // 2. Sin seasons o sin año de referencia → fallback
     if (!seasons?.length || !aniYear) {
-      return tvData.overview ?? getTmdbSynopsis(id, kind, language);
+      return tvData.overview || getTmdbSynopsis(id, kind, language);
     }
 
     // 3. Buscar temporada cuyo air_date coincida con aniYear
@@ -198,7 +211,7 @@ export async function getTmdbSpecificSynopsis(
 
     // 3c. Si no hay candidatos después del filtro → fallback
     if (candidates.length === 0) {
-      return tvData.overview ?? getTmdbSynopsis(id, kind, language);
+      return tvData.overview || getTmdbSynopsis(id, kind, language);
     }
 
     // 4. Ordenar por season_number (la primera chronológicamente)
@@ -219,11 +232,11 @@ export async function getTmdbSpecificSynopsis(
       headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
     });
     if (!sRes.ok) {
-      return tvData.overview ?? getTmdbSynopsis(id, kind, language);
+      return tvData.overview || getTmdbSynopsis(id, kind, language);
     }
 
     const seasonData: TMDBSeasonDetail = await sRes.json();
-    return seasonData.overview ?? tvData.overview ?? getTmdbSynopsis(id, kind, language);
+    return seasonData.overview || tvData.overview || getTmdbSynopsis(id, kind, language);
   } catch (e) {
     logger.warn({ err: e, id }, "Error fetching TMDB specific synopsis");
     return getTmdbSynopsis(id, kind, language);

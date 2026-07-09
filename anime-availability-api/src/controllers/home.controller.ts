@@ -53,7 +53,7 @@ export async function getHomeHero(
         ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", m.seasonYear, aniMonth)
         : null;
 
-      const synopsisText = synopsis ?? stripHtml(m.description) ?? "";
+      const synopsisText = synopsis || stripHtml(m.description) || "";
       const synopsisShort = synopsisText.length > 180
         ? synopsisText.slice(0, 180) + "..."
         : synopsisText;

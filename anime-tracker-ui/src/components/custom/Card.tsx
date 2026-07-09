@@ -24,7 +24,7 @@ function CardRoot({
 }: { className?: string; children?: ReactNode } & HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`rounded-xl border bg-card text-card-foreground shadow-sm ${className}`}
+      className={`flex flex-col gap-6 rounded-xl border bg-card text-card-foreground py-6 shadow-sm ${className}`}
       {...props}
     >
       {children}

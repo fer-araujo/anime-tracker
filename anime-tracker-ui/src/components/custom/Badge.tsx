@@ -27,17 +27,21 @@ export default function Badge({
   children: ReactNode;
 } & HTMLAttributes<HTMLSpanElement>) {
   const variantClasses: Record<BadgeVariant, string> = {
-    default: "bg-primary/10 text-primary",
-    secondary: "bg-secondary/10 text-secondary",
-    outline: "border text-muted-foreground",
-    destructive: "bg-destructive/10 text-destructive",
+    default:
+      "border-transparent bg-primary text-primary-foreground",
+    secondary:
+      "border-transparent bg-secondary text-secondary-foreground",
+    outline:
+      "text-foreground border",
+    destructive:
+      "border-transparent bg-destructive text-destructive-foreground",
   };
 
   return (
     <span
-      className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold ${
-        variant === "outline" ? "border" : "border-transparent"
-      } ${variantClasses[variant]} ${className}`}
+      className={`inline-flex items-center justify-center rounded-md border px-2.5 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 ${
+        variantClasses[variant]
+      } ${className}`}
       {...props}
     >
       {children}
