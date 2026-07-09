@@ -53,17 +53,32 @@ export async function getHomeHero(
         ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", m.seasonYear, aniMonth)
         : null;
 
+      const synopsisText = synopsis ?? stripHtml(m.description) ?? "";
+      const synopsisShort = synopsisText.length > 180
+        ? synopsisText.slice(0, 180) + "..."
+        : synopsisText;
+
       const item = {
-        id: m.id,
+        id: { anilist: m.id, tmdb: tmdbId },
         title,
-        image: m.coverImage?.extraLarge ?? m.bannerImage,
-        backdrop,
-        logo,
-        description: synopsis ?? stripHtml(m.description),
-        episodes: m.episodes,
-        genres: m.genres,
-        score: m.averageScore,
-        trailer: m.trailer,
+        images: {
+          banner: m.bannerImage,
+          backdrop,
+          logo,
+          poster: m.coverImage?.extraLarge ?? null,
+        },
+        meta: {
+          synopsis: synopsisText,
+          synopsisShort,
+          year: m.seasonYear,
+          rating: m.averageScore ? Number((m.averageScore / 10).toFixed(1)) : null,
+          genres: m.genres?.slice(0, 3) ?? [],
+          status: m.status,
+          episodes: m.episodes,
+          type: m.type,
+          studio: m.studios?.edges?.[0]?.node?.name ?? null,
+          trailer: m.trailer?.site === "youtube" ? m.trailer.id : null,
+        },
       };
       return item;
     });
