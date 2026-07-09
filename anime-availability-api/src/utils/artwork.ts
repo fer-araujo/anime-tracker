@@ -8,7 +8,9 @@ import {
   getTmdbImages,
   resolveTmdbSeasonNumber,
   getTmdbSeasonImages,
+  getTmdbExternalIds,
 } from "../services/tmdb.service.js";
+import { getFanartTvArtwork } from "../services/fanart.service.js";
 import { getTitleVariations, isSeasonSequel } from "./tmdb.enrich.js";
 
 export type BasicAniListMedia = {
@@ -147,6 +149,93 @@ export async function resolveHeroArtwork(
       // Fallback al backdrop del search result si TMDB images no devolvió nada
       if (!backdrop && bestTmdb.backdrop_path) {
         backdrop = tmdbBackdropUrl(bestTmdb.backdrop_path, "w1280") ?? null;
+      }
+
+      // ----------------------------------------------------------------
+      // PASO 1.5: fanart.tv — Primary artwork source for TV shows
+      // fanart.tv wins per category (logo, backdrop). TMDB fills gaps
+      // for any category where fanart.tv returns no data.
+      // Movies (kind === "movie") are skipped entirely.
+      // ----------------------------------------------------------------
+      if (kind === "tv" && tmdbId) {
+        try {
+          const extIds = await getTmdbExternalIds(tmdbId);
+          const tvdbId = extIds?.tvdb_id;
+
+          if (tvdbId) {
+            const fanartData = await getFanartTvArtwork(tvdbId);
+
+            if (fanartData) {
+              // Logo: fanart.tv wins if it has one, else keep TMDB logo
+              if (fanartData.logoUrl) {
+                logo = fanartData.logoUrl;
+              }
+
+              // Backdrop: fanart.tv showbackground wins if it exists
+              if (fanartData.backdropUrl) {
+                backdrop = fanartData.backdropUrl;
+              }
+
+              // Artwork candidates: fanart.tv backdrops + season art
+              // prepended to TMDB candidates array
+              const fanartCandidates: any[] = [];
+
+              if (fanartData.backdropUrl) {
+                fanartCandidates.push({
+                  url_original: fanartData.backdropUrl,
+                  width: null,
+                  is_textless: true,
+                  source: "fanart-tv",
+                });
+              }
+
+              for (const sp of fanartData.seasonPosters) {
+                fanartCandidates.push({
+                  url_original: sp.url,
+                  width: null,
+                  is_textless: true,
+                  source: "fanart-tv-seasonposter",
+                  season: sp.season,
+                });
+              }
+              for (const sb of fanartData.seasonBanners) {
+                fanartCandidates.push({
+                  url_original: sb.url,
+                  width: null,
+                  is_textless: true,
+                  source: "fanart-tv-seasonbanner",
+                  season: sb.season,
+                });
+              }
+              for (const st of fanartData.seasonThumbs) {
+                fanartCandidates.push({
+                  url_original: st.url,
+                  width: null,
+                  is_textless: true,
+                  source: "fanart-tv-seasonthumb",
+                  season: st.season,
+                });
+              }
+
+              if (fanartCandidates.length > 0) {
+                artworkCandidates = [
+                  ...fanartCandidates,
+                  ...artworkCandidates,
+                ];
+              }
+            }
+          } else {
+            logger.debug(
+              { tmdbId, searchTitle },
+              "[artwork] TVDB ID not found, skipping fanart.tv",
+            );
+          }
+        } catch (e) {
+          logger.warn(
+            { err: e, tmdbId, searchTitle },
+            "[artwork] fanart.tv integration failed, falling back to TMDB",
+          );
+        }
       }
 
       // ----------------------------------------------------------------

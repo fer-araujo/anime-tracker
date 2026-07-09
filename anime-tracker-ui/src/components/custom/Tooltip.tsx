@@ -50,14 +50,18 @@ export default function Tooltip({
   const triggerRef = useRef<HTMLSpanElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  /** Compute tooltip position with viewport edge detection and side flipping. */
+  /** Compute tooltip position with viewport edge detection and side flipping.
+   *  Returns the EXACT top-left corner of the tooltip element (no translateX needed). */
   const computePosition = useCallback(
     (
       triggerRect: DOMRect,
       tooltipHeight: number,
+      tooltipWidth: number,
       preferredSide: "top" | "bottom",
     ) => {
       const margin = 8;
+
+      // Y-axis: flip side if insufficient space
       const spaceAbove = triggerRect.top - margin;
       const spaceBelow = window.innerHeight - triggerRect.bottom - margin;
 
@@ -76,13 +80,19 @@ export default function Tooltip({
         finalSide = "top";
       }
 
-      return {
-        top:
-          finalSide === "top"
-            ? triggerRect.top - tooltipHeight - margin
-            : triggerRect.bottom + margin,
-        left: triggerRect.left + triggerRect.width / 2,
-      };
+      const top =
+        finalSide === "top"
+          ? triggerRect.top - tooltipHeight - margin
+          : triggerRect.bottom + margin;
+
+      // X-axis: center on trigger, then clamp to viewport bounds
+      const idealLeft = triggerRect.left + (triggerRect.width - tooltipWidth) / 2;
+      const left = Math.max(
+        margin,
+        Math.min(idealLeft, window.innerWidth - tooltipWidth - margin),
+      );
+
+      return { top, left };
     },
     [],
   );
@@ -91,10 +101,16 @@ export default function Tooltip({
     if (!triggerRef.current) return;
 
     const triggerRect = triggerRef.current.getBoundingClientRect();
-    // Estimated height — refined after the tooltip element is rendered and measured
+    // Estimated dimensions — refined after tooltip renders and is measured
     const estimatedHeight = 40;
+    const estimatedWidth = 200;
 
-    const { top, left } = computePosition(triggerRect, estimatedHeight, side);
+    const { top, left } = computePosition(
+      triggerRect,
+      estimatedHeight,
+      estimatedWidth,
+      side,
+    );
     setPosition({ top, left });
     setTooltipState("measuring");
   }, [side, computePosition]);
@@ -104,15 +120,21 @@ export default function Tooltip({
     setPosition(null);
   }, []);
 
-  // After the tooltip renders in "measuring" state, measure its actual height
-  // and refine the position before transitioning to "visible".
+  // After the tooltip renders in "measuring" state, measure its actual
+  // dimensions and refine the position before transitioning to "visible".
   useEffect(() => {
     if (tooltipState !== "measuring") return;
     if (!tooltipRef.current || !triggerRef.current) return;
 
     const tooltipHeight = tooltipRef.current.offsetHeight;
+    const tooltipWidth = tooltipRef.current.offsetWidth;
     const triggerRect = triggerRef.current.getBoundingClientRect();
-    const { top, left } = computePosition(triggerRect, tooltipHeight, side);
+    const { top, left } = computePosition(
+      triggerRect,
+      tooltipHeight,
+      tooltipWidth,
+      side,
+    );
 
     setPosition({ top, left });
     setTooltipState("visible");
@@ -143,13 +165,19 @@ export default function Tooltip({
       }
 
       const tooltipHeight = tooltipRef.current?.offsetHeight ?? 40;
-      const { top, left } = computePosition(triggerRect, tooltipHeight, side);
+      const tooltipWidth = tooltipRef.current?.offsetWidth ?? 200;
+      const { top, left } = computePosition(
+        triggerRect,
+        tooltipHeight,
+        tooltipWidth,
+        side,
+      );
 
       // Direct style mutation — avoids re-render on every scroll tick
       if (tooltipRef.current) {
         tooltipRef.current.style.top = `${top}px`;
         tooltipRef.current.style.left = `${left}px`;
-        tooltipRef.current.style.transform = "translateX(-50%)";
+        tooltipRef.current.style.transform = "none";
       }
     };
 
@@ -192,7 +220,6 @@ export default function Tooltip({
                 position: "fixed",
                 top: position.top,
                 left: position.left,
-                transform: "translateX(-50%)",
                 zIndex: 50,
                 pointerEvents: "none",
                 opacity: tooltipState === "measuring" ? 0 : 1,

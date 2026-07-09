@@ -12,6 +12,7 @@ for (const k of required) {
 export const ENV = {
   PORT: Number(process.env.PORT || 3000),
   TMDB_KEY: process.env.TMDB_KEY || "",
+  FANART_TV_KEY: process.env.FANART_TV_KEY || "55f7d6df186e9785f1b1fb85f89df381",
   ANILIST_URL: process.env.ANILIST_URL || "https://graphql.anilist.co",
   DEFAULT_COUNTRY: (process.env.DEFAULT_COUNTRY || "MX").toUpperCase(),
 
@@ -25,6 +26,7 @@ export const ENV = {
   CACHE_TTL_ANIME: Number(process.env.CACHE_TTL_ANIME ?? 7200),       // 2h
   CACHE_TTL_TMDB_IMAGES: Number(process.env.CACHE_TTL_TMDB_IMAGES ?? 86400),   // 24h
   CACHE_TTL_TMDB_SEARCH: Number(process.env.CACHE_TTL_TMDB_SEARCH ?? 86400),   // 24h
+  CACHE_TTL_FANART: Number(process.env.CACHE_TTL_FANART ?? 86400),              // 24h
 
   // Circuit breaker bypass
   DISABLE_CIRCUIT_BREAKER: process.env.DISABLE_CIRCUIT_BREAKER === "true",

@@ -52,7 +52,7 @@ export const tmdbBackdropUrl = (path?: string | null, size = "original") =>
 
 // ─── In-flight request deduplication ──────────────────────────────────────────
 
-function withDedup<T extends (...args: any[]) => Promise<any>>(
+export function withDedup<T extends (...args: any[]) => Promise<any>>(
   fn: T,
   keyFn?: (...args: any[]) => string,
 ): T {
@@ -373,9 +373,37 @@ export function isAnimeCandidate(item: TMDBSearchTVItem) {
   return isAnimation || fromAnimeRegions;
 }
 
+// ─── TMDB External IDs (TVDB resolution) ─────────────────────────────────────
+
+/**
+ * Obtiene IDs externos (IMDB, TVDB, etc.) para un contenido TMDB.
+ */
+async function _getTmdbExternalIds(id: number): Promise<{
+  imdb_id?: string | null;
+  tvdb_id?: number | null;
+  tvrage_id?: number | null;
+  facebook_id?: string | null;
+  instagram_id?: string | null;
+  twitter_id?: string | null;
+} | null> {
+  try {
+    const url = new URL(`${TMDB_BASE}/tv/${id}/external_ids`);
+    const res = await fetchWithRetry(url.toString(), {
+      headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
+    });
+
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    logger.warn({ err: e, id }, "Error fetching TMDB external IDs");
+    return null;
+  }
+}
+
 // ─── Deduplicated exports ────────────────────────────────────────────────────
 
 export const tmdbSearch = withDedup(_tmdbSearch, (kind, query) => `tmdbSearch:${kind}:${query}`);
 export const getTmdbImages = withDedup(_getTmdbImages, (id, kind) => `getTmdbImages:${kind}:${id}`);
 export const getTmdbSeasonImages = withDedup(_getTmdbSeasonImages, (id, season) => `getTmdbSeasonImages:${id}:S${season}`);
 export const resolveTmdbSeasonNumber = withDedup(_resolveTmdbSeasonNumber, (id, y, m) => `resolveTmdbSeasonNumber:${id}:${y}:${m}`);
+export const getTmdbExternalIds = withDedup(_getTmdbExternalIds, (id) => `tmdbExtIds:${id}`);
