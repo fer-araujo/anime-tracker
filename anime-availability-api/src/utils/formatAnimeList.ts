@@ -67,7 +67,7 @@ export async function formatAnimeList(
 
         // Sinopsis en español — season-aware (si hay tmdbId)
         const spanishSynopsis = tmdbId
-          ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", anime.seasonYear, anime.startDate?.month)
+          ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", anime.seasonYear, anime.startDate?.month, anime.nextAiringEpisode?.airingAt)
           : null;
 
         // 4. Meta datos limpios
