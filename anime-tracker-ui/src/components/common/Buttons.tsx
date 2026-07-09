@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Heart } from "lucide-react";
+import Icon from "@/components/custom/Icon";
 
 export const ActionButton = ({
   children,
@@ -46,10 +46,10 @@ export const FavButton = ({
       )}
       title={active ? "Favorito" : "Agregar a favoritos"}
     >
-      <Heart
+      <Icon
+        name="Heart"
         size={16}
-        strokeWidth={1.8}
-        className={cn(active ? "fill-pink-300 text-pink-300" : "text-white/80")}
+        className={cn(active ? "text-pink-300" : "text-white/80")}
       />
     </button>
   );

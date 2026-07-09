@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, HTMLAttributes } from "react";
 
 /**
  * Available badge style variants.
@@ -20,11 +20,12 @@ export default function Badge({
   variant = "default",
   className = "",
   children,
+  ...props
 }: {
   variant?: BadgeVariant;
   className?: string;
   children: ReactNode;
-}) {
+} & HTMLAttributes<HTMLSpanElement>) {
   const variantClasses: Record<BadgeVariant, string> = {
     default: "bg-primary/10 text-primary",
     secondary: "bg-secondary/10 text-secondary",
@@ -37,6 +38,7 @@ export default function Badge({
       className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold ${
         variant === "outline" ? "border" : "border-transparent"
       } ${variantClasses[variant]} ${className}`}
+      {...props}
     >
       {children}
     </span>

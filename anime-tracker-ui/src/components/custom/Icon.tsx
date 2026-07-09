@@ -11,6 +11,7 @@ export type IconName =
   | "Search"
   | "ChevronLeft"
   | "ChevronRight"
+  | "ChevronDown"
   | "ExternalLink"
   | "Clock"
   | "Calendar"
@@ -25,7 +26,14 @@ export type IconName =
   | "Trash2"
   | "Edit3"
   | "Share2"
-  | "MoreHorizontal";
+  | "MoreHorizontal"
+  | "Loader2"
+  | "Bell"
+  | "User"
+  | "ImageIcon"
+  | "Tv"
+  | "MonitorPlay"
+  | "Trophy";
 
 /**
  * SVG path data map — each entry provides the `d` attribute value(s).
@@ -70,6 +78,12 @@ const paths: Record<IconName, { viewBox: string; children: ReactElement[] }> = {
     viewBox: "0 0 24 24",
     children: [
       <path key="chevron-right" d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="currentColor" />,
+    ],
+  },
+  ChevronDown: {
+    viewBox: "0 0 24 24",
+    children: [
+      <path key="chevron-down" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" fill="currentColor" />,
     ],
   },
   ExternalLink: {
@@ -160,6 +174,49 @@ const paths: Record<IconName, { viewBox: string; children: ReactElement[] }> = {
     viewBox: "0 0 24 24",
     children: [
       <path key="more-horiz" d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill="currentColor" />,
+    ],
+  },
+  Loader2: {
+    viewBox: "0 0 24 24",
+    children: [
+      <path key="loader" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" fill="currentColor" opacity="0.3" />,
+      <path key="loader-spin" d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z" fill="currentColor" />,
+    ],
+  },
+  Bell: {
+    viewBox: "0 0 24 24",
+    children: [
+      <path key="bell" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" fill="currentColor" />,
+    ],
+  },
+  User: {
+    viewBox: "0 0 24 24",
+    children: [
+      <path key="user" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />,
+    ],
+  },
+  ImageIcon: {
+    viewBox: "0 0 24 24",
+    children: [
+      <path key="image" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" fill="currentColor" />,
+    ],
+  },
+  Tv: {
+    viewBox: "0 0 24 24",
+    children: [
+      <path key="tv" d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z" fill="currentColor" />,
+    ],
+  },
+  MonitorPlay: {
+    viewBox: "0 0 24 24",
+    children: [
+      <path key="monitor-play" d="M22 3H2c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-1v-2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H2V5h20v12zM9.5 8.5v5l5-3-5-2z" fill="currentColor" />,
+    ],
+  },
+  Trophy: {
+    viewBox: "0 0 24 24",
+    children: [
+      <path key="trophy" d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" fill="currentColor" />,
     ],
   },
 };

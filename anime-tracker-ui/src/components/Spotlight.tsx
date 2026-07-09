@@ -12,7 +12,7 @@ import {
 import type { Anime } from "@/types/anime";
 import { ActionButton } from "@/components/common/Buttons";
 import { useCallback, useEffect, useState } from "react";
-import { Info, Plus, Star } from "lucide-react"; // <-- Agregamos Star
+import Icon from "@/components/custom/Icon";
 
 type Props = {
   items: Anime[];
@@ -246,7 +246,7 @@ export function HeroCarouselCinematic({
               {current.meta?.rating && (
                 <span className="flex items-center gap-1">
                   {/* ÍCONO ELEGANTE EN LUGAR DE EMOJI */}
-                  <Star className="w-3.5 h-3.5 fill-primary text-primary" />
+                  <Icon name="Star" size={14} className="fill-primary text-primary" />
                   {Number(current.meta.rating).toFixed(1)}
                 </span>
               )}
@@ -259,7 +259,7 @@ export function HeroCarouselCinematic({
             <div className="mt-5 flex gap-3">
               <ActionButton
                 onClick={() => router.push(`/anime/${current.id.anilist}`)}
-                icon={<Info size={14} />}
+                icon={<Icon name="Info" size={14} />}
               >
                 Ver detalles
               </ActionButton>
@@ -268,7 +268,7 @@ export function HeroCarouselCinematic({
                 onClick={() =>
                   router.push(`/mi-lista?add=${current.id.anilist}`)
                 }
-                icon={<Plus size={14} />}
+                icon={<Icon name="Plus" size={14} />}
               >
                 Añadir
               </ActionButton>

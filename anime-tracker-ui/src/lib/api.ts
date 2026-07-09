@@ -1,5 +1,5 @@
 import { Anime } from "@/types/anime";
-import { SeasonResp } from "@/types/api";
+import { SeasonResp, HeroResponseSchema, SeasonRespSchema, type HeroResponse } from "@/types/api";
 import { SearchResultItem } from "@/types/search";
 
 export const API_BASE =
@@ -43,15 +43,26 @@ export async function fetchSeason(opts?: {
 
   const res = await fetch(u.toString(), { next: { revalidate: 3600 } });
   if (!res.ok) throw new Error(`season ${res.status}`);
-  const json = (await res.json()) as SeasonResp;
-  return json;
+  const json = await res.json();
+  const parsed = SeasonRespSchema.safeParse(json);
+  if (!parsed.success) {
+    console.warn("Season response shape mismatch, returning empty fallback", parsed.error);
+    return { meta: { country: "", season: "", year: 0, total: 0, source: "" }, data: [] };
+  }
+  return parsed.data as SeasonResp;
 }
 
-export async function fetchHomeHero(): Promise<SeasonResp> {
+export async function fetchHomeHero(): Promise<HeroResponse> {
   const url = `${API_BASE}/home/hero`;
   const res = await fetch(url, { next: { revalidate: 21600 } });
   if (!res.ok) throw new Error("Failed to fetch home hero");
-  return res.json();
+  const json = await res.json();
+  const parsed = HeroResponseSchema.safeParse(json);
+  if (!parsed.success) {
+    console.warn("Hero response shape mismatch, returning empty fallback", parsed.error);
+    return { data: [] };
+  }
+  return parsed.data;
 }
 
 export async function fetchAnimeDetails(id: string | number): Promise<{ data: Anime }> {
