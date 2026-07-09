@@ -41,7 +41,7 @@ export async function fetchSeason(opts?: {
   if (opts?.year) u.searchParams.set("year", String(opts.year));
   if (opts?.rank) u.searchParams.set("rank", opts.rank);
 
-  const res = await fetch(u.toString(), { next: { revalidate: 60 } });
+  const res = await fetch(u.toString(), { next: { revalidate: 3600 } });
   if (!res.ok) throw new Error(`season ${res.status}`);
   const json = (await res.json()) as SeasonResp;
   return json;
@@ -49,15 +49,14 @@ export async function fetchSeason(opts?: {
 
 export async function fetchHomeHero(): Promise<SeasonResp> {
   const url = `${API_BASE}/home/hero`;
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(url, { next: { revalidate: 21600 } });
   if (!res.ok) throw new Error("Failed to fetch home hero");
   return res.json();
 }
 
 export async function fetchAnimeDetails(id: string | number): Promise<{ data: Anime }> {
-  // cache: 'no-store' es vital para que verifique providers en tiempo real
   const res = await fetch(`${API_BASE}/anime/${id}`, { 
-    cache: "no-store" 
+    next: { revalidate: 7200 } 
   });
   
   if (!res.ok) {

@@ -2,7 +2,6 @@
 import { memoryCache } from "../utils/cache.js";
 import { normalizeProviderNames } from "../utils/providers.js";
 import { tmdbWatchProviders } from "../services/tmdb.service.js";
-// 1. NUEVO: Importamos el generador de variaciones
 import { getTitleVariations } from "./tmdb.enrich.js";
 
 const RAPIDAPI_KEY =
@@ -14,11 +13,12 @@ const RAPIDAPI_KEY =
 const SA_BASE_URL = "https://streaming-availability.p.rapidapi.com";
 const SA_API_HOST = "streaming-availability.p.rapidapi.com";
 
-// --- Definiciones de tipos para RapidAPI ---
+// --- Definiciones de tipos para RapidAPI (Actualizadas para V4) ---
 type StreamingAvailabilityItem = {
-  tmdbId?: string | null;
+  itemType?: string;
+  showType?: string;
+  tmdbId?: string | null; // V4 format: "tv/123" o "movie/123"
   title?: string | null;
-  showType?: string | null;
   streamingOptions?: {
     [countryCode: string]: Array<{
       service?: { id?: string; name?: string };
@@ -33,13 +33,16 @@ type StreamingAvailabilityItem = {
 async function fetchStreamingAvailabilityByTitle(
   title: string,
   country: string,
+  kind: "tv" | "movie",
 ): Promise<StreamingAvailabilityItem[]> {
   if (!RAPIDAPI_KEY) return [];
+
+  // Endpoint de búsqueda por título
   const url = new URL(`${SA_BASE_URL}/shows/search/title`);
   url.searchParams.set("country", country.toLowerCase());
   url.searchParams.set("title", title);
-  url.searchParams.set("series_granularity", "show");
-  url.searchParams.set("show_type", "series");
+  // V4: Usamos 'movie' o 'series' en lugar de los parámetros viejos de granularidad
+  url.searchParams.set("show_type", kind === "movie" ? "movie" : "series");
 
   const res = await fetch(url.toString(), {
     headers: {
@@ -50,7 +53,11 @@ async function fetchStreamingAvailabilityByTitle(
 
   if (!res.ok) return [];
   const data = await res.json();
-  return (data || []) as StreamingAvailabilityItem[];
+
+  // V4 puede devolver el array directo o dentro de un objeto dependiendo del wrapper
+  return (
+    Array.isArray(data) ? data : data.shows || data.result || []
+  ) as StreamingAvailabilityItem[];
 }
 
 function providersFromStreamingAvailability(
@@ -70,7 +77,12 @@ function pickBestStreamingAvailItem(
 ): StreamingAvailabilityItem | undefined {
   if (!items || !items.length) return undefined;
   if (tmdbId) {
-    const match = items.find((i) => i.tmdbId === String(tmdbId));
+    const match = items.find((i) => {
+      if (!i.tmdbId) return false;
+      // V4 FIX: Separamos "tv/123" para quedarnos solo con "123" y poder comparar
+      const extractedId = i.tmdbId.split("/").pop();
+      return extractedId === String(tmdbId);
+    });
     if (match) return match;
   }
   return items[0];
@@ -136,20 +148,21 @@ export async function resolveProvidersForAnimeDetailed(
           `[RapidAPI] Consultando fallback para: ${knownTitle} (${year || "Año desconocido"})`,
         );
 
-        // 2. LA MAGIA: Cascada de títulos para SA
         const titleVariants = getTitleVariations(knownTitle);
-        if (titleVariants.length === 0) titleVariants.push(knownTitle); // Fallback por si acaso
+        if (titleVariants.length === 0) titleVariants.push(knownTitle);
 
         let saItems: StreamingAvailabilityItem[] = [];
 
         for (const variant of titleVariants) {
+          // V4 FIX: Pasamos el 'kind' para afinar la búsqueda
           saItems = await fetchStreamingAvailabilityByTitle(
             variant,
             upperCountry,
+            kind,
           );
           if (saItems && saItems.length > 0) {
             console.log(`[RapidAPI] Éxito con la variación: "${variant}"`);
-            break; // Encontramos resultados, rompemos el ciclo
+            break;
           }
         }
 
@@ -184,7 +197,6 @@ export async function resolveProvidersForAnimeDetailed(
 
   const payload: ProvidersResolved = { providers, usedSource, tmdbOk, saOk };
 
-  // Caché semanal
   memoryCache.set(cacheKey, payload, 1000 * 60 * 60 * 24 * 7);
 
   return payload;

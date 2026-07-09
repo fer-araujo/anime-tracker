@@ -1,8 +1,8 @@
 // src/controllers/home.controller.ts
 import type { Request, Response, NextFunction } from "express";
-import { memoryCache } from "../utils/cache.js";
+import { hybridCache, setCacheControl } from "../utils/cache.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
-import { getTmdbSynopsis } from "../services/tmdb.service.js";
+import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
 // Ya no necesitamos importar normalizeTitle aquí, la cascada lo hace por dentro
 
 /* helpers */
@@ -29,7 +29,7 @@ export async function getHomeHero(
 ) {
   try {
     const cacheKey = "home:hero:cinematic:v3";
-    const cached = memoryCache.get(cacheKey);
+    const cached = await hybridCache.get<any>(cacheKey);
     if (cached) return res.json(cached);
 
     const gql = `
@@ -45,6 +45,7 @@ export async function getHomeHero(
             genres
             averageScore
             seasonYear
+            startDate { year month day }
             status
             studios(isMain: true) { edges { isMain node { name } } }
             trailer { id site }
@@ -70,15 +71,17 @@ export async function getHomeHero(
       const kind = m.type === "MOVIE" ? "movie" : "tv";
 
       // A) Obtenemos TODO del artwork service
-      // Mandamos el título directamente, resolveHeroArtwork ya hace la magia de las variaciones.
+      // Mandamos el título directamente + startDate para secuelas
       const { backdrop, logo, tmdbId } = await resolveHeroArtwork(title, kind, {
         bannerImage: m.bannerImage,
-      });
+      }, m.startDate);
 
       if (!backdrop) return null;
 
+      const aniYear = m.startDate?.year ?? m.seasonYear ?? null;
+      const aniMonth = m.startDate?.month ?? null;
       const spanishSynopsis = tmdbId
-        ? await getTmdbSynopsis(tmdbId, kind)
+        ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", aniYear, aniMonth)
         : null;
 
       const synopsisRaw = stripHtml(spanishSynopsis || m.description);
@@ -116,7 +119,8 @@ export async function getHomeHero(
     const validHeroes = heroItems.filter((h) => h !== null).slice(0, 5);
 
     const response = { data: validHeroes };
-    memoryCache.set(cacheKey, response, 1000 * 60 * 60);
+    await hybridCache.set(cacheKey, response, 1000 * 60 * 60);
+    setCacheControl(res, 'hero');
 
     return res.json(response);
   } catch (err) {
