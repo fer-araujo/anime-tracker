@@ -42,3 +42,29 @@ coverage/
 # Optional: Ignore package-lock or yarn.lock if not needed
 package-lock.json
 # yarn.lock
+
+# AI / Tooling — internal config, NOT for public repos
+# Directories (ensure they're caught even when nested)
+.atl/
+.copilot/
+.cursor/
+.gemini/
+.agent/
+.agents/
+.claude/
+.opencode/
+
+# File patterns (catch stray config files)
+*.atl
+*.gemini
+*.copilot
+*.cursor
+*.agent
+*.agents
+*.claude
+opencode.json
+openspec/
+
+# Temp / scratch directories
+temp/
+src/app/temp/
