@@ -152,9 +152,9 @@ export async function resolveHeroArtwork(
       }
 
       // ----------------------------------------------------------------
-      // PASO 1.5: fanart.tv — Primary artwork source for TV shows
-      // fanart.tv wins per category (logo, backdrop). TMDB fills gaps
-      // for any category where fanart.tv returns no data.
+      // PASO 1.5: fanart.tv — Additional artwork for TV shows
+      // TMDB backdrops take priority. fanart.tv fills gaps only when
+      // TMDB has no backdrop. Both contribute to artwork candidates.
       // Movies (kind === "movie") are skipped entirely.
       // ----------------------------------------------------------------
       if (kind === "tv" && tmdbId) {
@@ -171,8 +171,8 @@ export async function resolveHeroArtwork(
                 logo = fanartData.logoUrl;
               }
 
-              // Backdrop: fanart.tv showbackground wins if it exists
-              if (fanartData.backdropUrl) {
+              // Backdrop: TMDB takes priority; fanart.tv fills gaps
+              if (!backdrop && fanartData.backdropUrl) {
                 backdrop = fanartData.backdropUrl;
               }
 
