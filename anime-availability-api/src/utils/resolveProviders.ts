@@ -45,12 +45,18 @@ async function fetchStreamingAvailabilityByTitle(
   // V4: Usamos 'movie' o 'series' en lugar de los parámetros viejos de granularidad
   url.searchParams.set("show_type", kind === "movie" ? "movie" : "series");
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000);
+
   const res = await fetch(url.toString(), {
     headers: {
       "X-RapidAPI-Key": RAPIDAPI_KEY,
       "X-RapidAPI-Host": SA_API_HOST,
     },
+    signal: controller.signal,
   });
+
+  clearTimeout(timeout);
 
   if (!res.ok) return [];
   const data = await res.json();
