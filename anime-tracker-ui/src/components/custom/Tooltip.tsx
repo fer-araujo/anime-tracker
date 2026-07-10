@@ -49,6 +49,8 @@ export default function Tooltip({
 
   const triggerRef = useRef<HTMLSpanElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const measuringAbortRef = useRef(false);
 
   /** Compute tooltip position with viewport edge detection and side flipping.
    *  Returns the EXACT top-left corner of the tooltip element (no translateX needed). */
@@ -98,6 +100,11 @@ export default function Tooltip({
   );
 
   const showTooltip = useCallback(() => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+    measuringAbortRef.current = false;
     if (!triggerRef.current) return;
 
     const triggerRect = triggerRef.current.getBoundingClientRect();
@@ -116,8 +123,14 @@ export default function Tooltip({
   }, [side, computePosition]);
 
   const hideTooltip = useCallback(() => {
-    setTooltipState("idle");
-    setPosition(null);
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
+    measuringAbortRef.current = true;
+    hideTimeoutRef.current = setTimeout(() => {
+      setTooltipState("idle");
+      setPosition(null);
+    }, 150);
   }, []);
 
   // After the tooltip renders in "measuring" state, measure its actual
@@ -125,6 +138,9 @@ export default function Tooltip({
   useEffect(() => {
     if (tooltipState !== "measuring") return;
     if (!tooltipRef.current || !triggerRef.current) return;
+
+    // Bail if a hide was requested during measurement (stale abort guard)
+    if (measuringAbortRef.current) return;
 
     const tooltipHeight = tooltipRef.current.offsetHeight;
     const tooltipWidth = tooltipRef.current.offsetWidth;
@@ -193,9 +209,11 @@ export default function Tooltip({
   // Cleanup portal node on unmount
   useEffect(() => {
     return () => {
-      hideTooltip();
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
     };
-  }, [hideTooltip]);
+  }, []);
 
   const isVisible = tooltipState === "measuring" || tooltipState === "visible";
 
@@ -216,18 +234,25 @@ export default function Tooltip({
               ref={tooltipRef}
               id={tooltipId}
               role="tooltip"
-              style={{
-                position: "fixed",
-                top: position.top,
-                left: position.left,
-                zIndex: 50,
-                pointerEvents: "none",
-                opacity: tooltipState === "measuring" ? 0 : 1,
-              }}
-              className="whitespace-normal break-words max-w-[min(90vw,35rem)] rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-foreground shadow-md shadow-black/30 leading-relaxed transition-opacity duration-150"
-            >
-              {content}
-            </div>,
+                style={{
+                  position: "fixed",
+                  top: position.top,
+                  left: position.left,
+                  zIndex: 50,
+                  pointerEvents: "auto",
+                  opacity: tooltipState === "measuring" ? 0 : 1,
+                }}
+                className="whitespace-normal break-words max-w-[min(90vw,35rem)] rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-foreground shadow-md shadow-black/30 leading-relaxed transition-opacity duration-150"
+                onMouseEnter={() => {
+                  if (hideTimeoutRef.current) {
+                    clearTimeout(hideTimeoutRef.current);
+                    hideTimeoutRef.current = null;
+                  }
+                }}
+                onMouseLeave={() => hideTooltip()}
+              >
+                {content}
+              </div>,
             document.body,
           )
         : null}

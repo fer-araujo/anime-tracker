@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import Tooltip from "@/components/custom/Tooltip";
 
 describe("Tooltip", () => {
@@ -13,6 +13,7 @@ describe("Tooltip", () => {
   });
 
   it("shows tooltip on hover and hides on leave", () => {
+    vi.useFakeTimers();
     render(
       <Tooltip content="Tooltip content">
         <button>Trigger</button>
@@ -29,11 +30,20 @@ describe("Tooltip", () => {
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip).toHaveTextContent("Tooltip content");
 
-    // Unhover
+    // Unhover — hide has a 150ms delay
     fireEvent.mouseLeave(screen.getByText("Trigger"));
 
-    // Tooltip should disappear
+    // Tooltip should still be visible during the delay
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+
+    // Advance time past the hide delay
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+
+    // Tooltip should disappear after the timeout fires
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it("tooltip has correct visual classes when visible", () => {
