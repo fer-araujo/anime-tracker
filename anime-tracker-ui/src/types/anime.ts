@@ -40,6 +40,7 @@ export type Anime = {
     rating?: number | null; // 0..10
     synopsis?: string | null;
     synopsisShort?: string | null;
+    synopsisLang?: "es" | "en" | null;
     synopsisHTML?: string | null;
     year?: number | null;
     season?: string | null;

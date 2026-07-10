@@ -71,8 +71,10 @@ export async function formatAnimeList(
           : null;
 
         // 4. Meta datos limpios
+        const hasSpanish = !!spanishSynopsis;
         const synopsis = htmlToText(spanishSynopsis || anime.description || "");
         const synopsisShort = shorten(synopsis, 140);
+        const synopsisLang = synopsis ? (hasSpanish ? "es" : "en") : null;
         const mainStudio = extractStudio(anime.studios);
 
         const nextEpisodeAtISO = anime.nextAiringEpisode?.airingAt
@@ -96,6 +98,7 @@ export async function formatAnimeList(
                 : null,
             synopsis,
             synopsisShort,
+            synopsisLang,
             year: anime.seasonYear ?? baseYear ?? null,
             season: anime.season ?? baseSeason ?? null,
             episodes: anime.episodes ?? null,
