@@ -1,5 +1,5 @@
 import { Anime } from "@/types/anime";
-import { SeasonResp, HeroResponseSchema, SeasonRespSchema, type HeroResponse } from "@/types/api";
+import { SeasonResp, HeroResponseSchema, SeasonRespSchema, ScheduleResponseSchema, type HeroResponse } from "@/types/api";
 import { SearchResultItem } from "@/types/search";
 
 export const API_BASE =
@@ -74,4 +74,32 @@ export async function fetchAnimeDetails(id: string | number): Promise<{ data: An
     throw new Error(`Failed to fetch anime details: ${res.status}`);
   }
   return res.json();
+}
+
+export async function fetchAiringToday(): Promise<Anime[]> {
+  const res = await fetch(`${API_BASE}/schedule?type=airing`, {
+    next: { revalidate: 1800 },
+  });
+  if (!res.ok) return [];
+  const json = await res.json();
+  const parsed = ScheduleResponseSchema.parse(json);
+  return parsed.data.map((item) => ({
+    ...item,
+    images: { ...item.images, backdrop: null, logo: null },
+    providers: [],
+  })) as unknown as Anime[];
+}
+
+export async function fetchComingSoon(): Promise<Anime[]> {
+  const res = await fetch(`${API_BASE}/schedule?type=coming`, {
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) return [];
+  const json = await res.json();
+  const parsed = ScheduleResponseSchema.parse(json);
+  return parsed.data.map((item) => ({
+    ...item,
+    images: { ...item.images, backdrop: null, logo: null },
+    providers: [],
+  })) as unknown as Anime[];
 }

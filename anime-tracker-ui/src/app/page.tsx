@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import HeroSection from "@/components/sections/HeroSection";
 import PopularSection from "@/components/sections/PopularSection";
 import TrendingSection from "@/components/sections/TrendingSection";
+import AiringTodaySection from "@/components/sections/AiringTodaySection";
+import ComingSoonSection from "@/components/sections/ComingSoonSection";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
 
 export const revalidate = 21600;
@@ -18,6 +20,18 @@ export default async function HomePage() {
         <section className="pt-8">
           <Suspense fallback={<GridSkeleton count={10} />}>
             <PopularSection />
+          </Suspense>
+        </section>
+
+        <section className="mt-8">
+          <Suspense fallback={<GridSkeleton count={10} />}>
+            <AiringTodaySection />
+          </Suspense>
+        </section>
+
+        <section className="mt-8">
+          <Suspense fallback={<GridSkeleton count={10} />}>
+            <ComingSoonSection />
           </Suspense>
         </section>
 
