@@ -50,7 +50,7 @@ describe("fanart.service", () => {
         vi.fn(() => Promise.reject(new Error("Network error"))),
       );
 
-      const result = await getFanartTvArtwork(371310);
+      const result = await getFanartTvArtwork(888888);
       expect(result).toBeNull();
     });
 
@@ -92,7 +92,7 @@ describe("fanart.service", () => {
             new Response(
               JSON.stringify({
                 name: "Test Show",
-                tvdb_id: 12345,
+                tvdb_id: 54321,
                 seasonposter: [
                   { id: "1", url: "https://example.com/s1.jpg", lang: "en", likes: "10", season: "1" },
                   { id: "2", url: "https://example.com/s2.jpg", lang: "en", likes: "5", season: "2" },
@@ -113,7 +113,7 @@ describe("fanart.service", () => {
         ),
       );
 
-      const result = await getFanartTvArtwork(12345);
+      const result = await getFanartTvArtwork(54321);
       expect(result!.seasonPosters).toHaveLength(2);
       expect(result!.seasonPosters[0].season).toBe(1);
       expect(result!.seasonPosters[1].season).toBe(2);
