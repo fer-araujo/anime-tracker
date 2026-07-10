@@ -39,7 +39,7 @@ describe("resolveHeroArtwork — fanart.tv merge", () => {
   it("fanart.tv logo wins when available, TMDB logo falls back", async () => {
     // TMDB search returns a result
     vi.mocked(tmdbSearch).mockResolvedValue([
-      { id: 94664, backdrop_path: "/tmdb-backdrop.jpg" },
+      { id: 94664, name: "Test Anime", backdrop_path: "/tmdb-backdrop.jpg" },
     ]);
     // TMDB images return a logo
     vi.mocked(getTmdbImages).mockResolvedValue({
@@ -77,7 +77,7 @@ describe("resolveHeroArtwork — fanart.tv merge", () => {
 
   it("fanart.tv logo null → TMDB logo preserved", async () => {
     vi.mocked(tmdbSearch).mockResolvedValue([
-      { id: 94664, backdrop_path: "/tmdb-backdrop.jpg" },
+      { id: 94664, name: "Test Anime", backdrop_path: "/tmdb-backdrop.jpg" },
     ]);
     vi.mocked(getTmdbImages).mockResolvedValue({
       backdrops: [],
@@ -114,7 +114,7 @@ describe("resolveHeroArtwork — fanart.tv merge", () => {
 
   it("fanart.tv backdrop wins when available", async () => {
     vi.mocked(tmdbSearch).mockResolvedValue([
-      { id: 94664, backdrop_path: "/tmdb-backdrop.jpg" },
+      { id: 94664, name: "Test Anime", backdrop_path: "/tmdb-backdrop.jpg" },
     ]);
     // TMDB images return a backdrop
     vi.mocked(getTmdbImages).mockResolvedValue({
@@ -152,7 +152,7 @@ describe("resolveHeroArtwork — fanart.tv merge", () => {
 
   it("fanart.tv empty → TMDB data preserved", async () => {
     vi.mocked(tmdbSearch).mockResolvedValue([
-      { id: 94664, backdrop_path: "/tmdb-backdrop.jpg" },
+      { id: 94664, name: "Test Anime", backdrop_path: "/tmdb-backdrop.jpg" },
     ]);
     vi.mocked(getTmdbImages).mockResolvedValue({
       backdrops: [
@@ -192,7 +192,7 @@ describe("resolveHeroArtwork — fanart.tv merge", () => {
 
   it("movie kind skips fanart.tv entirely", async () => {
     vi.mocked(tmdbSearch).mockResolvedValue([
-      { id: 550, backdrop_path: "/movie-bg.jpg" },
+      { id: 550, name: "Test Movie", backdrop_path: "/movie-bg.jpg" },
     ]);
     vi.mocked(getTmdbImages).mockResolvedValue({
       backdrops: [
@@ -222,7 +222,7 @@ describe("resolveHeroArtwork — fanart.tv merge", () => {
 
   it("TVDB ID missing → skips fanart.tv, TMDB data preserved", async () => {
     vi.mocked(tmdbSearch).mockResolvedValue([
-      { id: 94664, backdrop_path: "/tmdb-backdrop.jpg" },
+      { id: 94664, name: "Test Anime", backdrop_path: "/tmdb-backdrop.jpg" },
     ]);
     vi.mocked(getTmdbImages).mockResolvedValue({
       backdrops: [
@@ -253,7 +253,7 @@ describe("resolveHeroArtwork — fanart.tv merge", () => {
 
   it("fanart.tv error → TMDB fallback", async () => {
     vi.mocked(tmdbSearch).mockResolvedValue([
-      { id: 94664, backdrop_path: "/tmdb-backdrop.jpg" },
+      { id: 94664, name: "Test Anime", backdrop_path: "/tmdb-backdrop.jpg" },
     ]);
     vi.mocked(getTmdbImages).mockResolvedValue({
       backdrops: [

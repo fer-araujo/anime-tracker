@@ -5,6 +5,7 @@ import { resolveHeroArtwork } from "../utils/artwork.js";
 import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
 import { preferTitle } from "../utils/title.js";
 import { HOME_HERO_GQL } from "../graphql/queries/homeHero.gql.js";
+import { getCurrentSeasonYearLocal } from "../utils/season.js";
 
 /* helpers */
 function stripHtml(input?: string | null) {
@@ -21,20 +22,61 @@ export async function getHomeHero(
   next: NextFunction
 ) {
   try {
-    const cacheKey = "home:hero:cinematic:v4";
+    const cacheKey = "home:hero:cinematic:v5";
     const cached = await hybridCache.get<any>(cacheKey);
     if (cached) return res.json(cached);
 
+    // Fetch top 5 of current season by score
+    const { season, year } = getCurrentSeasonYearLocal();
     const aniRes = await fetch(ANILIST_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: HOME_HERO_GQL }),
+      body: JSON.stringify({
+        query: HOME_HERO_GQL,
+        variables: { season, seasonYear: year },
+      }),
     });
 
     if (!aniRes.ok)
       return res.status(aniRes.status).json({ error: "AniList Error" });
     const json = await aniRes.json();
-    const media = json.data?.Page?.media || [];
+    let media = json.data?.Page?.media || [];
+
+    // Fallback: if season returned fewer than 3 items, use trending/releasing
+    if (media.length < 3) {
+      const trendingQuery = `
+        query {
+          Page(page: 1, perPage: 5) {
+            media(type: ANIME, sort: [TRENDING_DESC], status_in: [RELEASING, NOT_YET_RELEASED], isAdult: false) {
+              id
+              title { romaji english native }
+              coverImage { extraLarge }
+              bannerImage
+              description
+              episodes
+              genres
+              averageScore
+              seasonYear
+              startDate { year month day }
+              status
+              studios(isMain: true) { edges { isMain node { name } } }
+              trailer { id site }
+              type
+              nextAiringEpisode { episode airingAt }
+            }
+          }
+        }
+      `;
+      const fallbackRes = await fetch(ANILIST_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: trendingQuery }),
+      });
+      if (fallbackRes.ok) {
+        const fallbackJson = await fallbackRes.json();
+        media = fallbackJson.data?.Page?.media || [];
+      }
+    }
 
     const itemsProm = media.map(async (m: any) => {
       const title = preferTitle(m.title);
@@ -83,7 +125,7 @@ export async function getHomeHero(
       return item;
     });
 
-    const items = (await Promise.all(itemsProm)).filter(Boolean).slice(0, 10);
+    const items = (await Promise.all(itemsProm)).filter(Boolean);
 
     const payload = { data: items };
     await hybridCache.set(cacheKey, payload, 1000 * 60 * 5);

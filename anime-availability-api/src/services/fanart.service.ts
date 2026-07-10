@@ -1,6 +1,7 @@
 // src/services/fanart.service.ts
 import { logger } from "../utils/logger.js";
 import { ENV } from "../config/env.js";
+import { hybridCache } from "../utils/cache.js";
 import { fetchWithRetry } from "../utils/fetch.js";
 import { withDedup } from "./tmdb.service.js";
 
@@ -67,6 +68,10 @@ async function _fetchFanartTvArtwork(
     return null;
   }
 
+  const cacheKey = `fanart:tv:${tvdbId}`;
+  const cached = await hybridCache.get<FanartArtwork>(cacheKey);
+  if (cached) return cached;
+
   try {
     const url = `${FANART_BASE}/tv/${tvdbId}`;
     const res = await fetchWithRetry(url, {
@@ -129,7 +134,9 @@ async function _fetchFanartTvArtwork(
       }
     }
 
-    return { logoUrl, backdropUrl, seasonPosters, seasonBanners, seasonThumbs };
+    const result: FanartArtwork = { logoUrl, backdropUrl, seasonPosters, seasonBanners, seasonThumbs };
+    await hybridCache.set(cacheKey, result, ENV.CACHE_TTL_FANART * 1000);
+    return result;
   } catch (e) {
     logger.warn({ err: e, tvdbId }, "[fanart] Failed to fetch artwork");
     return null;

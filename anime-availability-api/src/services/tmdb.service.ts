@@ -170,14 +170,14 @@ export async function getTmdbSpecificSynopsis(
     return getTmdbSynopsis(id, kind, language);
   }
 
-  // --- TV: derivar año/mes del próximo episodio si está disponible ---
-  // nextAiringAt es un timestamp Unix de AniList. Al usarlo en vez de
-  // seasonYear/startDate, obtenemos la temporada/cour ACTUAL, no la primera.
-  if (nextAiringAt && kind === "tv") {
+  // --- TV: usar aniYear/aniMonth como fuente primaria (desde seasonYear/startDate de AniList) ---
+  // nextAiringAt solo se usa como fallback si no hay aniYear, porque nextAiringEpisode
+  // apunta al PRÓXIMO episodio, no al inicio de la temporada actual.
+  if (!aniYear && nextAiringAt && kind === "tv") {
     const airDate = new Date(nextAiringAt * 1000);
     aniYear = airDate.getFullYear();
     aniMonth = airDate.getMonth() + 1;
-    logger.debug({ aniYear, aniMonth, nextAiringAt }, "[tmdb] season derived from nextAiringEpisode");
+    logger.debug({ aniYear, aniMonth, nextAiringAt }, "[tmdb] season derived from nextAiringEpisode fallback");
   }
 
   // --- TV: buscar temporada específica por año/mes ---
