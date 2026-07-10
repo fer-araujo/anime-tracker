@@ -34,6 +34,8 @@ export interface FanartTvResponse {
 export interface FanartArtwork {
   logoUrl: string | null;
   backdropUrl: string | null;
+  /** All showbackground items (sorted by likes, lang-filtered) — primary + gallery */
+  backdropCandidates: { url: string; likes: number; width?: number; height?: number }[];
   seasonPosters: { url: string; season: number; likes: number }[];
   seasonBanners: { url: string; season: number; likes: number }[];
   seasonThumbs: { url: string; season: number; likes: number }[];
@@ -55,6 +57,18 @@ function firstUrl<T extends FanartTvImage>(items: T[]): string | null {
   const filtered = filterEnglishOrNoLang(items);
   const sorted = sortByLikes(filtered);
   return sorted.length > 0 ? sorted[0].url : null;
+}
+
+/** Like firstUrl but returns ALL items (sorted, filtered) for gallery use */
+function allUrls<T extends FanartTvImage>(items: T[]): { url: string; likes: number; width?: number; height?: number }[] {
+  const filtered = filterEnglishOrNoLang(items);
+  const sorted = sortByLikes(filtered);
+  return sorted.map((img) => ({
+    url: img.url,
+    likes: Number(img.likes),
+    ...("width" in img ? { width: (img as any).width } : {}),
+    ...("height" in img ? { height: (img as any).height } : {}),
+  }));
 }
 
 // ─── Core function ────────────────────────────────────────────────────────────
@@ -98,6 +112,7 @@ async function _fetchFanartTvArtwork(
 
     // --- Backdrop: showbackground, filtered and sorted ---
     const backdropUrl = firstUrl(data.showbackground ?? []);
+    const backdropCandidates = allUrls(data.showbackground ?? []);
 
     // --- Season artwork ---
     const seasonPosters: FanartArtwork["seasonPosters"] = [];
@@ -134,7 +149,7 @@ async function _fetchFanartTvArtwork(
       }
     }
 
-    const result: FanartArtwork = { logoUrl, backdropUrl, seasonPosters, seasonBanners, seasonThumbs };
+    const result: FanartArtwork = { logoUrl, backdropUrl, backdropCandidates, seasonPosters, seasonBanners, seasonThumbs };
     await hybridCache.set(cacheKey, result, ENV.CACHE_TTL_FANART * 1000);
     return result;
   } catch (e) {

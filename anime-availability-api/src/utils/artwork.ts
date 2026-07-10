@@ -53,16 +53,19 @@ const tmdbImageUrl = (path: string | null, size = "original") =>
  *
  * REGLAS ARQUITECTÓNICAS (aplicar estrictamente):
  *
- * 1. BACKDROPS (FORZAR RAÍZ):
- *    - Prohibido extraer backdrops específicos de temporada.
- *    - Siempre usar el backdrop principal del TV Show (/tv/{id}/images)
- *      para mantener proporciones correctas y estética cinemática en TODAS
- *      las temporadas, incluyendo secuelas.
+ * 1. BACKDROPS (PRIORIDAD):
+ *    - fanart.tv showbackground gana por calidad (mejor curado para anime).
+ *    - TMDB root-level es el fallback curado/mainstream.
+ *    - Season-specific backdrops SIEMPRE se evalúan con premium quality gate.
+ *    - Season banners/posters de fanart.tv van a artworkCandidates (galería),
+ *      NO al hero backdrop (son angostos, no aptos para hero).
+ *    - AniList bannerImage es el último recurso global.
  *
  * 2. LOGOS (CASCADA ESTRICTA):
- *    - Paso 1: Intentar logo específico de la temporada solicitada.
- *    - Paso 2: Si no existe, heredar logo principal del TV Show (root level).
- *    - Paso 3: Retornar null SÓLO si ambos fallan (frontend usa texto plano).
+ *    - Paso 1: Intentar logo de temporada (solo secuelas).
+ *    - Paso 2: fanart.tv logo si existe.
+ *    - Paso 3: Logo base del TV Show desde TMDB root.
+ *    - Paso 4: null (frontend usa texto plano).
  */
 export async function resolveHeroArtwork(
   searchTitle: string,
@@ -153,8 +156,9 @@ export async function resolveHeroArtwork(
 
       // ----------------------------------------------------------------
       // PASO 1.5: fanart.tv — Additional artwork for TV shows
-      // TMDB backdrops take priority. fanart.tv fills gaps only when
-      // TMDB has no backdrop. Both contribute to artwork candidates.
+      // Backdrop: fanart.tv showbackground WINS over TMDB (better quality
+      // and curation for most anime). Season banners/posters/thumbs go
+      // to artworkCandidates ONLY (they're narrow banners, not hero-grade).
       // Movies (kind === "movie") are skipped entirely.
       // ----------------------------------------------------------------
       if (kind === "tv" && tmdbId) {
@@ -171,24 +175,26 @@ export async function resolveHeroArtwork(
                 logo = fanartData.logoUrl;
               }
 
-              // Backdrop: TMDB takes priority; fanart.tv fills gaps
-              if (!backdrop && fanartData.backdropUrl) {
+              // Backdrop: fanart.tv showbackground wins over TMDB (quality)
+              if (fanartData.backdropUrl) {
                 backdrop = fanartData.backdropUrl;
               }
 
-              // Artwork candidates: fanart.tv backdrops + season art
-              // prepended to TMDB candidates array
+              // Artwork candidates: ALL fanart showbackgrounds + season art
               const fanartCandidates: any[] = [];
 
-              if (fanartData.backdropUrl) {
+              // All showbackgrounds (gallery alternatives)
+              for (const sb of fanartData.backdropCandidates) {
                 fanartCandidates.push({
-                  url_original: fanartData.backdropUrl,
-                  width: null,
+                  url_original: sb.url,
+                  width: sb.width ?? null,
                   is_textless: true,
                   source: "fanart-tv",
+                  likes: sb.likes,
                 });
               }
 
+              // Season-specific art (banners/posters/thumbs — gallery only)
               for (const sp of fanartData.seasonPosters) {
                 fanartCandidates.push({
                   url_original: sp.url,
@@ -267,13 +273,14 @@ export async function resolveHeroArtwork(
       }
 
       // ----------------------------------------------------------------
-      // PASO 3: BACKDROP DE TEMPORADA (solo detail pages, con quality gate)
+      // PASO 3: BACKDROP DE TEMPORADA (hero + detail) — Siempre activo
       // ----------------------------------------------------------------
-      // Cuando allowSeasonBackdrop=true (anime detail pages), intentamos
-      // backdrop específico de la temporada. Quality gate: width >= 1280
-      // y aspect ratio >= 1.5 (landscape). Si no pasa, queda el root.
+      // Busca backdrop específico de la temporada. PREMIUM quality gate:
+      // width >= 1920 (true 2k/4k), aspect >= 1.6 (cinematic widescreen).
+      // Si pasa, sobreescribe fanart.tv y TMDB root. Si no, se queda
+      // el backdrop existente (fanart.tv > TMDB root > AniList banner).
       // ----------------------------------------------------------------
-      if (opts?.allowSeasonBackdrop && kind === "tv" && tmdbId) {
+      if (kind === "tv" && tmdbId) {
         const seasonNumber = await resolveTmdbSeasonNumber(
           tmdbId,
           aniStartDate?.year,
@@ -284,12 +291,12 @@ export async function resolveHeroArtwork(
           const seasonImages = await getTmdbSeasonImages(tmdbId, seasonNumber);
 
           if (seasonImages?.backdrops?.length) {
-            // Quality gate: filtrar por resolución mínima y aspecto landscape
+            // PREMIUM quality gate: 2k resolución + cinematic widescreen
             const usableBackdrops = seasonImages.backdrops
               .filter((img: any) => {
-                if (!img.width || img.width < 1280) return false;
+                if (!img.width || img.width < 1920) return false;
                 const aspect = img.width / (img.height || 1);
-                return aspect >= 1.5;
+                return aspect >= 1.6;
               })
               .sort(
                 (a: any, b: any) =>
@@ -298,9 +305,9 @@ export async function resolveHeroArtwork(
               );
 
             if (usableBackdrops.length > 0) {
-              backdrop = tmdbBackdropUrl(usableBackdrops[0].file_path, "w1280") ?? null;
+              backdrop = tmdbBackdropUrl(usableBackdrops[0].file_path, "original") ?? null;
               logger.info(
-                `[artwork] Using season-specific backdrop (S${seasonNumber}) for "${searchTitle}"`,
+                `[artwork] PREMIUM season-specific backdrop (S${seasonNumber}) for "${searchTitle}"`,
               );
             }
           }
