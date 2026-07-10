@@ -1,7 +1,7 @@
 export const HOME_HERO_GQL = `
-  query {
-    Page(page: 1, perPage: 15) {
-      media(type: ANIME, sort: [POPULARITY_DESC], status: RELEASING) {
+  query ($season: MediaSeason, $seasonYear: Int) {
+    Page(page: 1, perPage: 5) {
+      media(season: $season, seasonYear: $seasonYear, type: ANIME, sort: [SCORE_DESC], isAdult: false) {
         id
         title { romaji english native }
         coverImage { extraLarge }

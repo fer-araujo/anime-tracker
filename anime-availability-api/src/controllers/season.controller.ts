@@ -5,18 +5,9 @@ import { SeasonQuery } from "../models/schema.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
 import { setCacheControl } from "../utils/cache.js";
 import { buildSeasonPageQuery } from "../graphql/queries/seasonPage.gql.js";
+import { getCurrentSeasonYearLocal } from "../utils/season.js";
 
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
-
-function getCurrentSeasonYearLocal() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth() + 1;
-  if (m >= 1 && m <= 3) return { season: "WINTER" as const, year: y };
-  if (m >= 4 && m <= 6) return { season: "SPRING" as const, year: y };
-  if (m >= 7 && m <= 9) return { season: "SUMMER" as const, year: y };
-  return { season: "FALL" as const, year: y };
-}
 
 export async function getSeason(
   req: Request & { validated?: SeasonQuery },
