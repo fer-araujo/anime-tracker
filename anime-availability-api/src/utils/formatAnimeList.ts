@@ -6,6 +6,7 @@ import {
   tmdbSearch,
   isAnimeCandidate,
   getTmdbSynopsis,
+  getTmdbSpecificSynopsis,
 } from "../services/tmdb.service.js";
 import { resolveProvidersForAnimeDetailed } from "./resolveProviders.js";
 import { htmlToText, shorten } from "./sanitize.js";
@@ -64,9 +65,9 @@ export async function formatAnimeList(
           isRealeasing,
         );
 
-        // Sinopsis en español (si hay tmdbId)
+        // Sinopsis en español — season-aware (si hay tmdbId)
         const spanishSynopsis = tmdbId
-          ? await getTmdbSynopsis(tmdbId, kind)
+          ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", anime.seasonYear, anime.startDate?.month, anime.nextAiringEpisode?.airingAt)
           : null;
 
         // 4. Meta datos limpios

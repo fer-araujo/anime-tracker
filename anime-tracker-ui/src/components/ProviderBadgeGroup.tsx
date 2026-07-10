@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ProviderBadge } from "./ProviderBadge";
 import { uniqueNormalizedProviders } from "@/lib/providers";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip";
+import Tooltip from "@/components/custom/Tooltip";
 
 type GroupProps = {
   providers: string[];
@@ -30,19 +30,12 @@ export function ProviderBadgesGroup({
         <ProviderBadge key={p} label={p} variant={variant} />
       ))}
       {hidden.length > 0 && (
-        <TooltipProvider delayDuration={150}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="cursor-default rounded-full border border-white/10 px-2 py-1 text-[11px] text-muted-foreground hover:border-white/20">
-                +{hidden.length}
-                <span className="sr-only">Más plataformas</span>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              {hidden.join(", ")}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Tooltip content={hidden.join(", ")} side="top">
+          <span className="cursor-default rounded-full border border-white/10 px-2 py-1 text-[11px] text-muted-foreground hover:border-white/20">
+            +{hidden.length}
+            <span className="sr-only">Más plataformas</span>
+          </span>
+        </Tooltip>
       )}
     </div>
   );

@@ -64,7 +64,7 @@ export async function getAnimeDetails(
       await resolveHeroArtwork(title, kind, {
         bannerImage: media.bannerImage,
         coverImage: media.coverImage,
-      }, media.startDate);
+      }, media.startDate, { allowSeasonBackdrop: true });
 
     const providersData = await resolveProvidersForAnimeDetailed(
       anilistId,
@@ -80,7 +80,7 @@ export async function getAnimeDetails(
     const aniYear = media.startDate?.year ?? media.seasonYear ?? null;
     const aniMonth = media.startDate?.month ?? null;
     const spanishSynopsis = tmdbId
-      ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", aniYear, aniMonth)
+      ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", aniYear, aniMonth, media.nextAiringEpisode?.airingAt)
       : null;
 
     const rawRecommendations =

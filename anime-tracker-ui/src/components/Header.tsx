@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Bell, User, Menu, X, Search } from "lucide-react";
+import Icon from "@/components/custom/Icon";
 import SearchBar from "@/components/Search/SearchBar";
 import { cn } from "@/lib/utils";
 import { AnimeTrackerLogo } from "./Logo";
@@ -76,10 +76,10 @@ export default function Header() {
         {/* ICONOS EXTRA (Solo Desktop) */}
         <div className="hidden md:flex items-center gap-3 lg:gap-4 shrink-0">
           <button className="text-white/70 hover:text-white transition-colors">
-            <Bell className="w-5 h-5" />
+            <Icon name="Bell" size={20} />
           </button>
           <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/70 hover:border-primary transition-colors cursor-pointer">
-            <User className="w-4 h-4" />
+            <Icon name="User" size={16} />
           </div>
         </div>
 
@@ -90,7 +90,7 @@ export default function Header() {
             className="text-white/80 hover:text-white p-1"
             aria-label="Buscar"
           >
-            <Search className="w-5 h-5" />
+            <Icon name="Search" size={20} />
           </button>
 
           <button
@@ -99,9 +99,9 @@ export default function Header() {
             aria-label="Alternar menú"
           >
             {isMobileMenuOpen ? (
-              <X className="w-6 h-6" />
+              <Icon name="X" size={24} />
             ) : (
-              <Menu className="w-6 h-6" />
+              <Icon name="Menu" size={24} />
             )}
           </button>
         </div>
@@ -146,11 +146,11 @@ export default function Header() {
 
           <div className="flex items-center gap-6 pt-2 pb-2">
             <button className="flex items-center gap-2 text-white/70 hover:text-white transition-colors">
-              <Bell className="w-5 h-5" />
+              <Icon name="Bell" size={20} />
               <span>Notificaciones</span>
             </button>
             <button className="flex items-center gap-2 text-white/70 hover:text-white transition-colors">
-              <User className="w-5 h-5" />
+              <Icon name="User" size={20} />
               <span>Mi Perfil</span>
             </button>
           </div>
