@@ -28,6 +28,7 @@ export function HeroCarouselCinematic({
   const [index, setIndex] = useState(0);
   const [holdAutoplayUntil, setHoldAutoplayUntil] = useState(0);
   const [touchStartX, setTouchStartX] = useState(0);
+  const [backdropLoaded, setBackdropLoaded] = useState<Record<number, boolean>>({});
 
   const router = useRouter();
   const total = items.length || 0;
@@ -76,6 +77,9 @@ export function HeroCarouselCinematic({
     if (typeof nextSrc === "string") {
       const img = new window.Image();
       img.referrerPolicy = "no-referrer";
+      img.onload = () => {
+        setBackdropLoaded((prev) => ({ ...prev, [nextIdx]: true }));
+      };
       img.src = nextSrc;
     }
   }, [index, total, items]);
@@ -154,14 +158,29 @@ export function HeroCarouselCinematic({
               transition={{ duration: 0.7 }}
               className="relative h-full w-full [mask-image:linear-gradient(to_bottom,black_70%,transparent_100%)]"
             >
+              {/* Gradient skeleton placeholder while backdrop loads */}
+              <div
+                className={cn(
+                  "absolute inset-0 bg-gradient-to-r from-neutral-900 via-neutral-800 to-neutral-900 animate-pulse",
+                  "transition-opacity duration-500",
+                  backdropLoaded[index] ? "opacity-0" : "opacity-100",
+                )}
+              />
               <Image
                 src={heroBackdrop}
                 alt={`Fondo de ${current.title}`}
                 fill
                 priority
                 quality={95}
+                onLoad={() =>
+                  setBackdropLoaded((prev) => ({
+                    ...prev,
+                    [index]: true,
+                  }))
+                }
                 className={cn(
-                  "object-cover transition-transform duration-700",
+                  "object-cover transition-transform duration-700 opacity-0 transition-opacity duration-500",
+                  backdropLoaded[index] && "opacity-100",
                   heroBackdrop ? "object-[center_20%]" : "object-center",
                 )}
               />
