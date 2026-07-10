@@ -3,5 +3,5 @@ import { MinimalShelf } from "@/components/Shelf";
 
 export default async function ComingSoonSection() {
   const items = await fetchComingSoon();
-  return <MinimalShelf title="Coming Soon" items={items} />;
+  return <MinimalShelf title="Próximamente" items={items} />;
 }

@@ -83,11 +83,36 @@ export async function fetchAiringToday(): Promise<Anime[]> {
   if (!res.ok) return [];
   const json = await res.json();
   const parsed = ScheduleResponseSchema.parse(json);
-  return parsed.data.map((item) => ({
-    ...item,
-    images: { ...item.images, backdrop: null, logo: null },
-    providers: [],
-  })) as unknown as Anime[];
+  return parsed.data.map((d): Anime => {
+    const item: any = d;
+    const imgs = item.images ?? {};
+    const m = item.meta ?? {};
+    return {
+      id: item.id,
+      title: item.title,
+      providers: [],
+      images: {
+        poster: imgs.poster ?? null,
+        banner: imgs.banner ?? null,
+        backdrop: null,
+        logo: null,
+      },
+      meta: {
+        rating: m.rating ?? undefined,
+        genres: m.genres ?? [],
+        status: m.status ?? undefined,
+        episodes: m.episodes ?? undefined,
+        type: m.format ?? undefined,
+        studio: null,
+        synopsis: null,
+        synopsisShort: null,
+        year: null,
+        trailer: null,
+        isAdult: false,
+        isNew: false,
+      },
+    };
+  });
 }
 
 export async function fetchComingSoon(): Promise<Anime[]> {
@@ -97,9 +122,34 @@ export async function fetchComingSoon(): Promise<Anime[]> {
   if (!res.ok) return [];
   const json = await res.json();
   const parsed = ScheduleResponseSchema.parse(json);
-  return parsed.data.map((item) => ({
-    ...item,
-    images: { ...item.images, backdrop: null, logo: null },
-    providers: [],
-  })) as unknown as Anime[];
+  return parsed.data.map((d): Anime => {
+    const item: any = d;
+    const imgs = item.images ?? {};
+    const m = item.meta ?? {};
+    return {
+      id: item.id,
+      title: item.title,
+      providers: [],
+      images: {
+        poster: imgs.poster ?? null,
+        banner: imgs.banner ?? null,
+        backdrop: null,
+        logo: null,
+      },
+      meta: {
+        rating: m.rating ?? undefined,
+        genres: m.genres ?? [],
+        status: m.status ?? undefined,
+        episodes: m.episodes ?? undefined,
+        type: m.format ?? undefined,
+        studio: null,
+        synopsis: null,
+        synopsisShort: null,
+        year: null,
+        trailer: null,
+        isAdult: false,
+        isNew: false,
+      },
+    };
+  });
 }

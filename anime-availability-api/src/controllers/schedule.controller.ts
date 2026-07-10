@@ -14,11 +14,12 @@ const ANILIST_ENDPOINT =
  * Compute CDMX (UTC-6) day bounds as Unix epoch seconds.
  * Start: midnight UTC-6 → 06:00 UTC
  * End:   23:59:59 UTC-6 → 05:59:59 UTC next day
+ *
+ * `Date.now()` is already UTC. CDMX = UTC-6, so we subtract 6 hours
+ * to get the current wall-clock date in CDMX regardless of server TZ.
  */
 function getCDMXDayBounds(): { greater: number; lesser: number } {
-  const now = new Date();
-  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
-  const cdmxMs = utcMs - 6 * 3600000;
+  const cdmxMs = Date.now() - 6 * 3600000;
   const cdmxDate = new Date(cdmxMs);
 
   const y = cdmxDate.getUTCFullYear();
