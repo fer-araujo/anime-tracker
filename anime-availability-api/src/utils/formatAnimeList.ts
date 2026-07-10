@@ -9,6 +9,7 @@ import {
   getTmdbSpecificSynopsis,
 } from "../services/tmdb.service.js";
 import { resolveProvidersForAnimeDetailed } from "./resolveProviders.js";
+import { enrichFromMalAndKitsu } from "./enrich.js";
 import { htmlToText, shorten } from "./sanitize.js";
 import { extractStudio } from "./extractStudio.js";
 
@@ -51,6 +52,12 @@ export async function formatAnimeList(
           logger.warn({ err: e }, `[formatAnimeList] TMDB search fail for ${title}`);
         }
 
+        // 2b. Fallback: Kitsu/MAL cuando TMDB no encontró match
+        let malKitsuFallback: Awaited<ReturnType<typeof enrichFromMalAndKitsu>> | null = null;
+        if (!tmdbId) {
+          malKitsuFallback = await enrichFromMalAndKitsu(title).catch(() => null);
+        }
+
         const yearFromSeason = anime.seasonYear;
         const isRealeasing = anime.status === "RELEASING";
 
@@ -86,7 +93,10 @@ export async function formatAnimeList(
           title,
           images: {
             poster:
-              anime.coverImage?.extraLarge ?? anime.coverImage?.large ?? null,
+              anime.coverImage?.extraLarge
+              ?? anime.coverImage?.large
+              ?? malKitsuFallback?.posterAlt
+              ?? null,
             backdrop: anime.bannerImage ?? null,
           },
           providers: providers.providers,
@@ -95,13 +105,13 @@ export async function formatAnimeList(
             rating:
               typeof anime.averageScore === "number"
                 ? anime.averageScore / 10
-                : null,
+                : malKitsuFallback?.rating ?? null,
             synopsis,
             synopsisShort,
             synopsisLang,
             year: anime.seasonYear ?? baseYear ?? null,
             season: anime.season ?? baseSeason ?? null,
-            episodes: anime.episodes ?? null,
+            episodes: anime.episodes ?? malKitsuFallback?.episodes ?? null,
             isAdult: anime.isAdult ?? false,
             nextEpisode: anime.nextAiringEpisode?.episode ?? null,
             nextEpisodeAt: nextEpisodeAtISO,
