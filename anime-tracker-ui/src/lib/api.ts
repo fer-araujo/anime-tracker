@@ -75,8 +75,7 @@ export async function fetchAiringToday(): Promise<Anime[]> {
   return parsed.data.map((item) => ({
     ...item,
     images: { ...item.images, backdrop: null, logo: null },
-    providers: [],
-  })) as unknown as Anime[];
+  })) as Anime[];
 }
 
 export async function fetchComingSoon(): Promise<Anime[]> {
@@ -89,8 +88,7 @@ export async function fetchComingSoon(): Promise<Anime[]> {
   return parsed.data.map((item) => ({
     ...item,
     images: { ...item.images, backdrop: null, logo: null },
-    providers: [],
-  })) as unknown as Anime[];
+  })) as Anime[];
 }
 
 export async function fetchAnimeDetails(id: string | number): Promise<{ data: Anime }> {
