@@ -76,6 +76,14 @@ export async function getSchedule(
       let rawMedia = schedules.map((s: any) => s.media);
       rawMedia = rawMedia.filter((m: any) => !m.isAdult);
       items = await formatAnimeList(rawMedia, country, season, year);
+
+      // Ordenar por rating (mejor → peor), como en season controller
+      items.sort((a, b) => {
+        const ar = a.meta?.rating ?? -1;
+        const br = b.meta?.rating ?? -1;
+        if (br !== ar) return br - ar;
+        return a.title.localeCompare(b.title);
+      });
     } else if (type === "coming") {
       const aniRes = await fetch(ANILIST_ENDPOINT, {
         method: "POST",
@@ -90,6 +98,14 @@ export async function getSchedule(
       const rawMedia = (json.data?.Page?.media as any[]) ?? [];
 
       items = await formatAnimeList(rawMedia, country, season, year);
+
+      // Ordenar por rating (mejor → peor), como en season controller
+      items.sort((a, b) => {
+        const ar = a.meta?.rating ?? -1;
+        const br = b.meta?.rating ?? -1;
+        if (br !== ar) return br - ar;
+        return a.title.localeCompare(b.title);
+      });
     } else {
       return res.status(400).json({ error: `Invalid type "${type}"` });
     }
