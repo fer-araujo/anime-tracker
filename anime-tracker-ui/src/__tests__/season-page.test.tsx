@@ -228,6 +228,32 @@ describe("SeasonPageClient", () => {
     });
   });
 
+  it("calls fetch with year/season URL params when props provided", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          meta: { country: "MX", season: "FALL", year: 2025, total: 0, source: "test" },
+          data: [],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    render(<SeasonPageClient year="2025" season="FALL" />);
+
+    await waitFor(() => {
+      // The fetch URL should include the query params from props
+      const calls = fetchSpy.mock.calls;
+      expect(calls.length).toBeGreaterThan(0);
+      const url = calls[0][0] as string;
+      expect(url).toContain("/season");
+      expect(url).toContain("year=2025");
+      expect(url).toContain("season=FALL");
+    });
+
+    fetchSpy.mockRestore();
+  });
+
   it("shows data grid after successful fetch", async () => {
     const mockData = {
       meta: { country: "MX", season: "SUMMER", year: 2026, total: 2, source: "test" },
