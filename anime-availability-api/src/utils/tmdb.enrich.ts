@@ -31,14 +31,17 @@ export function normalizeTitle(title: string): string {
   return clean.replace(/\s+/g, " ").trim();
 }
 
-/** Regex para detectar si un título de AniList corresponde a una secuela/season/cour */
+/** Regex para detectar si un título de AniList corresponde a una nueva temporada.
+ *  Matches: "2nd Season", "Season 3", "Final Season", "Temporada 2"
+ *  NO matches: "Part 2", "Cour 2", "Arc 2" (esos comparten TMDB season_number) */
 const SEASON_SEQUEL_RE =
-  /\d+(st|nd|rd|th)? season|season \d+|final season|part \d+|cour \d+/i;
+  /\d+(st|nd|rd|th)? season|season \d+|final season|temporada \d+|final temporada/i;
 
 /**
- * Detecta si el título indica una temporada/secuela específica.
- * Útil para que resolveHeroArtwork decida si debe priorizar assets
- * nativos de AniList sobre los del TV Show padre en TMDB.
+ * Detecta si el título indica una temporada/secuela específica (no cour/part).
+ * Útil para que resolveHeroArtwork decida si debe buscar logos específicos
+ * de temporada en TMDB. Solo retorna true para temporadas completas
+ * ("Season 2", "Temporada 3"), no para cours o partes.
  */
 export function isSeasonSequel(title: string): boolean {
   if (!title) return false;

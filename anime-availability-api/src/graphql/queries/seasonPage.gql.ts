@@ -10,6 +10,7 @@ const SEASON_PAGE_FIELDS = `
   genres
   averageScore
   nextAiringEpisode { episode airingAt }
+  startDate { year month day }
   studios(isMain: true) { edges { isMain node { name } } }
 `;
 

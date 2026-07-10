@@ -2,19 +2,7 @@
 import React, { useRef, useState, useMemo } from "react";
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
-import {
-  Play,
-  Plus,
-  Star,
-  Clock,
-  Tv,
-  MonitorPlay,
-  ChevronDown,
-  ChevronRight,
-  ImageIcon,
-  Calendar,
-  Trophy,
-} from "lucide-react";
+import Icon from "@/components/custom/Icon";
 import { Anime } from "@/types/anime";
 import { cn, formatNextAiring } from "@/lib/utils";
 import { GalleryLightbox } from "./common/Gallery";
@@ -178,7 +166,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                         Score
                       </span>
                       <div className="flex items-center gap-1.5">
-                        <Star className="w-4 h-4 text-primary fill-primary" />
+                        <Icon name="Star" size={16} className="fill-primary text-primary" />
                         <span className="text-lg font-black text-white">
                           {anime.meta?.rating ? `${anime.meta.rating}` : "N/A"}
                         </span>
@@ -220,12 +208,12 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                       rel="noreferrer"
                       className="flex items-center gap-3 bg-primary/85 text-gray-100 border border-transparent px-7 py-3 rounded-lg text-sm font-bold hover:bg-primary transition-all cursor-pointer"
                     >
-                      <Play className="w-4 h-4 fill-current" /> Ver trailer
+                      <Icon name="Play" size={16} /> Ver trailer
                     </a>
                   )}
 
                   <button className="flex items-center gap-3 bg-transparent border border-white/10 text-white/70 px-7 py-3 rounded-lg text-sm font-semibold hover:text-white hover:bg-white/10 transition-all cursor-pointer">
-                    <Plus className="w-4 h-4" /> Añadir a lista
+                    <Icon name="Plus" size={16} /> Añadir a lista
                   </button>
                 </div>
                 <section className="space-y-4 text-left">
@@ -253,9 +241,11 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                           className="flex items-center gap-1.5 mt-4 text-[11px] font-bold text-primary hover:brightness-125 transition-colors uppercase tracking-[0.2em] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
                         >
                           {isSynopsisExpanded ? "Mostrar menos" : "Leer más"}
-                          <ChevronDown
+                          <Icon
+                            name="ChevronDown"
+                            size={14}
                             className={cn(
-                              "w-3.5 h-3.5 transition-transform",
+                              "transition-transform",
                               isSynopsisExpanded && "rotate-180",
                             )}
                           />
@@ -275,7 +265,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                 </section>
                 <section className="space-y-6 pt-2">
                   <h3 className="text-white text-xl font-light tracking-wide flex items-center gap-3">
-                    <MonitorPlay className="w-5 h-5 text-primary" /> Disponible
+                    <Icon name="MonitorPlay" size={20} className="text-primary" /> Disponible
                     en
                   </h3>
                   <div className="flex flex-wrap gap-3 justify-start">
@@ -335,7 +325,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     {activeTab === "Detalles" && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01]">
-                          <Tv className="w-5 h-5 text-primary mb-6 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                          <Icon name="Tv" size={20} className="text-primary mb-6" />
                           <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
                             Total Eps.
                           </p>
@@ -345,7 +335,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                         </div>
 
                         <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01]">
-                          <Clock className="w-5 h-5 text-primary mb-6 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                          <Icon name="Clock" size={20} className="text-primary mb-6" />
                           <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
                             Duración
                           </p>
@@ -358,7 +348,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
 
                         {/* TARJETA 3: Ranking (¡La nueva!) */}
                         <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01]">
-                          <Trophy className="w-5 h-5 text-primary mb-6 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                          <Icon name="Trophy" size={20} className="text-primary mb-6" />
                           <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
                             {anime.meta?.ranking?.type === "RATED"
                               ? "Mejor Valorado"
@@ -383,7 +373,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                             return (
                               <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01] flex flex-col justify-between">
                                 {/* 1. Icono arriba (Igual que las demás) */}
-                                <MonitorPlay className="w-5 h-5 text-primary mb-6 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                                <Icon name="MonitorPlay" size={20} className="text-primary mb-6" />
 
                                 <div>
                                   {/* 2. Título en medio (Con el puntito de "en emisión") */}
@@ -413,7 +403,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                           })()
                         ) : (
                           <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01]">
-                            <Calendar className="w-5 h-5 text-primary mb-6 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                            <Icon name="Calendar" size={20} className="text-primary mb-6" />
                             <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
                               Año
                             </p>
@@ -461,10 +451,10 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                                     className="object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-300"
                                   />
                                 ) : (
-                                  <Play className="w-5 h-5 text-white/30 group-hover:text-primary transition-colors" />
+                                  <Icon name="Play" size={20} className="text-white/30 group-hover:text-primary" />
                                 )}
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-transparent transition-colors">
-                                  <Play className="w-5 h-5 text-white/80 group-hover:text-primary transition-colors drop-shadow-md" />
+                                  <Icon name="Play" size={20} className="text-white/80 group-hover:text-primary" />
                                 </div>
                               </div>
                               <div className="min-w-0 flex-1">
@@ -507,7 +497,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                                 <ImagePlaceholder />
                               )}
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <ImageIcon className="w-6 h-6 text-white/70" />
+                                <Icon name="ImageIcon" size={24} className="text-white/70" />
                               </div>
                             </button>
                           ))}
@@ -533,7 +523,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     }
                     className="text-xs text-white/40 uppercase tracking-widest font-bold flex items-center gap-1 cursor-pointer hover:text-white transition-colors"
                   >
-                    Ver más <ChevronRight className="w-3 h-3" />
+                    Ver más <Icon name="ChevronRight" size={12} />
                   </button>
                 </div>
 

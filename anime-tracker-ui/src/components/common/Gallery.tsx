@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useRef } from "react";
 import Image from "next/image";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import Icon from "@/components/custom/Icon";
 import { ArtworkCandidate } from "@/types/anime";
 
 interface GalleryLightboxProps {
@@ -100,7 +100,7 @@ export function GalleryLightbox({
         aria-label="Cerrar visor"
         className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
-        <X className="w-6 h-6" aria-hidden="true" />
+        <Icon name="X" size={24} aria-hidden="true" />
       </button>
 
       <button
@@ -108,7 +108,7 @@ export function GalleryLightbox({
         aria-label="Imagen anterior"
         className="absolute left-6 p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-colors z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
-        <ChevronLeft className="w-8 h-8" aria-hidden="true" />
+        <Icon name="ChevronLeft" size={32} aria-hidden="true" />
       </button>
 
       <div
@@ -129,7 +129,7 @@ export function GalleryLightbox({
         aria-label="Siguiente imagen"
         className="absolute right-6 p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-colors z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
-        <ChevronRight className="w-8 h-8" aria-hidden="true" />
+        <Icon name="ChevronRight" size={32} aria-hidden="true" />
       </button>
 
       <div

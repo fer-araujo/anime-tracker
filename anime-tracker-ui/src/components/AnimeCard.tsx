@@ -5,13 +5,13 @@ import React, { useState } from "react";
 import { ProviderBadge } from "./ProviderBadge";
 import { uniqueNormalizedProviders } from "@/lib/providers";
 import { cn, handleImageLoad } from "@/lib/utils";
-import { Info, Plus } from "lucide-react"; // <-- Agregué Palette para el estudio
 import { AnimeCardProps } from "@/types/anime";
 import { Pill } from "./common/Pills";
 import { ScoreBadge } from "./common/ScoreBadge";
 import { ActionButton, FavButton } from "./common/Buttons";
 import { PosterSkeleton } from "./Loaders/PosterSkeleton";
-import * as Tooltip from "@radix-ui/react-tooltip";
+import Tooltip from "@/components/custom/Tooltip";
+import Icon from "@/components/custom/Icon";
 
 export function AnimeCard({
   anime,
@@ -151,35 +151,14 @@ export function AnimeCard({
 
             {/* Sinopsis */}
             {anime.meta?.synopsisShort && (
-              <Tooltip.Provider delayDuration={300}>
-                <Tooltip.Root>
-                  <Tooltip.Trigger asChild>
-                    {/* EL FIX REAL: Cambiamos <p> por <button> y le agregamos text-left y w-full 
-                        para que se siga viendo exactamente igual que un párrafo, pero siendo semánticamente correcto. */}
-                    <button className="mt-2 px-3 w-full text-left text-[0.78rem] leading-[1.25rem] text-white/90 [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 rounded-sm">
-                      {anime.meta.synopsisShort}
-                    </button>
-                  </Tooltip.Trigger>
-                  <Tooltip.Portal>
-                    <Tooltip.Content
-                      side="bottom"
-                      align="center"
-                      sideOffset={8}
-                      className={cn(
-                        "z-[100] max-w-xs md:max-w-sm overflow-hidden rounded-md border border-white/10 bg-neutral-950/95 px-4 py-3 text-xs leading-relaxed text-white/90 shadow-2xl backdrop-blur-md",
-                        "animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2",
-                      )}
-                    >
-                      {anime.meta.synopsis || anime.meta.synopsisShort}
-                      <Tooltip.Arrow
-                        className="fill-white/10"
-                        width={12}
-                        height={6}
-                      />
-                    </Tooltip.Content>
-                  </Tooltip.Portal>
-                </Tooltip.Root>
-              </Tooltip.Provider>
+              <Tooltip
+                content={anime.meta.synopsis || anime.meta.synopsisShort}
+                side="bottom"
+              >
+                <button className="mt-2 px-3 w-full text-left text-[0.78rem] leading-[1.25rem] text-white/90 [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 rounded-sm">
+                  {anime.meta.synopsisShort}
+                </button>
+              </Tooltip>
             )}
 
             <div className="mt-auto flex flex-col gap-4 px-3 pb-3">
@@ -200,7 +179,7 @@ export function AnimeCard({
                     e.stopPropagation();
                     onOpen?.(anime);
                   }}
-                  icon={<Info size={14} />}
+                  icon={<Icon name="Info" size={14} />}
                 >
                   Detalles
                 </ActionButton>
@@ -210,7 +189,7 @@ export function AnimeCard({
                     e.stopPropagation();
                     onAddToList?.(anime);
                   }}
-                  icon={<Plus size={14} />}
+                  icon={<Icon name="Plus" size={14} />}
                 >
                   Añadir
                 </ActionButton>

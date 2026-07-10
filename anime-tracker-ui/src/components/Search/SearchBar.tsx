@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Search } from "lucide-react";
+import Icon from "@/components/custom/Icon";
 import SearchOverlay from "@/components/Search/SearchOverlay";
 import { fetchSearch } from "@/lib/api";
 import type { SearchResultItem } from "@/types/search";
@@ -151,9 +151,9 @@ export default function SearchBar({
           className="absolute right-1 top-1/2 flex h-8 w-8 items-center justify-center -translate-y-1/2 bg-transparent hover:bg-white/10 text-white/70 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed border-none rounded-full transition-colors cursor-pointer"
         >
           {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <Icon name="Loader2" size={16} className="animate-spin text-primary" />
           ) : (
-            <Search className="h-4 w-4" />
+            <Icon name="Search" size={16} />
           )}
         </button>
       </form>

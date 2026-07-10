@@ -21,7 +21,7 @@ export async function getHomeHero(
   next: NextFunction
 ) {
   try {
-    const cacheKey = "home:hero:cinematic:v3";
+    const cacheKey = "home:hero:cinematic:v4";
     const cached = await hybridCache.get<any>(cacheKey);
     if (cached) return res.json(cached);
 
@@ -50,10 +50,10 @@ export async function getHomeHero(
       // B) Synopsis con season-awareness
       const aniMonth = m.startDate?.month ?? null;
       const synopsis = tmdbId
-        ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", m.seasonYear, aniMonth)
+        ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", m.seasonYear, aniMonth, m.nextAiringEpisode?.airingAt)
         : null;
 
-      const synopsisText = synopsis ?? stripHtml(m.description) ?? "";
+      const synopsisText = synopsis || stripHtml(m.description) || "";
       const synopsisShort = synopsisText.length > 180
         ? synopsisText.slice(0, 180) + "..."
         : synopsisText;

@@ -52,7 +52,7 @@ export const tmdbBackdropUrl = (path?: string | null, size = "original") =>
 
 // ─── In-flight request deduplication ──────────────────────────────────────────
 
-function withDedup<T extends (...args: any[]) => Promise<any>>(
+export function withDedup<T extends (...args: any[]) => Promise<any>>(
   fn: T,
   keyFn?: (...args: any[]) => string,
 ): T {
@@ -110,28 +110,41 @@ logger.warn({ err: e, id }, "Error fetching TMDB images");
 }
 
 /**
- * NUEVA FUNCIÓN: Obtiene la sinopsis en un idioma específico (por defecto es-MX)
+ * Obtiene la sinopsis en un idioma específico, con fallback automático
+ * a otros idiomas si el solicitado no tiene overview.
+ * 
+ * Cadena de fallback: "es-MX" → "es-ES" → "en"
  */
+const SYNOPSIS_LANG_FALLBACKS = ["es-MX", "es-ES", "en"];
+
 export async function getTmdbSynopsis(
   id: number,
   kind: "tv" | "movie" = "tv",
   language: string = "es-MX"
 ): Promise<string | null> {
-  const url = new URL(`${TMDB_BASE}/${kind}/${id}`);
-  url.searchParams.set("language", language);
+  const languages = language === "es-MX"
+    ? SYNOPSIS_LANG_FALLBACKS
+    : [language];
 
-  try {
-    const res = await fetchWithRetry(url.toString(), {
-      headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
-    });
-    
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.overview || null;
-  } catch (e) {
-    logger.warn({ err: e, id }, "Error fetching TMDB synopsis");
-    return null;
+  for (const lang of languages) {
+    try {
+      const url = new URL(`${TMDB_BASE}/${kind}/${id}`);
+      url.searchParams.set("language", lang);
+
+      const res = await fetchWithRetry(url.toString(), {
+        headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
+      });
+
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.overview?.trim()) return data.overview.trim();
+    } catch (e) {
+      logger.warn({ err: e, id, language: lang }, "Error fetching TMDB synopsis");
+      continue;
+    }
   }
+
+  return null;
 }
 
 /**
@@ -150,10 +163,21 @@ export async function getTmdbSpecificSynopsis(
   language: string = "es-MX",
   aniYear?: number | null,
   aniMonth?: number | null,
+  nextAiringAt?: number | null,
 ): Promise<string | null> {
   // --- Movie: mismo comportamiento de siempre ---
   if (kind === "movie") {
     return getTmdbSynopsis(id, kind, language);
+  }
+
+  // --- TV: derivar año/mes del próximo episodio si está disponible ---
+  // nextAiringAt es un timestamp Unix de AniList. Al usarlo en vez de
+  // seasonYear/startDate, obtenemos la temporada/cour ACTUAL, no la primera.
+  if (nextAiringAt && kind === "tv") {
+    const airDate = new Date(nextAiringAt * 1000);
+    aniYear = airDate.getFullYear();
+    aniMonth = airDate.getMonth() + 1;
+    logger.debug({ aniYear, aniMonth, nextAiringAt }, "[tmdb] season derived from nextAiringEpisode");
   }
 
   // --- TV: buscar temporada específica por año/mes ---
@@ -172,7 +196,7 @@ export async function getTmdbSpecificSynopsis(
 
     // 2. Sin seasons o sin año de referencia → fallback
     if (!seasons?.length || !aniYear) {
-      return tvData.overview ?? getTmdbSynopsis(id, kind, language);
+      return tvData.overview || getTmdbSynopsis(id, kind, language);
     }
 
     // 3. Buscar temporada cuyo air_date coincida con aniYear
@@ -198,7 +222,7 @@ export async function getTmdbSpecificSynopsis(
 
     // 3c. Si no hay candidatos después del filtro → fallback
     if (candidates.length === 0) {
-      return tvData.overview ?? getTmdbSynopsis(id, kind, language);
+      return tvData.overview || getTmdbSynopsis(id, kind, language);
     }
 
     // 4. Ordenar por season_number (la primera chronológicamente)
@@ -219,11 +243,11 @@ export async function getTmdbSpecificSynopsis(
       headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
     });
     if (!sRes.ok) {
-      return tvData.overview ?? getTmdbSynopsis(id, kind, language);
+      return tvData.overview || getTmdbSynopsis(id, kind, language);
     }
 
     const seasonData: TMDBSeasonDetail = await sRes.json();
-    return seasonData.overview ?? tvData.overview ?? getTmdbSynopsis(id, kind, language);
+    return seasonData.overview || tvData.overview || getTmdbSynopsis(id, kind, language);
   } catch (e) {
     logger.warn({ err: e, id }, "Error fetching TMDB specific synopsis");
     return getTmdbSynopsis(id, kind, language);
@@ -349,9 +373,37 @@ export function isAnimeCandidate(item: TMDBSearchTVItem) {
   return isAnimation || fromAnimeRegions;
 }
 
+// ─── TMDB External IDs (TVDB resolution) ─────────────────────────────────────
+
+/**
+ * Obtiene IDs externos (IMDB, TVDB, etc.) para un contenido TMDB.
+ */
+async function _getTmdbExternalIds(id: number): Promise<{
+  imdb_id?: string | null;
+  tvdb_id?: number | null;
+  tvrage_id?: number | null;
+  facebook_id?: string | null;
+  instagram_id?: string | null;
+  twitter_id?: string | null;
+} | null> {
+  try {
+    const url = new URL(`${TMDB_BASE}/tv/${id}/external_ids`);
+    const res = await fetchWithRetry(url.toString(), {
+      headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
+    });
+
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    logger.warn({ err: e, id }, "Error fetching TMDB external IDs");
+    return null;
+  }
+}
+
 // ─── Deduplicated exports ────────────────────────────────────────────────────
 
 export const tmdbSearch = withDedup(_tmdbSearch, (kind, query) => `tmdbSearch:${kind}:${query}`);
 export const getTmdbImages = withDedup(_getTmdbImages, (id, kind) => `getTmdbImages:${kind}:${id}`);
 export const getTmdbSeasonImages = withDedup(_getTmdbSeasonImages, (id, season) => `getTmdbSeasonImages:${id}:S${season}`);
 export const resolveTmdbSeasonNumber = withDedup(_resolveTmdbSeasonNumber, (id, y, m) => `resolveTmdbSeasonNumber:${id}:${y}:${m}`);
+export const getTmdbExternalIds = withDedup(_getTmdbExternalIds, (id) => `tmdbExtIds:${id}`);

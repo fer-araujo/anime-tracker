@@ -16,6 +16,7 @@ export const HOME_HERO_GQL = `
         studios(isMain: true) { edges { isMain node { name } } }
         trailer { id site }
         type
+        nextAiringEpisode { episode airingAt }
       }
     }
   }
