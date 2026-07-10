@@ -44,26 +44,12 @@ export default function Header() {
 
         {/* NAV LINKS DESKTOP */}
         <nav className="hidden md:flex items-center gap-4 lg:gap-6 text-sm font-medium text-white/70">
-          <button
-            onClick={() =>
-              alert(
-                "¡Próximamente! La página de Temporada estará lista en la versión 1.1 🚀",
-              )
-            }
-            className="hover:text-white transition-colors cursor-pointer"
+          <Link
+            href="/season"
+            className="hover:text-white transition-colors"
           >
             Temporada
-          </button>
-          <button
-            onClick={() =>
-              alert(
-                "¡Próximamente! El Top Histórico estará disponible en la versión 1.1 🏆",
-              )
-            }
-            className="hover:text-white transition-colors cursor-pointer"
-          >
-            Top
-          </button>
+          </Link>
         </nav>
 
         <div className="hidden md:flex flex-1" />
@@ -121,26 +107,13 @@ export default function Header() {
         </div>
 
         <nav className="flex flex-col gap-4 text-sm font-medium text-white/80">
-          <button
-            onClick={() =>
-              alert(
-                "¡Próximamente! La página de Temporada estará lista en la versión 1.1 🚀",
-              )
-            }
+          <Link
+            href="/season"
+            onClick={() => setIsMobileMenuOpen(false)}
             className="text-left py-2 hover:text-white transition-colors"
           >
             Temporada
-          </button>
-          <button
-            onClick={() =>
-              alert(
-                "¡Próximamente! El Top Histórico estará disponible en la versión 1.1 🏆",
-              )
-            }
-            className="text-left py-2 hover:text-white transition-colors"
-          >
-            Top
-          </button>
+          </Link>
 
           <div className="w-full h-[1px] bg-white/10 my-2" />
 
