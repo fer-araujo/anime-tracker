@@ -10,6 +10,7 @@ import {
 } from "../services/tmdb.service.js";
 import { resolveProvidersForAnimeDetailed } from "./resolveProviders.js";
 import { enrichFromMalAndKitsu } from "./enrich.js";
+import { shikiSearchAnime, shikiGetScreenshots } from "../services/shikimori.service.js";
 import { htmlToText, shorten } from "./sanitize.js";
 import { extractStudio } from "./extractStudio.js";
 
@@ -54,8 +55,20 @@ export async function formatAnimeList(
 
         // 2b. Fallback: Kitsu/MAL cuando TMDB no encontró match
         let malKitsuFallback: Awaited<ReturnType<typeof enrichFromMalAndKitsu>> | null = null;
+        let shikiScreenshot: string | null = null;
         if (!tmdbId) {
           malKitsuFallback = await enrichFromMalAndKitsu(title).catch(() => null);
+
+          // Shikimori screenshots como backdrop fallback
+          try {
+            const shikiResults = await shikiSearchAnime(title, 1);
+            if (shikiResults?.[0]?.id) {
+              const screenshots = await shikiGetScreenshots(shikiResults[0].id, 1);
+              shikiScreenshot = screenshots?.[0]?.original ?? null;
+            }
+          } catch (e) {
+            logger.warn({ err: e }, `[formatAnimeList] Shikimori search fail for ${title}`);
+          }
         }
 
         const yearFromSeason = anime.seasonYear;
@@ -97,7 +110,7 @@ export async function formatAnimeList(
               ?? anime.coverImage?.large
               ?? malKitsuFallback?.posterAlt
               ?? null,
-            backdrop: anime.bannerImage ?? null,
+            backdrop: anime.bannerImage ?? shikiScreenshot ?? null,
           },
           providers: providers.providers,
           meta: {
