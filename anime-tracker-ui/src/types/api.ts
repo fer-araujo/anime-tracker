@@ -43,6 +43,34 @@ export const HeroResponseSchema = z.object({
 export type HeroResponse = z.infer<typeof HeroResponseSchema>;
 
 /* -------------------------------------------------------------------------- */
+/*  ScheduleResponse Zod Schema                                               */
+/* -------------------------------------------------------------------------- */
+
+const ScheduleItemSchema = z.object({
+  id: z.object({
+    anilist: z.number(),
+    tmdb: z.number().nullable(),
+  }),
+  title: z.string(),
+  images: z.object({
+    poster: z.string().nullable(),
+    banner: z.string().nullable(),
+  }),
+  meta: z.object({
+    rating: z.number().nullable(),
+    genres: z.array(z.string()),
+    status: z.string().nullable(),
+    episodes: z.number().nullable(),
+    format: z.string().nullable(),
+  }),
+});
+
+export const ScheduleResponseSchema = z.object({
+  data: z.array(ScheduleItemSchema),
+});
+export type ScheduleResponse = z.infer<typeof ScheduleResponseSchema>;
+
+/* -------------------------------------------------------------------------- */
 /*  SeasonResp Schema                                                         */
 /* -------------------------------------------------------------------------- */
 
