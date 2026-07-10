@@ -1,5 +1,5 @@
 import { Anime } from "@/types/anime";
-import { SeasonResp, HeroResponseSchema, SeasonRespSchema, ScheduleResponseSchema, type HeroResponse } from "@/types/api";
+import { SeasonResp, HeroResponseSchema, SeasonRespSchema, type HeroResponse } from "@/types/api";
 import { SearchResultItem } from "@/types/search";
 
 export const API_BASE =
@@ -76,43 +76,45 @@ export async function fetchAnimeDetails(id: string | number): Promise<{ data: An
   return res.json();
 }
 
+function enrichScheduleItem(d: any): Anime {
+  const imgs = d.images ?? {};
+  const m = d.meta ?? {};
+  return {
+    id: d.id,
+    title: d.title,
+    providers: d.providers ?? [],
+    images: {
+      poster: imgs.poster ?? null,
+      banner: imgs.banner ?? null,
+      backdrop: imgs.backdrop ?? null,
+      logo: imgs.logo ?? null,
+    },
+    meta: {
+      genres: m.genres ?? [],
+      rating: m.rating ?? undefined,
+      synopsis: m.synopsis ?? undefined,
+      synopsisShort: m.synopsisShort ?? undefined,
+      year: m.year ?? null,
+      season: m.season ?? undefined,
+      episodes: m.episodes ?? undefined,
+      isAdult: m.isAdult ?? false,
+      status: m.status ?? undefined,
+      studio: m.studio ?? undefined,
+      type: m.type ?? undefined,
+      progress: null,
+      nextAiring: m.nextAiring ?? undefined,
+      nextEpisodeAt: m.nextEpisodeAt ?? undefined,
+    },
+  };
+}
+
 export async function fetchAiringToday(): Promise<Anime[]> {
   const res = await fetch(`${API_BASE}/schedule?type=airing`, {
     next: { revalidate: 1800 },
   });
   if (!res.ok) return [];
   const json = await res.json();
-  const parsed = ScheduleResponseSchema.parse(json);
-  return parsed.data.map((d): Anime => {
-    const item: any = d;
-    const imgs = item.images ?? {};
-    const m = item.meta ?? {};
-    return {
-      id: item.id,
-      title: item.title,
-      providers: [],
-      images: {
-        poster: imgs.poster ?? null,
-        banner: imgs.banner ?? null,
-        backdrop: null,
-        logo: null,
-      },
-      meta: {
-        rating: m.rating ?? undefined,
-        genres: m.genres ?? [],
-        status: m.status ?? undefined,
-        episodes: m.episodes ?? undefined,
-        type: m.format ?? undefined,
-        studio: null,
-        synopsis: null,
-        synopsisShort: null,
-        year: null,
-        trailer: null,
-        isAdult: false,
-        isNew: false,
-      },
-    };
-  });
+  return (json.data ?? []).map(enrichScheduleItem);
 }
 
 export async function fetchComingSoon(): Promise<Anime[]> {
@@ -121,35 +123,5 @@ export async function fetchComingSoon(): Promise<Anime[]> {
   });
   if (!res.ok) return [];
   const json = await res.json();
-  const parsed = ScheduleResponseSchema.parse(json);
-  return parsed.data.map((d): Anime => {
-    const item: any = d;
-    const imgs = item.images ?? {};
-    const m = item.meta ?? {};
-    return {
-      id: item.id,
-      title: item.title,
-      providers: [],
-      images: {
-        poster: imgs.poster ?? null,
-        banner: imgs.banner ?? null,
-        backdrop: null,
-        logo: null,
-      },
-      meta: {
-        rating: m.rating ?? undefined,
-        genres: m.genres ?? [],
-        status: m.status ?? undefined,
-        episodes: m.episodes ?? undefined,
-        type: m.format ?? undefined,
-        studio: null,
-        synopsis: null,
-        synopsisShort: null,
-        year: null,
-        trailer: null,
-        isAdult: false,
-        isNew: false,
-      },
-    };
-  });
+  return (json.data ?? []).map(enrichScheduleItem);
 }

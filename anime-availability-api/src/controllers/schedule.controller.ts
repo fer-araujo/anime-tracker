@@ -1,7 +1,8 @@
 // src/controllers/schedule.controller.ts
 import type { Request, Response, NextFunction } from "express";
 import { hybridCache, setCacheControl } from "../utils/cache.js";
-import { preferTitle } from "../utils/title.js";
+import { formatAnimeList } from "../utils/formatAnimeList.js";
+import { getCurrentSeasonYearLocal } from "../utils/season.js";
 import {
   AIRING_SCHEDULE_GQL,
   UPCOMING_MEDIA_GQL,
@@ -9,6 +10,8 @@ import {
 
 const ANILIST_ENDPOINT =
   process.env.ANILIST_URL || "https://graphql.anilist.co";
+
+const DEFAULT_COUNTRY = process.env.DEFAULT_COUNTRY || "MX";
 
 /**
  * Compute CDMX (UTC-6) day bounds as Unix epoch seconds.
@@ -32,34 +35,6 @@ function getCDMXDayBounds(): { greater: number; lesser: number } {
   return { greater, lesser };
 }
 
-function mapMediaToScheduleItem(m: any, extra?: {
-  episode?: number | null;
-  airingAt?: number | null;
-}) {
-  return {
-    id: { anilist: m.id, tmdb: null },
-    title: preferTitle(m.title),
-    providers: [],
-    images: {
-      poster: m.coverImage?.extraLarge ?? null,
-      banner: m.bannerImage ?? null,
-      backdrop: null,
-      logo: null,
-    },
-    meta: {
-      rating: m.averageScore
-        ? Number((m.averageScore / 10).toFixed(1))
-        : null,
-      genres: m.genres ?? [],
-      status: m.status,
-      episodes: m.episodes,
-      format: m.type,
-      episode: extra?.episode ?? null,
-      airingAt: extra?.airingAt ?? null,
-    },
-  };
-}
-
 export async function getSchedule(
   req: Request,
   res: Response,
@@ -75,6 +50,8 @@ export async function getSchedule(
       return res.json(cached);
     }
 
+    const { season, year } = getCurrentSeasonYearLocal();
+    const country = DEFAULT_COUNTRY;
     let items: any[] = [];
 
     if (type === "airing") {
@@ -96,12 +73,9 @@ export async function getSchedule(
       const schedules =
         (json.data?.Page?.airingSchedules as any[]) ?? [];
 
-      items = schedules.map((s: any) =>
-        mapMediaToScheduleItem(s.media, {
-          episode: s.episode,
-          airingAt: s.airingAt,
-        }),
-      );
+      let rawMedia = schedules.map((s: any) => s.media);
+      rawMedia = rawMedia.filter((m: any) => !m.isAdult);
+      items = await formatAnimeList(rawMedia, country, season, year);
     } else if (type === "coming") {
       const aniRes = await fetch(ANILIST_ENDPOINT, {
         method: "POST",
@@ -113,9 +87,9 @@ export async function getSchedule(
         return res.status(aniRes.status).json({ error: "AniList Error" });
 
       const json = await aniRes.json();
-      const media = (json.data?.Page?.media as any[]) ?? [];
+      const rawMedia = (json.data?.Page?.media as any[]) ?? [];
 
-      items = media.map((m: any) => mapMediaToScheduleItem(m));
+      items = await formatAnimeList(rawMedia, country, season, year);
     } else {
       return res.status(400).json({ error: `Invalid type "${type}"` });
     }

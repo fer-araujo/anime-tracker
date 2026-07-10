@@ -7,14 +7,20 @@ export const AIRING_SCHEDULE_GQL = `
         episode
         media {
           id
+          isAdult
           title { romaji english native }
-          coverImage { extraLarge }
+          coverImage { extraLarge large }
           bannerImage
-          averageScore
-          genres
-          status
+          description
           episodes
-          type
+          status
+          format
+          genres
+          averageScore
+          seasonYear
+          nextAiringEpisode { episode airingAt }
+          startDate { year month day }
+          studios(isMain: true) { edges { isMain node { name } } }
         }
       }
     }
@@ -27,13 +33,17 @@ export const UPCOMING_MEDIA_GQL = `
       media(type: ANIME, status: NOT_YET_RELEASED, sort: [POPULARITY_DESC], isAdult: false) {
         id
         title { romaji english native }
-        coverImage { extraLarge }
+        coverImage { extraLarge large }
         bannerImage
-        averageScore
-        genres
-        status
+        description
         episodes
-        type
+        status
+        format
+        genres
+        averageScore
+        seasonYear
+        startDate { year month day }
+        studios(isMain: true) { edges { isMain node { name } } }
       }
     }
   }
