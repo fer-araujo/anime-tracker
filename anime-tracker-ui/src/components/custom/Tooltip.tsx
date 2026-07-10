@@ -242,7 +242,7 @@ export default function Tooltip({
                   pointerEvents: "auto",
                   opacity: tooltipState === "measuring" ? 0 : 1,
                 }}
-                className="whitespace-normal break-words max-w-[min(90vw,35rem)] rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-foreground shadow-md shadow-black/30 leading-relaxed transition-opacity duration-150"
+                className="whitespace-normal break-words max-w-[min(90vw,35rem)] rounded-md border border-neutral-600 bg-neutral-900/95 backdrop-blur-sm px-4 py-3 text-sm text-foreground shadow-lg shadow-black/40 leading-relaxed transition-opacity duration-150"
                 onMouseEnter={() => {
                   if (hideTimeoutRef.current) {
                     clearTimeout(hideTimeoutRef.current);

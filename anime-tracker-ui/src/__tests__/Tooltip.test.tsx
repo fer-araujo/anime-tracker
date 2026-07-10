@@ -57,10 +57,13 @@ describe("Tooltip", () => {
     const tooltip = screen.getByRole("tooltip");
 
     expect(tooltip.className).toContain("rounded-md");
-    expect(tooltip.className).toContain("border-neutral-700");
-    expect(tooltip.className).toContain("bg-neutral-800");
+    expect(tooltip.className).toContain("border-neutral-600");
+    expect(tooltip.className).toContain("bg-neutral-900/95");
+    expect(tooltip.className).toContain("backdrop-blur-sm");
+    expect(tooltip.className).toContain("px-4");
+    expect(tooltip.className).toContain("py-3");
     expect(tooltip.className).toContain("text-foreground");
-    expect(tooltip.className).toContain("shadow-md");
+    expect(tooltip.className).toContain("shadow-lg");
   });
 
   it("has aria-describedby on trigger span when tooltip is visible", () => {
