@@ -1,5 +1,5 @@
 import { Anime } from "@/types/anime";
-import { SeasonResp, HeroResponseSchema, SeasonRespSchema, ScheduleResponseSchema, type HeroResponse } from "@/types/api";
+import { SeasonResp, HeroResponseSchema, SeasonRespSchema, type HeroResponse } from "@/types/api";
 import { SearchResultItem } from "@/types/search";
 
 export const API_BASE =
@@ -63,32 +63,6 @@ export async function fetchHomeHero(): Promise<HeroResponse> {
     return { data: [] };
   }
   return parsed.data;
-}
-
-export async function fetchAiringToday(): Promise<Anime[]> {
-  const res = await fetch(`${API_BASE}/schedule?type=airing`, {
-    next: { revalidate: 1800 },
-  });
-  if (!res.ok) return [];
-  const json = await res.json();
-  const parsed = ScheduleResponseSchema.parse(json);
-  return parsed.data.map((item) => ({
-    ...item,
-    images: { ...item.images, backdrop: null, logo: null },
-  })) as Anime[];
-}
-
-export async function fetchComingSoon(): Promise<Anime[]> {
-  const res = await fetch(`${API_BASE}/schedule?type=upcoming`, {
-    next: { revalidate: 3600 },
-  });
-  if (!res.ok) return [];
-  const json = await res.json();
-  const parsed = ScheduleResponseSchema.parse(json);
-  return parsed.data.map((item) => ({
-    ...item,
-    images: { ...item.images, backdrop: null, logo: null },
-  })) as Anime[];
 }
 
 export async function fetchAnimeDetails(id: string | number): Promise<{ data: Anime }> {
