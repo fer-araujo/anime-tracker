@@ -154,6 +154,7 @@ export function AnimeCard({
               <Tooltip
                 content={anime.meta.synopsis || anime.meta.synopsisShort}
                 side="bottom"
+                synopsisLang={anime.meta?.synopsisLang ?? null}
               >
                 <button className="mt-2 px-3 w-full text-left text-[0.78rem] leading-[1.25rem] text-white/90 [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 rounded-sm">
                   {anime.meta.synopsisShort}

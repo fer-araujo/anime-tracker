@@ -27,6 +27,7 @@ export default function Tooltip({
   content,
   children,
   side = "top",
+  synopsisLang,
 }: {
   /** Visible tooltip text. */
   content: string;
@@ -34,6 +35,8 @@ export default function Tooltip({
   children: ReactNode;
   /** Preferred side: "top" (default) or "bottom". */
   side?: "top" | "bottom";
+  /** Language of the synopsis content; renders badge when not "es". */
+  synopsisLang?: "es" | "en" | null;
 }) {
   const id = useId();
   const tooltipId = `tooltip-${id}`;
@@ -252,6 +255,11 @@ export default function Tooltip({
                 onMouseLeave={() => hideTooltip()}
               >
                 {content}
+                {synopsisLang && synopsisLang !== "es" && (
+                  <div className="flex items-center gap-1 mt-3 pt-2 border-t border-white/10 text-[11px] text-white/40">
+                    🇬🇧 Solo disponible en inglés
+                  </div>
+                )}
               </div>,
             document.body,
           )
