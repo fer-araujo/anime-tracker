@@ -75,3 +75,53 @@ export async function fetchAnimeDetails(id: string | number): Promise<{ data: An
   }
   return res.json();
 }
+
+function enrichScheduleItem(d: any): Anime {
+  const imgs = d.images ?? {};
+  const m = d.meta ?? {};
+  return {
+    id: d.id,
+    title: d.title,
+    providers: d.providers ?? [],
+    images: {
+      poster: imgs.poster ?? null,
+      banner: imgs.banner ?? null,
+      backdrop: imgs.backdrop ?? null,
+      logo: imgs.logo ?? null,
+    },
+    meta: {
+      genres: m.genres ?? [],
+      rating: m.rating ?? undefined,
+      synopsis: m.synopsis ?? undefined,
+      synopsisShort: m.synopsisShort ?? undefined,
+      year: m.year ?? null,
+      season: m.season ?? undefined,
+      episodes: m.episodes ?? undefined,
+      isAdult: m.isAdult ?? false,
+      status: m.status ?? undefined,
+      studio: m.studio ?? undefined,
+      type: m.type ?? undefined,
+      progress: null,
+      nextAiring: m.nextAiring ?? undefined,
+      nextEpisodeAt: m.nextEpisodeAt ?? undefined,
+    },
+  };
+}
+
+export async function fetchAiringToday(): Promise<Anime[]> {
+  const res = await fetch(`${API_BASE}/schedule?type=airing`, {
+    next: { revalidate: 1800 },
+  });
+  if (!res.ok) return [];
+  const json = await res.json();
+  return (json.data ?? []).map(enrichScheduleItem);
+}
+
+export async function fetchComingSoon(): Promise<Anime[]> {
+  const res = await fetch(`${API_BASE}/schedule?type=coming`, {
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) return [];
+  const json = await res.json();
+  return (json.data ?? []).map(enrichScheduleItem);
+}

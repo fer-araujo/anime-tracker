@@ -1,0 +1,104 @@
+// src/controllers/schedule.controller.ts
+import type { Request, Response, NextFunction } from "express";
+import { hybridCache, setCacheControl } from "../utils/cache.js";
+import { formatAnimeList } from "../utils/formatAnimeList.js";
+import { getCurrentSeasonYearLocal } from "../utils/season.js";
+import {
+  AIRING_SCHEDULE_GQL,
+  UPCOMING_MEDIA_GQL,
+} from "../graphql/queries/schedule.gql.js";
+
+const ANILIST_ENDPOINT =
+  process.env.ANILIST_URL || "https://graphql.anilist.co";
+
+const DEFAULT_COUNTRY = process.env.DEFAULT_COUNTRY || "MX";
+
+/**
+ * Compute CDMX (UTC-6) day bounds as Unix epoch seconds.
+ * Start: midnight UTC-6 → 06:00 UTC
+ * End:   23:59:59 UTC-6 → 05:59:59 UTC next day
+ *
+ * `Date.now()` is already UTC. CDMX = UTC-6, so we subtract 6 hours
+ * to get the current wall-clock date in CDMX regardless of server TZ.
+ */
+function getCDMXDayBounds(): { greater: number; lesser: number } {
+  const cdmxMs = Date.now() - 6 * 3600000;
+  const cdmxDate = new Date(cdmxMs);
+
+  const y = cdmxDate.getUTCFullYear();
+  const m = cdmxDate.getUTCMonth();
+  const d = cdmxDate.getUTCDate();
+
+  const greater = Math.floor(Date.UTC(y, m, d, 6, 0, 0) / 1000);
+  const lesser = Math.floor(Date.UTC(y, m, d + 1, 5, 59, 59) / 1000);
+
+  return { greater, lesser };
+}
+
+export async function getSchedule(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const type = (req.query.type as string) || "airing";
+    const cacheKey = `schedule:${type}`;
+
+    const cached = await hybridCache.get<any>(cacheKey);
+    if (cached) {
+      setCacheControl(res, "schedule");
+      return res.json(cached);
+    }
+
+    const { season, year } = getCurrentSeasonYearLocal();
+    const country = DEFAULT_COUNTRY;
+    let items: any[] = [];
+
+    if (type === "airing") {
+      const { greater, lesser } = getCDMXDayBounds();
+
+      const aniRes = await fetch(ANILIST_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: AIRING_SCHEDULE_GQL,
+          variables: { greater, lesser },
+        }),
+      });
+
+      if (!aniRes.ok)
+        return res.status(aniRes.status).json({ error: "AniList Error" });
+
+      const json = await aniRes.json();
+      const schedules =
+        (json.data?.Page?.airingSchedules as any[]) ?? [];
+
+      let rawMedia = schedules.map((s: any) => s.media);
+      rawMedia = rawMedia.filter((m: any) => !m.isAdult);
+      items = await formatAnimeList(rawMedia, country, season, year);
+    } else if (type === "coming") {
+      const aniRes = await fetch(ANILIST_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: UPCOMING_MEDIA_GQL }),
+      });
+
+      if (!aniRes.ok)
+        return res.status(aniRes.status).json({ error: "AniList Error" });
+
+      const json = await aniRes.json();
+      const rawMedia = (json.data?.Page?.media as any[]) ?? [];
+
+      items = await formatAnimeList(rawMedia, country, season, year);
+    } else {
+      return res.status(400).json({ error: `Invalid type "${type}"` });
+    }
+
+    const payload = { data: items };
+    await hybridCache.set(cacheKey, payload, 1000 * 60 * 5);
+    setCacheControl(res, "schedule");
+    return res.json(payload);
+  } catch (err) {
+    next(err);
+  }
+}

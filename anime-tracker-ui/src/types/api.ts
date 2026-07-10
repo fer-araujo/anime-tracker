@@ -56,3 +56,11 @@ export const SeasonRespSchema = z.object({
   }),
   data: z.array(z.any()),
 });
+
+/* -------------------------------------------------------------------------- */
+/*  Schedule — loose validation (items come enriched from formatAnimeList)    */
+/* -------------------------------------------------------------------------- */
+
+export const ScheduleResponseSchema = z.object({
+  data: z.array(z.any()),
+});
