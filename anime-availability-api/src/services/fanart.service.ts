@@ -4,7 +4,7 @@ import { ENV } from "../config/env.js";
 import { fetchWithRetry } from "../utils/fetch.js";
 import { withDedup } from "./tmdb.service.js";
 
-const FANART_BASE = "https://api.fanart.tv/v3";
+const FANART_BASE = "https://webservice.fanart.tv/v3.2";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,8 +68,10 @@ async function _fetchFanartTvArtwork(
   }
 
   try {
-    const url = `${FANART_BASE}/tv/${tvdbId}?api_key=${apiKey}`;
-    const res = await fetchWithRetry(url);
+    const url = `${FANART_BASE}/tv/${tvdbId}`;
+    const res = await fetchWithRetry(url, {
+      headers: { "api-key": apiKey },
+    });
 
     if (!res.ok) {
       logger.warn(

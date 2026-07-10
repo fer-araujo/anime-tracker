@@ -129,9 +129,9 @@ describe("fanart.service", () => {
 function mockFetch(url: string | URL | Request, init?: RequestInit) {
   const urlStr = typeof url === "string" ? url : url.toString();
 
-  if (urlStr.includes("api.fanart.tv")) {
+  if (urlStr.includes("webservice.fanart.tv")) {
     // Match the fanart.tv mock from setup.ts
-    if (urlStr.includes("/v3/tv/371310")) {
+    if (urlStr.includes("/v3.2/tv/371310")) {
       return Promise.resolve(
         new Response(
           JSON.stringify({

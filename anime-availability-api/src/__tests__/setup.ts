@@ -50,7 +50,7 @@ function mockFetch(url: string | URL | Request, init?: RequestInit) {
   }
 
   // fanart.tv API
-  if (urlStr.includes("api.fanart.tv")) {
+  if (urlStr.includes("webservice.fanart.tv")) {
     return Promise.resolve(
       new Response(JSON.stringify(mockFanartTvResponse(urlStr)), {
         status: 200,

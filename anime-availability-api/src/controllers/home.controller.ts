@@ -21,7 +21,7 @@ export async function getHomeHero(
   next: NextFunction
 ) {
   try {
-    const cacheKey = "home:hero:cinematic:v3";
+    const cacheKey = "home:hero:cinematic:v4";
     const cached = await hybridCache.get<any>(cacheKey);
     if (cached) return res.json(cached);
 
