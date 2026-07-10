@@ -20,7 +20,7 @@ export type ranking = {
 
 // --- TUS TIPOS ORIGINALES (AUMENTADOS) ---
 export type Anime = {
-  id: { anilist: number; tmdb: number | null };
+  id: { anilist: number; tmdb: number | null; mal?: number | string | null; kitsu?: number | string | null };
   title: string;
   subtitle?: string | null; // <-- NUEVO
   providers: string[];
@@ -92,6 +92,8 @@ export interface AnimeMeta {
 export interface AnimeID {
   anilist: number;
   tmdb: number | null;
+  mal?: number | string | null;
+  kitsu?: number | string | null;
 }
 
 export interface AnimeItem {

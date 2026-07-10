@@ -102,7 +102,12 @@ export async function formatAnimeList(
           : null;
 
         return {
-          id: { anilist: anime.id, tmdb: tmdbId },
+          id: {
+            anilist: anime.id,
+            tmdb: tmdbId,
+            mal: malKitsuFallback?.sources?.mal?.id ?? null,
+            kitsu: malKitsuFallback?.sources?.kitsu?.id ?? null,
+          },
           title,
           images: {
             poster:
