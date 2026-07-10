@@ -56,3 +56,35 @@ export const SeasonRespSchema = z.object({
   }),
   data: z.array(z.any()),
 });
+
+/* -------------------------------------------------------------------------- */
+/*  Schedule Schemas                                                          */
+/* -------------------------------------------------------------------------- */
+
+export const ScheduleItemSchema = z.object({
+  id: z.object({ anilist: z.number(), tmdb: z.null() }),
+  title: z.string(),
+  providers: z.array(z.never()),
+  images: z.object({
+    poster: z.string().nullable(),
+    banner: z.string().nullable(),
+    backdrop: z.null(),
+    logo: z.null(),
+  }),
+  meta: z.object({
+    rating: z.number().nullable(),
+    genres: z.array(z.string()),
+    status: z.string().nullable(),
+    episodes: z.number().nullable(),
+    format: z.string().nullable(),
+    episode: z.number().nullable().optional(),
+    airingAt: z.number().nullable().optional(),
+  }),
+});
+
+export const ScheduleResponseSchema = z.object({
+  data: z.array(ScheduleItemSchema),
+});
+
+export type ScheduleItem = z.infer<typeof ScheduleItemSchema>;
+export type ScheduleResponse = z.infer<typeof ScheduleResponseSchema>;
