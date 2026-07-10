@@ -7,6 +7,9 @@ import {
   isAnimeCandidate,
   getTmdbSynopsis,
   getTmdbSpecificSynopsis,
+  getTmdbImages,
+  tmdbBackdropUrl,
+  tmdbPosterUrl,
 } from "../services/tmdb.service.js";
 import { resolveProvidersForAnimeDetailed } from "./resolveProviders.js";
 import { enrichFromMalAndKitsu } from "./enrich.js";
@@ -90,6 +93,33 @@ export async function formatAnimeList(
           ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", anime.seasonYear, anime.startDate?.month, anime.nextAiringEpisode?.airingAt)
           : null;
 
+        // 3b. TMDB images de alta calidad (2k/4k) — misma fuente que anime detail page
+        let tmdbBackdrop: string | null = null;
+        let tmdbPoster: string | null = null;
+        if (tmdbId) {
+          try {
+            const imagesData = await getTmdbImages(tmdbId, kind);
+            if (imagesData) {
+              // Backdrop: filtrar >=1920px, ordenado por calidad
+              const backdrops = (imagesData.backdrops ?? [])
+                .filter((img: any) => !img.width || img.width >= 1920)
+                .sort((a: any, b: any) => {
+                  const scoreA = (a.iso_639_1 === null ? 50 : 0) + a.vote_average * 5 + (a.vote_count ?? 0);
+                  const scoreB = (b.iso_639_1 === null ? 50 : 0) + b.vote_average * 5 + (b.vote_count ?? 0);
+                  return scoreB - scoreA;
+                });
+              if (backdrops[0]) tmdbBackdrop = tmdbBackdropUrl(backdrops[0].file_path) ?? null;
+
+              // Poster: mismo filtro, usar original para máxima calidad
+              const posters = (imagesData.posters ?? [])
+                .sort((a: any, b: any) => (b.vote_count ?? 0) - (a.vote_count ?? 0));
+              if (posters[0]) tmdbPoster = tmdbPosterUrl(posters[0].file_path, "original") ?? null;
+            }
+          } catch (e) {
+            logger.warn({ err: e, tmdbId }, `[formatAnimeList] TMDB images fail for ${title}`);
+          }
+        }
+
         // 4. Meta datos limpios
         const hasSpanish = !!spanishSynopsis;
         const synopsis = htmlToText(spanishSynopsis || anime.description || "");
@@ -111,11 +141,16 @@ export async function formatAnimeList(
           title,
           images: {
             poster:
-              anime.coverImage?.extraLarge
+              tmdbPoster
+              ?? anime.coverImage?.extraLarge
               ?? anime.coverImage?.large
               ?? malKitsuFallback?.posterAlt
               ?? null,
-            backdrop: anime.bannerImage ?? shikiScreenshot ?? null,
+            backdrop:
+              tmdbBackdrop
+              ?? anime.bannerImage
+              ?? shikiScreenshot
+              ?? null,
           },
           providers: providers.providers,
           meta: {
