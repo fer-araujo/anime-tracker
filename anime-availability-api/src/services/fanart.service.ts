@@ -24,9 +24,9 @@ export interface FanartTvResponse {
   hdtvlogo?: FanartTvImage[];
   clearlogo?: FanartTvImage[];
   showbackground?: (FanartTvImage & { width?: number; height?: number })[];
-  seasonposter?: Record<string, FanartTvImage[]>;
-  seasonbanner?: Record<string, FanartTvImage[]>;
-  seasonthumb?: Record<string, FanartTvImage[]>;
+  seasonposter?: (FanartTvImage & { season: string })[];
+  seasonbanner?: (FanartTvImage & { season: string })[];
+  seasonthumb?: (FanartTvImage & { season: string })[];
 }
 
 /** Structured artwork result consumed by resolveHeroArtwork */
@@ -98,38 +98,32 @@ async function _fetchFanartTvArtwork(
     const seasonThumbs: FanartArtwork["seasonThumbs"] = [];
 
     if (data.seasonposter) {
-      for (const [season, images] of Object.entries(data.seasonposter)) {
-        for (const img of images) {
-          seasonPosters.push({
-            url: img.url,
-            season: Number(season),
-            likes: Number(img.likes),
-          });
-        }
+      for (const img of data.seasonposter) {
+        seasonPosters.push({
+          url: img.url,
+          season: Number(img.season),
+          likes: Number(img.likes),
+        });
       }
     }
 
     if (data.seasonbanner) {
-      for (const [season, images] of Object.entries(data.seasonbanner)) {
-        for (const img of images) {
-          seasonBanners.push({
-            url: img.url,
-            season: Number(season),
-            likes: Number(img.likes),
-          });
-        }
+      for (const img of data.seasonbanner) {
+        seasonBanners.push({
+          url: img.url,
+          season: Number(img.season),
+          likes: Number(img.likes),
+        });
       }
     }
 
     if (data.seasonthumb) {
-      for (const [season, images] of Object.entries(data.seasonthumb)) {
-        for (const img of images) {
-          seasonThumbs.push({
-            url: img.url,
-            season: Number(season),
-            likes: Number(img.likes),
-          });
-        }
+      for (const img of data.seasonthumb) {
+        seasonThumbs.push({
+          url: img.url,
+          season: Number(img.season),
+          likes: Number(img.likes),
+        });
       }
     }
 

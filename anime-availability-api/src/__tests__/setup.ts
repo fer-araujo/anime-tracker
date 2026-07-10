@@ -7,6 +7,7 @@ process.env.STREAMING_AVAILABILITY_KEY = "";
 process.env.STREAMING_AVAIL_KEY = "";
 process.env.RAPIDAPI_KEY = "";
 process.env.REDIS_URL = "";
+process.env.FANART_TV_KEY = "55f7d6df186e9785f1b1fb85f89df381";
 
 beforeAll(() => {
   process.env.DISABLE_CIRCUIT_BREAKER = "true";
@@ -42,6 +43,16 @@ function mockFetch(url: string | URL | Request, init?: RequestInit) {
   if (urlStr.includes("streaming-availability.p.rapidapi.com")) {
     return Promise.resolve(
       new Response(JSON.stringify({ shows: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+  }
+
+  // fanart.tv API
+  if (urlStr.includes("api.fanart.tv")) {
+    return Promise.resolve(
+      new Response(JSON.stringify(mockFanartTvResponse(urlStr)), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       })
@@ -182,5 +193,47 @@ function mockTmdbResponse(url: string): unknown {
     };
   }
 
+  // TMDB external_ids endpoint
+  if (url.includes("/external_ids")) {
+    return { tvdb_id: 371310, imdb_id: "tt13293588" };
+  }
+
   return {};
+}
+
+function mockFanartTvResponse(url: string): unknown {
+  // Return full mock artwork for TV shows
+  return {
+    name: "Mushoku Tensei: Jobless Reincarnation",
+    tvdb_id: "371310",
+    tmdb_id: "94664",
+    hdtvlogo: [
+      {
+        id: "123",
+        url: "https://assets.fanart.tv/fanart/tv/371310/hdtvlogo/test.png",
+        lang: "en",
+        likes: "10",
+      },
+    ],
+    clearlogo: [],
+    showbackground: [
+      {
+        id: "456",
+        url: "https://assets.fanart.tv/fanart/tv/371310/showbackground/test.jpg",
+        lang: "en",
+        likes: "15",
+      },
+    ],
+    seasonposter: [
+      {
+        id: "789",
+        url: "https://assets.fanart.tv/fanart/tv/371310/seasonposter/s1.jpg",
+        lang: "en",
+        likes: "5",
+        season: "1",
+      },
+    ],
+    seasonbanner: [],
+    seasonthumb: [],
+  };
 }
