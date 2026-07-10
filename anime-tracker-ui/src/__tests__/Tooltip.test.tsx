@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import Tooltip from "@/components/custom/Tooltip";
 
@@ -111,5 +111,140 @@ describe("Tooltip", () => {
 
     expect(tooltip.style.position).toBe("fixed");
     expect(tooltip.style.zIndex).toBe("50");
+  });
+
+  it("mouse moves from trigger to tooltip without hiding", () => {
+    vi.useFakeTimers();
+    render(
+      <Tooltip content="Persist">
+        <button>Trigger</button>
+      </Tooltip>,
+    );
+
+    // Hover trigger → tooltip appears
+    fireEvent.mouseEnter(screen.getByText("Trigger"));
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toBeInTheDocument();
+
+    // Leave trigger → 150ms hide timer starts
+    fireEvent.mouseLeave(screen.getByText("Trigger"));
+
+    // Enter tooltip before timer fires → cancels hide
+    fireEvent.mouseEnter(tooltip);
+
+    // Advance well past the hide delay — tooltip stays visible
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+
+    // Leave tooltip → 150ms hide timer starts
+    fireEvent.mouseLeave(tooltip);
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it("rapid hover/unhover leaves no ghost tooltip", () => {
+    vi.useFakeTimers();
+    render(
+      <Tooltip content="Ghost">
+        <button>Trigger</button>
+      </Tooltip>,
+    );
+
+    // Rapidly hover and unhover
+    fireEvent.mouseEnter(screen.getByText("Trigger"));
+    fireEvent.mouseLeave(screen.getByText("Trigger"));
+
+    // Advance past the hide timeout
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+
+    // No ghost tooltip should remain
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it("unmounts during hide delay without state update warning", () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.useFakeTimers();
+
+    const { unmount } = render(
+      <Tooltip content="Unmount">
+        <button>Trigger</button>
+      </Tooltip>,
+    );
+
+    fireEvent.mouseEnter(screen.getByText("Trigger"));
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+
+    // Start hide (150ms delay)
+    fireEvent.mouseLeave(screen.getByText("Trigger"));
+
+    // Unmount while hide is pending
+    unmount();
+
+    // Advance time — no "state update on unmounted component" warning
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+
+    expect(consoleSpy).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
+  describe("language badge", () => {
+    it("renders badge when synopsisLang is 'en'", () => {
+      render(
+        <Tooltip content="English text" synopsisLang="en">
+          <button>Trigger</button>
+        </Tooltip>,
+      );
+      fireEvent.mouseEnter(screen.getByText("Trigger"));
+      expect(
+        screen.getByText(/Solo disponible en inglés/),
+      ).toBeInTheDocument();
+    });
+
+    it("does not render badge when synopsisLang is 'es'", () => {
+      render(
+        <Tooltip content="Texto español" synopsisLang="es">
+          <button>Trigger</button>
+        </Tooltip>,
+      );
+      fireEvent.mouseEnter(screen.getByText("Trigger"));
+      expect(
+        screen.queryByText(/Solo disponible en inglés/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not render badge when synopsisLang is undefined", () => {
+      render(
+        <Tooltip content="No badge">
+          <button>Trigger</button>
+        </Tooltip>,
+      );
+      fireEvent.mouseEnter(screen.getByText("Trigger"));
+      expect(
+        screen.queryByText(/Solo disponible en inglés/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not render badge when synopsisLang is null", () => {
+      render(
+        <Tooltip content="Null badge" synopsisLang={null}>
+          <button>Trigger</button>
+        </Tooltip>,
+      );
+      fireEvent.mouseEnter(screen.getByText("Trigger"));
+      expect(
+        screen.queryByText(/Solo disponible en inglés/),
+      ).not.toBeInTheDocument();
+    });
   });
 });
