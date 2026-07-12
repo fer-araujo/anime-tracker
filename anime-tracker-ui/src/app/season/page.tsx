@@ -1,11 +1,11 @@
-import SeasonPageClient from "./SeasonPageClient";
+import SeasonPage from "@/components/season/Season";
 
-export default async function SeasonPage({
+export default async function SeasonRoute({
   searchParams,
 }: {
   searchParams: Promise<{ year?: string; season?: string }>;
 }) {
   const { year, season } = await searchParams;
 
-  return <SeasonPageClient year={year} season={season} />;
+  return <SeasonPage year={year} season={season} />;
 }

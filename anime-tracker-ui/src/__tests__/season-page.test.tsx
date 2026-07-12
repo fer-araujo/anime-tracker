@@ -7,9 +7,10 @@ import {
   filterBySearch,
   filterByGenre,
   sortAnime,
+  pickBackdrop,
   type SortKey,
-} from "@/app/season/SeasonPageClient";
-import SeasonPageClient from "@/app/season/SeasonPageClient";
+} from "@/components/season/Season";
+import SeasonPage from "@/components/season/Season";
 
 /* -------------------------------------------------------------------------- */
 /*  Fixtures                                                                  */
@@ -177,10 +178,10 @@ describe("GridSkeleton grid variant", () => {
 });
 
 /* -------------------------------------------------------------------------- */
-/*  SeasonPageClient integration tests                                        */
+/*  SeasonPage integration tests                                        */
 /* -------------------------------------------------------------------------- */
 
-describe("SeasonPageClient", () => {
+describe("SeasonPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -191,7 +192,7 @@ describe("SeasonPageClient", () => {
       () => new Promise(() => {}),
     );
 
-    const { container } = render(<SeasonPageClient />);
+    const { container } = render(<SeasonPage />);
     // Should show GridSkeleton grid variant
     const skeleton = container.querySelector(".grid");
     expect(skeleton).toBeTruthy();
@@ -201,7 +202,7 @@ describe("SeasonPageClient", () => {
   it("shows error state with retry button", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
 
-    render(<SeasonPageClient />);
+    render(<SeasonPage />);
 
     await waitFor(() => {
       expect(screen.getByText("Could not load season data")).toBeTruthy();
@@ -221,7 +222,7 @@ describe("SeasonPageClient", () => {
       ),
     );
 
-    render(<SeasonPageClient />);
+    render(<SeasonPage />);
 
     await waitFor(() => {
       expect(screen.getByText("No anime available for this season")).toBeTruthy();
@@ -239,7 +240,7 @@ describe("SeasonPageClient", () => {
       ),
     );
 
-    render(<SeasonPageClient year="2025" season="FALL" />);
+    render(<SeasonPage year="2025" season="FALL" />);
 
     await waitFor(() => {
       // The fetch URL should include the query params from props
@@ -282,7 +283,7 @@ describe("SeasonPageClient", () => {
       }),
     );
 
-    render(<SeasonPageClient />);
+    render(<SeasonPage />);
 
     await waitFor(() => {
       expect(screen.getAllByText("Test Anime 1").length).toBeGreaterThan(0);
@@ -311,7 +312,7 @@ describe("SeasonPageClient", () => {
       }),
     );
 
-    render(<SeasonPageClient />);
+    render(<SeasonPage />);
 
     // Wait for data to load
     await waitFor(() => {
@@ -319,7 +320,7 @@ describe("SeasonPageClient", () => {
     });
 
     // Type a search that matches nothing
-    const input = screen.getByPlaceholderText("Search by title...");
+    const input = screen.getByPlaceholderText("Filtrar por título…");
     await userEvent.type(input, "nonexistent");
 
     await waitFor(() => {

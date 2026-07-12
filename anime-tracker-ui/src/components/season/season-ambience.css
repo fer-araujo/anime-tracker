@@ -1,0 +1,53 @@
+/* ======================================================================== */
+/*  Season page ambience — pure dark, subtle glow from below that breathes    */
+/*  The top stays pure dark so the glassmorphism header looks clean.          */
+/*  The glow is a visible radial light from the bottom that pulses —          */
+/*  NOT an opacity change on a dark overlay (that was invisible).             */
+/* ======================================================================== */
+
+/* ---- Base depth — pure dark top, whisper of lighter gray at bottom ---- */
+.ambience-base {
+  background: linear-gradient(
+    180deg,
+    hsl(222 14% 8% / 1) 0%,
+    hsl(222 14% 8% / 1) 30%,
+    hsl(222 14% 10% / 0.4) 50%,
+    hsl(222 12% 12% / 0.15) 70%,
+    transparent 100%
+  );
+}
+
+/* ---- Ambient glow — cinematic light from below that pulses ------------ */
+/* A warm off-white radial gradient sits at the bottom and slowly breathes.
+   Unlike the old animate-breathe, this is VISIBLE because the glow actually
+   adds brightness to the page instead of modulating an already-dark overlay. */
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 0.15;
+    transform: scaleY(0.95);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scaleY(1.05);
+  }
+}
+
+.ambience-glow {
+  transform-origin: bottom center;
+  background: radial-gradient(
+    ellipse 130% 30% at 50% 100%,
+    hsl(222 10% 35% / 0.04) 0%,
+    hsl(222 10% 25% / 0.02) 40%,
+    transparent 70%
+  );
+  animation: glow-pulse 6s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+/* ---- Reduced motion ---------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ambience-glow {
+    animation: none;
+    opacity: 0.3;
+  }
+}
