@@ -41,7 +41,9 @@ export async function fetchSeason(opts?: {
   if (opts?.year) u.searchParams.set("year", String(opts.year));
   if (opts?.rank) u.searchParams.set("rank", opts.rank);
 
-  const res = await fetch(u.toString(), { next: { revalidate: 3600 } });
+  // Note: `next` options are silently ignored in client components (SeasonPageClient).
+  // Page-level ISR (`export const revalidate`) covers caching for server components.
+  const res = await fetch(u.toString());
   if (!res.ok) throw new Error(`season ${res.status}`);
   const json = await res.json();
   const parsed = SeasonRespSchema.safeParse(json);
