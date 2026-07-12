@@ -3,7 +3,7 @@ import type { Request, Response, NextFunction } from "express";
 import { ENV } from "../config/env.js";
 import { SeasonQuery } from "../models/schema.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
-import { setCacheControl } from "../utils/cache.js";
+import { setCacheControl, hybridCache } from "../utils/cache.js";
 import { buildSeasonPageQuery } from "../graphql/queries/seasonPage.gql.js";
 import { getCurrentSeasonYearLocal } from "../utils/season.js";
 
@@ -27,6 +27,23 @@ export async function getSeason(
       ENV.DEFAULT_COUNTRY ||
       "MX"
     ).toUpperCase();
+
+    // --- Cache: skip heavy enrichment for repeated requests ---
+    const cacheKey = `season:${resolvedCountry}:${year}:${season}:${query.rank ?? "default"}`;
+    const cached = await hybridCache.get(cacheKey);
+    if (cached) {
+      logger.info(`[season] Cache HIT for ${cacheKey}`);
+      setCacheControl(res, "season");
+      return res.json(cached);
+    }
+
+    // --- Determine TTL based on recency ---
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const isCurrentYear = year === currentYear;
+    const ttlMs = isCurrentYear
+      ? 1000 * 60 * 60      // 1 hour for current year
+      : 1000 * 60 * 60 * 24; // 24 hours for past/future years
 
     // --- Punto 3: "Populares" busca en todo el año, no solo una temporada ---
     const isPopularYearQuery = query.rank === "popular";
@@ -84,7 +101,8 @@ export async function getSeason(
     });
 
     setCacheControl(res, 'season');
-    return res.json({
+
+    const responseBody = {
       meta: {
         country: resolvedCountry,
         season,
@@ -93,7 +111,12 @@ export async function getSeason(
         source: "AniList + TMDB",
       },
       data: uniqueItems,
-    });
+    };
+
+    // Store in cache for future requests
+    await hybridCache.set(cacheKey, responseBody, ttlMs);
+
+    return res.json(responseBody);
   } catch (err) {
     next(err);
   }
