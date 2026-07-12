@@ -14,7 +14,7 @@ import { shikiSearchAnime, shikiGetScreenshots } from "../services/shikimori.ser
 import { htmlToText, shorten } from "./sanitize.js";
 import { extractStudio } from "./extractStudio.js";
 
-const limit = pLimit(5);
+const limit = pLimit(10);
 
 export async function formatAnimeList(
   rawAnimeList: any[],
