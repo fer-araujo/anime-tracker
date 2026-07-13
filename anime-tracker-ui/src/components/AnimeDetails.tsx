@@ -3,7 +3,7 @@ import React, { useRef, useState, useMemo } from "react";
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Icon from "@/components/custom/Icon";
-import { Anime } from "@/types/anime";
+import type { Anime } from "@/types/anime";
 import { cn, formatNextAiring } from "@/lib/utils";
 import { GalleryLightbox } from "./common/Gallery";
 import { MinimalShelf } from "./Shelf";
@@ -434,7 +434,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                             [&::-webkit-scrollbar-thumb]:rounded-full 
                             hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
                         >
-                          {anime.episodesData?.map((ep: any, i: number) => (
+                           {anime.episodesData?.map((ep: { title: string; thumbnail?: string | null; url: string }, i: number) => (
                             <a
                               href={ep.url}
                               target="_blank"

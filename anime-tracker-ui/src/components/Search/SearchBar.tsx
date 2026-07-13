@@ -75,7 +75,6 @@ export default function SearchBar({
         if (e instanceof DOMException && e.name === "AbortError") {
           // cancelado: no hacemos nada
         } else {
-          console.error(e);
           setItems([]);
           setOpen(true);
         }

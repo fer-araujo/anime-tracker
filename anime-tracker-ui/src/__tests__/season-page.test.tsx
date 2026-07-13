@@ -1,14 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Anime } from "@/types/anime";
+import type { Anime } from "@/types/anime";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
 import {
   filterBySearch,
   filterByGenre,
   sortAnime,
-  pickBackdrop,
-  type SortKey,
 } from "@/components/season/Season";
 import SeasonPage from "@/components/season/Season";
 

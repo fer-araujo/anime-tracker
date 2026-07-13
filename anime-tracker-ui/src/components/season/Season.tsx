@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { fetchSeason } from "@/lib/api";
-import { Anime } from "@/types/anime";
+import type { Anime } from "@/types/anime";
 import { AnimeCard } from "@/components/AnimeCard";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
 import Select, { type SelectOption } from "@/components/custom/Select";

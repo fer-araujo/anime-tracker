@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { ProviderBadge } from "./ProviderBadge";
 import { uniqueNormalizedProviders } from "@/lib/providers";
 import { cn, handleImageLoad } from "@/lib/utils";
-import { AnimeCardProps } from "@/types/anime";
+import type { AnimeCardProps } from "@/types/anime";
 import { Pill } from "./common/Pills";
 import { ScoreBadge } from "./common/ScoreBadge";
 import { ActionButton, FavButton } from "./common/Buttons";

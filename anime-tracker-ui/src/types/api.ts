@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Anime } from "./anime";
+import type { Anime } from "./anime";
 
 export type SeasonResp = {
   meta: { country: string; season: string; year: number; total: number; source: string };
