@@ -115,7 +115,9 @@ export interface AniMedia {
   format?: string;
   bannerImage?: string | null;
   studios?: {
-    edges?: { isMain?: boolean | null; node?: { name?: string | null } | null }[] | null;
+    edges?:
+      | { isMain?: boolean | null; node?: { name?: string | null } | null }[]
+      | null;
     nodes?: { name?: string | null }[] | null;
   } | null;
 

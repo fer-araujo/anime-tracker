@@ -9,7 +9,7 @@ export default async function Page({
 }) {
   // 1. Esperamos a que se resuelvan los parámetros
   const { id } = await params;
-  
+
   // 2. Pedimos los datos al backend
   // Si falla, Next.js mostrará automáticamente su página de error o 404
   const response = await fetchAnimeDetails(id);

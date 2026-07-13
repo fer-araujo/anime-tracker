@@ -27,12 +27,9 @@ export default function Badge({
   children: ReactNode;
 } & HTMLAttributes<HTMLSpanElement>) {
   const variantClasses: Record<BadgeVariant, string> = {
-    default:
-      "border-transparent bg-primary text-primary-foreground",
-    secondary:
-      "border-transparent bg-secondary text-secondary-foreground",
-    outline:
-      "text-foreground border",
+    default: "border-transparent bg-primary text-primary-foreground",
+    secondary: "border-transparent bg-secondary text-secondary-foreground",
+    outline: "text-foreground border",
     destructive:
       "border-transparent bg-destructive text-destructive-foreground",
   };

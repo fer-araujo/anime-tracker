@@ -151,7 +151,9 @@ export async function resolveProvidersForAnimeDetailed(
 
     if (isRecent) {
       try {
-        logger.info(`[RapidAPI] Consultando fallback para: ${knownTitle} (${year || "Año desconocido"})`);
+        logger.info(
+          `[RapidAPI] Consultando fallback para: ${knownTitle} (${year || "Año desconocido"})`,
+        );
 
         const titleVariants = getTitleVariations(knownTitle);
         if (titleVariants.length === 0) titleVariants.push(knownTitle);
@@ -183,10 +185,15 @@ export async function resolveProvidersForAnimeDetailed(
         }
       } catch (err) {
         saOk = false;
-        logger.warn({ err }, "[resolveProviders] SA error (Quota might be exceeded)");
+        logger.warn(
+          { err },
+          "[resolveProviders] SA error (Quota might be exceeded)",
+        );
       }
     } else {
-      logger.info(`[Ahorro RapidAPI] Omitido por antigüedad: ${knownTitle} (${year})`);
+      logger.info(
+        `[Ahorro RapidAPI] Omitido por antigüedad: ${knownTitle} (${year})`,
+      );
     }
   }
 

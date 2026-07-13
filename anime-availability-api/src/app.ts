@@ -7,7 +7,6 @@ import { requestId } from "./middleware/requestId.js";
 import { httpLogger } from "./utils/logger.js";
 import { errorHandler, notFound } from "./middleware/error.js";
 
-
 const app = express();
 
 app.use(helmet());

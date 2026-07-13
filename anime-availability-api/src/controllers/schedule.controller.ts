@@ -62,7 +62,10 @@ export async function getSchedule(
     if (type === "airing") {
       const { greater, lesser } = getCDMXDayBounds();
 
-      const aniJson = await anilistFetch(AIRING_SCHEDULE_GQL, { greater, lesser });
+      const aniJson = await anilistFetch(AIRING_SCHEDULE_GQL, {
+        greater,
+        lesser,
+      });
       if (!aniJson)
         return res.status(503).json({ error: "AniList unavailable" });
 

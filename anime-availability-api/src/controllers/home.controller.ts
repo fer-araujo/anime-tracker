@@ -20,7 +20,12 @@ interface HeroPayload {
   data: Array<{
     id: { anilist: number; tmdb: number | null };
     title: string;
-    images: { banner: string | null; backdrop: string | null; logo: string | null; poster: string | null };
+    images: {
+      banner: string | null;
+      backdrop: string | null;
+      logo: string | null;
+      poster: string | null;
+    };
     meta: {
       synopsis: string;
       synopsisShort: string;
@@ -39,7 +44,7 @@ interface HeroPayload {
 export async function getHomeHero(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const cacheKey = "home:hero:cinematic:v5";
@@ -48,10 +53,12 @@ export async function getHomeHero(
 
     // Fetch top 5 of current season by score
     const { season, year } = getCurrentSeasonYearLocal();
-    const aniJson = await anilistFetch(HOME_HERO_GQL, { season, seasonYear: year });
+    const aniJson = await anilistFetch(HOME_HERO_GQL, {
+      season,
+      seasonYear: year,
+    });
 
-    if (!aniJson)
-      return res.status(503).json({ error: "AniList unavailable" });
+    if (!aniJson) return res.status(503).json({ error: "AniList unavailable" });
     let media = (aniJson.data?.Page?.media as AniMedia[]) || [];
 
     // Fallback: if season returned fewer than 3 items, use trending/releasing
@@ -90,22 +97,35 @@ export async function getHomeHero(
       const kind = m.type === "MOVIE" ? "movie" : "tv";
 
       // A) Obtenemos TODO del artwork service
-      const { backdrop, logo, tmdbId } = await resolveHeroArtwork(title, kind, {
-        bannerImage: m.bannerImage,
-      }, m.startDate);
+      const { backdrop, logo, tmdbId } = await resolveHeroArtwork(
+        title,
+        kind,
+        {
+          bannerImage: m.bannerImage,
+        },
+        m.startDate,
+      );
 
       if (!backdrop) return null;
 
       // B) Synopsis con season-awareness
       const aniMonth = m.startDate?.month ?? null;
       const synopsis = tmdbId
-        ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", m.seasonYear, aniMonth, m.nextAiringEpisode?.airingAt)
+        ? await getTmdbSpecificSynopsis(
+            tmdbId,
+            kind,
+            "es-MX",
+            m.seasonYear,
+            aniMonth,
+            m.nextAiringEpisode?.airingAt,
+          )
         : null;
 
       const synopsisText = synopsis || stripHtml(m.description) || "";
-      const synopsisShort = synopsisText.length > 180
-        ? synopsisText.slice(0, 180) + "..."
-        : synopsisText;
+      const synopsisShort =
+        synopsisText.length > 180
+          ? synopsisText.slice(0, 180) + "..."
+          : synopsisText;
 
       const item = {
         id: { anilist: m.id, tmdb: tmdbId },
@@ -120,7 +140,9 @@ export async function getHomeHero(
           synopsis: synopsisText,
           synopsisShort,
           year: m.seasonYear,
-          rating: m.averageScore ? Number((m.averageScore / 10).toFixed(1)) : null,
+          rating: m.averageScore
+            ? Number((m.averageScore / 10).toFixed(1))
+            : null,
           genres: m.genres?.slice(0, 3) ?? [],
           status: m.status,
           episodes: m.episodes,
@@ -136,7 +158,7 @@ export async function getHomeHero(
 
     const payload = { data: items };
     await hybridCache.set(cacheKey, payload, 1000 * 60 * 5);
-    setCacheControl(res, 'hero');
+    setCacheControl(res, "hero");
     return res.json(payload);
   } catch (err) {
     next(err);

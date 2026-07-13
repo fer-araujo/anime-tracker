@@ -7,7 +7,7 @@ export default function validate<T extends ZodSchema<unknown>>(schema: T) {
     if (!parsed.success) {
       return res.status(400).json({
         error: "VALIDATION_ERROR",
-        details: parsed.error.flatten()
+        details: parsed.error.flatten(),
       });
     }
     req.validated = parsed.data;

@@ -38,7 +38,9 @@ export async function warmupCache(): Promise<void> {
         if (res.ok) {
           logger.info(`[warmup] ✓ ${label} — ${res.status} (${duration}ms)`);
         } else {
-          logger.warn(`[warmup] ✗ ${label} — ${res.status} ${res.statusText} (${duration}ms)`);
+          logger.warn(
+            `[warmup] ✗ ${label} — ${res.status} ${res.statusText} (${duration}ms)`,
+          );
         }
       } catch (err) {
         const duration = Date.now() - start;

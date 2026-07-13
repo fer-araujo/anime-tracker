@@ -66,7 +66,10 @@ export class HybridCache {
       };
       logger.info("[cache] Redis adapter initialised");
     } catch (err) {
-      logger.warn({ err }, "[cache] Failed to initialise Redis adapter, falling back to memory-only");
+      logger.warn(
+        { err },
+        "[cache] Failed to initialise Redis adapter, falling back to memory-only",
+      );
     }
     return this.redis;
   }
@@ -97,9 +100,11 @@ export class HybridCache {
     // Best-effort write to Redis
     const redis = await this.getRedis();
     if (redis) {
-      await Promise.resolve(redis.set(key, value, ttlMs)).catch((err: unknown) => {
-        logger.warn({ err }, `[cache] Redis set failed for key "${key}"`);
-      });
+      await Promise.resolve(redis.set(key, value, ttlMs)).catch(
+        (err: unknown) => {
+          logger.warn({ err }, `[cache] Redis set failed for key "${key}"`);
+        },
+      );
     }
   }
 }
@@ -111,13 +116,19 @@ export const hybridCache = new HybridCache();
 export type CacheType = "hero" | "season" | "anime" | "schedule";
 
 const CACHE_CONTROL_MAP: Record<CacheType, string> = {
-  hero:     "public, s-maxage=21600, stale-while-revalidate=86400",
-  season:   "public, s-maxage=3600, stale-while-revalidate=43200",
-  anime:    "public, s-maxage=7200, stale-while-revalidate=43200",
+  hero: "public, s-maxage=21600, stale-while-revalidate=86400",
+  season: "public, s-maxage=3600, stale-while-revalidate=43200",
+  anime: "public, s-maxage=7200, stale-while-revalidate=43200",
   schedule: "public, s-maxage=600, stale-while-revalidate=3600",
 };
 
-export function setCacheControl(res: { setHeader?: (name: string, value: string) => void; header?: (name: string, value: string) => void }, type: CacheType): void {
+export function setCacheControl(
+  res: {
+    setHeader?: (name: string, value: string) => void;
+    header?: (name: string, value: string) => void;
+  },
+  type: CacheType,
+): void {
   const value = CACHE_CONTROL_MAP[type];
   if (res.setHeader) {
     res.setHeader("Cache-Control", value);

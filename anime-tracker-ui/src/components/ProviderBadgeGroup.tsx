@@ -7,7 +7,7 @@ import Tooltip from "@/components/custom/Tooltip";
 
 type GroupProps = {
   providers: string[];
-  maxVisible?: number;      // cuántos mostrar antes de colapsar
+  maxVisible?: number; // cuántos mostrar antes de colapsar
   variant?: "outline" | "dot" | "mono";
   className?: string;
 };

@@ -100,7 +100,10 @@ const tmdbImageUrl = (path: string | null, size = "original") =>
 export async function resolveHeroArtwork(
   searchTitle: string,
   kind: "tv" | "movie",
-  media: { bannerImage?: string | null; coverImage?: { extraLarge?: string | null; large?: string | null } | null },
+  media: {
+    bannerImage?: string | null;
+    coverImage?: { extraLarge?: string | null; large?: string | null } | null;
+  },
   aniStartDate?: { year?: number | null; month?: number | null } | null,
   _opts?: { allowSeasonBackdrop?: boolean },
 ): Promise<ResolveHeroResult> {
@@ -166,8 +169,14 @@ export async function resolveHeroArtwork(
         // Logo base del TV Show
         if (imagesData.logos?.length) {
           const bestLogo = imagesData.logos
-            .filter((l: TmdbImageItem) => l.iso_639_1 === "en" || l.iso_639_1 === null)
-            .sort((a: TmdbImageItem, b: TmdbImageItem) => (b.vote_average ?? 0) - (a.vote_average ?? 0))[0];
+            .filter(
+              (l: TmdbImageItem) =>
+                l.iso_639_1 === "en" || l.iso_639_1 === null,
+            )
+            .sort(
+              (a: TmdbImageItem, b: TmdbImageItem) =>
+                (b.vote_average ?? 0) - (a.vote_average ?? 0),
+            )[0];
 
           if (bestLogo) {
             logo = tmdbImageUrl(bestLogo.file_path, "original");
@@ -244,10 +253,7 @@ export async function resolveHeroArtwork(
               }
 
               if (fanartCandidates.length > 0) {
-                artworkCandidates = [
-                  ...fanartCandidates,
-                  ...artworkCandidates,
-                ];
+                artworkCandidates = [...fanartCandidates, ...artworkCandidates];
               }
             }
           } else {
@@ -279,8 +285,14 @@ export async function resolveHeroArtwork(
 
           if (seasonImages?.logos?.length) {
             const bestSeasonLogo = seasonImages.logos
-              .filter((l: TmdbImageItem) => l.iso_639_1 === "en" || l.iso_639_1 === null)
-              .sort((a: TmdbImageItem, b: TmdbImageItem) => (b.vote_average ?? 0) - (a.vote_average ?? 0))[0];
+              .filter(
+                (l: TmdbImageItem) =>
+                  l.iso_639_1 === "en" || l.iso_639_1 === null,
+              )
+              .sort(
+                (a: TmdbImageItem, b: TmdbImageItem) =>
+                  (b.vote_average ?? 0) - (a.vote_average ?? 0),
+              )[0];
             if (bestSeasonLogo) {
               logo = tmdbImageUrl(bestSeasonLogo.file_path, "original");
             }
@@ -310,12 +322,14 @@ export async function resolveHeroArtwork(
               })
               .sort(
                 (a: TmdbImageItem, b: TmdbImageItem) =>
-                  ((b.vote_average ?? 0) * (b.vote_count ?? 0)) -
-                  ((a.vote_average ?? 0) * (a.vote_count ?? 0)),
+                  (b.vote_average ?? 0) * (b.vote_count ?? 0) -
+                  (a.vote_average ?? 0) * (a.vote_count ?? 0),
               );
 
             if (usableBackdrops.length > 0) {
-              backdrop = tmdbBackdropUrl(usableBackdrops[0].file_path, "original") ?? null;
+              backdrop =
+                tmdbBackdropUrl(usableBackdrops[0].file_path, "original") ??
+                null;
               logger.info(
                 `[artwork] PREMIUM season-specific backdrop (S${seasonNumber}) for "${searchTitle}"`,
               );

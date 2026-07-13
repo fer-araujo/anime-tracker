@@ -46,7 +46,11 @@ const FIXTURES: Anime[] = [
     meta: { genres: ["Thriller", "Supernatural"], rating: 9.5, popularity: 85 },
   }),
   makeAnime(5, "One Piece", {
-    meta: { genres: ["Action", "Adventure", "Comedy"], rating: 9.2, popularity: 97 },
+    meta: {
+      genres: ["Action", "Adventure", "Comedy"],
+      rating: 9.2,
+      popularity: 97,
+    },
   }),
 ];
 
@@ -213,7 +217,13 @@ describe("SeasonPage", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
-          meta: { country: "MX", season: "SUMMER", year: 2026, total: 0, source: "test" },
+          meta: {
+            country: "MX",
+            season: "SUMMER",
+            year: 2026,
+            total: 0,
+            source: "test",
+          },
           data: [],
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
@@ -223,7 +233,9 @@ describe("SeasonPage", () => {
     render(<SeasonPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("No anime available for this season")).toBeTruthy();
+      expect(
+        screen.getByText("No anime available for this season"),
+      ).toBeTruthy();
     });
   });
 
@@ -231,7 +243,13 @@ describe("SeasonPage", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
-          meta: { country: "MX", season: "FALL", year: 2025, total: 0, source: "test" },
+          meta: {
+            country: "MX",
+            season: "FALL",
+            year: 2025,
+            total: 0,
+            source: "test",
+          },
           data: [],
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
@@ -255,7 +273,13 @@ describe("SeasonPage", () => {
 
   it("shows data grid after successful fetch", async () => {
     const mockData = {
-      meta: { country: "MX", season: "SUMMER", year: 2026, total: 2, source: "test" },
+      meta: {
+        country: "MX",
+        season: "SUMMER",
+        year: 2026,
+        total: 2,
+        source: "test",
+      },
       data: [
         {
           id: { anilist: 1, tmdb: null },
@@ -291,7 +315,13 @@ describe("SeasonPage", () => {
 
   it("shows empty filter state with reset button", async () => {
     const mockData = {
-      meta: { country: "MX", season: "SUMMER", year: 2026, total: 2, source: "test" },
+      meta: {
+        country: "MX",
+        season: "SUMMER",
+        year: 2026,
+        total: 2,
+        source: "test",
+      },
       data: [
         {
           id: { anilist: 1, tmdb: null },

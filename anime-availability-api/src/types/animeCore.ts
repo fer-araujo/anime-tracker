@@ -16,14 +16,7 @@ export type AnimeTitleSet = {
 
 export type AnimeCoreMeta = {
   format?:
-    | "TV"
-    | "ONA"
-    | "MOVIE"
-    | "OVA"
-    | "SPECIAL"
-    | "TV_SHORT"
-    | string
-    | null;
+    "TV" | "ONA" | "MOVIE" | "OVA" | "SPECIAL" | "TV_SHORT" | string | null;
   season?: "WINTER" | "SPRING" | "SUMMER" | "FALL" | string | null;
   seasonYear?: number | null;
   episodes?: number | null;

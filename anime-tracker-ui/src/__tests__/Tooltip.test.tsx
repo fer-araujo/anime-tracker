@@ -206,9 +206,7 @@ describe("Tooltip", () => {
         </Tooltip>,
       );
       fireEvent.mouseEnter(screen.getByText("Trigger"));
-      expect(
-        screen.getByText(/Solo disponible en inglés/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Solo disponible en inglés/)).toBeInTheDocument();
     });
 
     it("does not render badge when synopsisLang is 'es'", () => {

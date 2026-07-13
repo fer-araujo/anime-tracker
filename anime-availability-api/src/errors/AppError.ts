@@ -30,7 +30,7 @@ export class ExternalAPIError extends AppError {
 
   constructor(
     message = "External API request failed",
-    upstreamStatusCode?: number
+    upstreamStatusCode?: number,
   ) {
     super(message, 502, "EXTERNAL_API_ERROR");
     this.upstreamStatusCode = upstreamStatusCode;

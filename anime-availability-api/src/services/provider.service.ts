@@ -1,7 +1,11 @@
 // src/services/provider.service.ts
 import { preferTitle } from "../utils/title.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
-import { tmdbSearch, tmdbWatchProviders, isAnimeCandidate } from "./tmdb.service.js";
+import {
+  tmdbSearch,
+  tmdbWatchProviders,
+  isAnimeCandidate,
+} from "./tmdb.service.js";
 import type { ProviderInfo } from "../types/types.js";
 
 type AniListTitleResp = {
@@ -23,7 +27,7 @@ function inferKind(format?: string | null): "tv" | "movie" {
 }
 
 async function fetchAniListTitleAndKind(
-  anilistId: number
+  anilistId: number,
 ): Promise<{ title: string; kind: "tv" | "movie" }> {
   const query = `
     query ($id: Int!) {
@@ -49,7 +53,7 @@ async function fetchAniListTitleAndKind(
 
 async function resolveTmdbIdByTitle(
   kind: "tv" | "movie",
-  title: string
+  title: string,
 ): Promise<{ tmdbId: number | null }> {
   const hits = await tmdbSearch(kind, title);
   if (!hits || !hits.length) return { tmdbId: null };
@@ -71,7 +75,7 @@ export type GetProvidersResult = {
  */
 export async function getProvidersForAnime(
   anilistId: number,
-  country: string
+  country: string,
 ): Promise<GetProvidersResult> {
   const { title, kind } = await fetchAniListTitleAndKind(anilistId);
 

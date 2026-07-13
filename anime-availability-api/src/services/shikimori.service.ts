@@ -25,7 +25,7 @@ export type ShikiScreenshot = {
  */
 export async function shikiSearchAnime(
   query: string,
-  limit = 3
+  limit = 3,
 ): Promise<ShikiAnime[]> {
   const url = new URL(`${SHIKI_BASE}/api/animes`);
   url.searchParams.set("search", query);
@@ -51,7 +51,7 @@ export async function shikiSearchAnime(
  */
 export async function shikiGetScreenshots(
   animeId: number,
-  limit = 4
+  limit = 4,
 ): Promise<ShikiScreenshot[]> {
   const url = `${SHIKI_BASE}/api/animes/${animeId}/screenshots`;
 
@@ -62,7 +62,10 @@ export async function shikiGetScreenshots(
   });
 
   if (!res.ok) {
-    logger.warn({ status: res.status }, `[shikimori] screenshots error for ${animeId}`);
+    logger.warn(
+      { status: res.status },
+      `[shikimori] screenshots error for ${animeId}`,
+    );
     return [];
   }
 

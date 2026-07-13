@@ -41,21 +41,36 @@ interface AniMediaDetail {
   coverImage?: { extraLarge?: string | null; large?: string | null } | null;
   seasonYear?: number | null;
   episodes?: number | null;
-  startDate?: { year?: number | null; month?: number | null; day?: number | null } | null;
+  startDate?: {
+    year?: number | null;
+    month?: number | null;
+    day?: number | null;
+  } | null;
   description?: string | null;
   averageScore?: number | null;
   genres?: string[] | null;
   isAdult?: boolean | null;
   duration?: number | null;
   studios?: {
-    edges?: { isMain?: boolean | null; node?: { name?: string | null } | null }[] | null;
+    edges?:
+      | { isMain?: boolean | null; node?: { name?: string | null } | null }[]
+      | null;
     nodes?: { name?: string | null }[] | null;
   } | null;
   trailer?: { id?: string | null; site?: string | null } | null;
-  nextAiringEpisode?: { episode?: number | null; airingAt?: number | null } | null;
-  streamingEpisodes?: Array<{ title?: string; thumbnail?: string; url?: string }> | null;
+  nextAiringEpisode?: {
+    episode?: number | null;
+    airingAt?: number | null;
+  } | null;
+  streamingEpisodes?: Array<{
+    title?: string;
+    thumbnail?: string;
+    url?: string;
+  }> | null;
   recommendations?: {
-    nodes?: Array<{ mediaRecommendation?: Record<string, unknown> } | null> | null;
+    nodes?: Array<{
+      mediaRecommendation?: Record<string, unknown>;
+    } | null> | null;
   } | null;
   relations?: { edges?: (AniRelationEdge | null)[] | null } | null;
   rankings?: AniRanking[] | null;
@@ -98,16 +113,22 @@ export async function getAnimeDetails(
       media.title?.romaji ??
       media.title?.native ??
       "Untitled";
-      
+
     const kind = media.format === "MOVIE" ? "movie" : "tv";
     const isReleasing = media.status === "RELEASING";
 
     // Pasamos el title directo + startDate para artwork de temporada específica
     const { backdrop, logo, artworkCandidates, tmdbId } =
-      await resolveHeroArtwork(title, kind, {
-        bannerImage: media.bannerImage,
-        coverImage: media.coverImage,
-      }, media.startDate, { allowSeasonBackdrop: true });
+      await resolveHeroArtwork(
+        title,
+        kind,
+        {
+          bannerImage: media.bannerImage,
+          coverImage: media.coverImage,
+        },
+        media.startDate,
+        { allowSeasonBackdrop: true },
+      );
 
     const providersData = await resolveProvidersForAnimeDetailed(
       anilistId,
@@ -116,21 +137,26 @@ export async function getAnimeDetails(
       title, // Se pasa directo a resolveProviders que ya tiene cascada
       media.seasonYear,
       kind,
-      isReleasing
+      isReleasing,
     );
 
     // Extraer año/mes desde AniList para sinopsis específica de temporada/cour
     const aniYear = media.startDate?.year ?? media.seasonYear ?? null;
     const aniMonth = media.startDate?.month ?? null;
     const spanishSynopsis = tmdbId
-      ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", aniYear, aniMonth, media.nextAiringEpisode?.airingAt)
+      ? await getTmdbSpecificSynopsis(
+          tmdbId,
+          kind,
+          "es-MX",
+          aniYear,
+          aniMonth,
+          media.nextAiringEpisode?.airingAt,
+        )
       : null;
 
-    const rawRecommendations = (
-      media.recommendations?.nodes
-        ?.map((node) => node?.mediaRecommendation)
-        .filter((r): r is Record<string, unknown> => !!r) || []
-    ) as AniMedia[];
+    const rawRecommendations = (media.recommendations?.nodes
+      ?.map((node) => node?.mediaRecommendation)
+      .filter((r): r is Record<string, unknown> => !!r) || []) as AniMedia[];
 
     const formattedRecommendations = await formatAnimeList(
       rawRecommendations,
@@ -209,7 +235,7 @@ export async function getAnimeDetails(
       },
     };
 
-    setCacheControl(res, 'anime');
+    setCacheControl(res, "anime");
     return res.json({ data: result });
   } catch (err) {
     logger.error({ err }, "Error crítico en getAnimeDetails");

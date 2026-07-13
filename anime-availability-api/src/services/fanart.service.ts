@@ -37,7 +37,12 @@ export interface FanartArtwork {
   logoUrl: string | null;
   backdropUrl: string | null;
   /** All showbackground items (sorted by likes, lang-filtered) — primary + gallery */
-  backdropCandidates: { url: string; likes: number; width?: number; height?: number }[];
+  backdropCandidates: {
+    url: string;
+    likes: number;
+    width?: number;
+    height?: number;
+  }[];
   seasonPosters: { url: string; season: number; likes: number }[];
   seasonBanners: { url: string; season: number; likes: number }[];
   seasonThumbs: { url: string; season: number; likes: number }[];
@@ -47,7 +52,8 @@ export interface FanartArtwork {
 
 function filterEnglishOrNoLang(items: FanartTvImage[]): FanartTvImage[] {
   return items.filter(
-    (img) => img.lang === "en" || img.lang === "" || img.lang === "0" || !img.lang,
+    (img) =>
+      img.lang === "en" || img.lang === "" || img.lang === "0" || !img.lang,
   );
 }
 
@@ -62,7 +68,9 @@ function firstUrl<T extends FanartTvImage>(items: T[]): string | null {
 }
 
 /** Like firstUrl but returns ALL items (sorted, filtered) for gallery use */
-function allUrls(items: FanartTvImage[]): { url: string; likes: number; width?: number; height?: number }[] {
+function allUrls(
+  items: FanartTvImage[],
+): { url: string; likes: number; width?: number; height?: number }[] {
   const filtered = filterEnglishOrNoLang(items);
   const sorted = sortByLikes(filtered);
   return sorted.map((img) => ({
@@ -106,10 +114,7 @@ async function _fetchFanartTvArtwork(
     if (!data) return null;
 
     // --- Logo: hdtvlogo or clearlogo, filtered and sorted ---
-    const logoSources = [
-      ...(data.hdtvlogo ?? []),
-      ...(data.clearlogo ?? []),
-    ];
+    const logoSources = [...(data.hdtvlogo ?? []), ...(data.clearlogo ?? [])];
     const logoUrl = firstUrl(logoSources);
 
     // --- Backdrop: showbackground, filtered and sorted ---
@@ -151,7 +156,14 @@ async function _fetchFanartTvArtwork(
       }
     }
 
-    const result: FanartArtwork = { logoUrl, backdropUrl, backdropCandidates, seasonPosters, seasonBanners, seasonThumbs };
+    const result: FanartArtwork = {
+      logoUrl,
+      backdropUrl,
+      backdropCandidates,
+      seasonPosters,
+      seasonBanners,
+      seasonThumbs,
+    };
     await hybridCache.set(cacheKey, result, ENV.CACHE_TTL_FANART * 1000);
     return result;
   } catch (e) {

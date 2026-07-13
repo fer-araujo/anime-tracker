@@ -14,7 +14,9 @@ function normalizeStatus(status?: string): AiringStatus | undefined {
   return map[status.toLowerCase()] ?? undefined;
 }
 
-export async function kitsuSearchAnime(title: string): Promise<BaseAnimeInfo | null> {
+export async function kitsuSearchAnime(
+  title: string,
+): Promise<BaseAnimeInfo | null> {
   const cacheKey = `kitsu:${title.toLowerCase()}`;
   const cached = memoryCache.get(cacheKey);
   if (cached) return cached as BaseAnimeInfo;
@@ -33,9 +35,12 @@ export async function kitsuSearchAnime(title: string): Promise<BaseAnimeInfo | n
   const attrs = result.attributes ?? {};
   const info: BaseAnimeInfo = {
     id: result.id,
-    title: attrs.titles?.en ?? attrs.titles?.en_jp ?? attrs.titles?.ja_jp ?? title,
+    title:
+      attrs.titles?.en ?? attrs.titles?.en_jp ?? attrs.titles?.ja_jp ?? title,
     airingStatus: normalizeStatus(attrs.status),
-    score: attrs.averageRating ? parseFloat(attrs.averageRating) / 10 : undefined,
+    score: attrs.averageRating
+      ? parseFloat(attrs.averageRating) / 10
+      : undefined,
     poster: attrs.posterImage?.large ?? attrs.posterImage?.original,
   };
 

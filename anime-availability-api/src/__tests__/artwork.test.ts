@@ -3,9 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mock TMDB service functions used by resolveHeroArtwork
 vi.mock("../services/tmdb.service.js", () => ({
   tmdbSearch: vi.fn(),
-  tmdbBackdropUrl: vi.fn(
-    (path?: string | null, size = "w1280") =>
-      path ? `https://image.tmdb.org/t/p/${size}${path}` : null,
+  tmdbBackdropUrl: vi.fn((path?: string | null, size = "w1280") =>
+    path ? `https://image.tmdb.org/t/p/${size}${path}` : null,
   ),
   isAnimeCandidate: vi.fn(() => true),
   getTmdbImages: vi.fn(),
@@ -26,7 +25,11 @@ vi.mock("../utils/tmdb.enrich.js", () => ({
 }));
 
 import { resolveHeroArtwork } from "../utils/artwork.js";
-import { tmdbSearch, getTmdbImages, getTmdbExternalIds } from "../services/tmdb.service.js";
+import {
+  tmdbSearch,
+  getTmdbImages,
+  getTmdbExternalIds,
+} from "../services/tmdb.service.js";
 import { getFanartTvArtwork } from "../services/fanart.service.js";
 
 describe("resolveHeroArtwork — fanart.tv merge", () => {
@@ -64,12 +67,10 @@ describe("resolveHeroArtwork — fanart.tv merge", () => {
       seasonThumbs: [],
     });
 
-    const result = await resolveHeroArtwork(
-      "Test Anime",
-      "tv",
-      baseMedia,
-      { year: 2024, month: 1 },
-    );
+    const result = await resolveHeroArtwork("Test Anime", "tv", baseMedia, {
+      year: 2024,
+      month: 1,
+    });
 
     // fanart.tv logo should win over TMDB logo
     expect(result.logo).toBe("https://fanart.tv/logo.png");
@@ -100,12 +101,10 @@ describe("resolveHeroArtwork — fanart.tv merge", () => {
       seasonThumbs: [],
     });
 
-    const result = await resolveHeroArtwork(
-      "Test Anime",
-      "tv",
-      baseMedia,
-      { year: 2024, month: 1 },
-    );
+    const result = await resolveHeroArtwork("Test Anime", "tv", baseMedia, {
+      year: 2024,
+      month: 1,
+    });
 
     // TMDB logo should be preserved since fanart.tv returned null
     expect(result.logo).toContain("image.tmdb.org");
@@ -140,12 +139,10 @@ describe("resolveHeroArtwork — fanart.tv merge", () => {
       seasonThumbs: [],
     });
 
-    const result = await resolveHeroArtwork(
-      "Test Anime",
-      "tv",
-      baseMedia,
-      { year: 2024, month: 1 },
-    );
+    const result = await resolveHeroArtwork("Test Anime", "tv", baseMedia, {
+      year: 2024,
+      month: 1,
+    });
 
     expect(result.backdrop).toBe("https://fanart.tv/backdrop.jpg");
   });
@@ -178,12 +175,10 @@ describe("resolveHeroArtwork — fanart.tv merge", () => {
     // fanart.tv returns null (full failure)
     vi.mocked(getFanartTvArtwork).mockResolvedValue(null);
 
-    const result = await resolveHeroArtwork(
-      "Test Anime",
-      "tv",
-      baseMedia,
-      { year: 2024, month: 1 },
-    );
+    const result = await resolveHeroArtwork("Test Anime", "tv", baseMedia, {
+      year: 2024,
+      month: 1,
+    });
 
     // TMDB data should be fully preserved
     expect(result.backdrop).toContain("image.tmdb.org");
@@ -208,11 +203,7 @@ describe("resolveHeroArtwork — fanart.tv merge", () => {
       logos: [],
     });
 
-    const result = await resolveHeroArtwork(
-      "Test Movie",
-      "movie",
-      baseMedia,
-    );
+    const result = await resolveHeroArtwork("Test Movie", "movie", baseMedia);
 
     // fanart.tv should NEVER be called for movies
     expect(getTmdbExternalIds).not.toHaveBeenCalled();
@@ -240,12 +231,10 @@ describe("resolveHeroArtwork — fanart.tv merge", () => {
     // No TVDB ID returned
     vi.mocked(getTmdbExternalIds).mockResolvedValue({ tvdb_id: null });
 
-    const result = await resolveHeroArtwork(
-      "Test Anime",
-      "tv",
-      baseMedia,
-      { year: 2024, month: 1 },
-    );
+    const result = await resolveHeroArtwork("Test Anime", "tv", baseMedia, {
+      year: 2024,
+      month: 1,
+    });
 
     expect(getFanartTvArtwork).not.toHaveBeenCalled();
     expect(result.backdrop).toContain("image.tmdb.org");
@@ -272,12 +261,10 @@ describe("resolveHeroArtwork — fanart.tv merge", () => {
     // fanart.tv throws (simulates network error)
     vi.mocked(getFanartTvArtwork).mockRejectedValue(new Error("Network error"));
 
-    const result = await resolveHeroArtwork(
-      "Test Anime",
-      "tv",
-      baseMedia,
-      { year: 2024, month: 1 },
-    );
+    const result = await resolveHeroArtwork("Test Anime", "tv", baseMedia, {
+      year: 2024,
+      month: 1,
+    });
 
     // Should fall back to TMDB data without crashing
     expect(result.backdrop).toContain("image.tmdb.org");

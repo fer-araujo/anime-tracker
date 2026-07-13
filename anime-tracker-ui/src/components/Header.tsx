@@ -44,10 +44,7 @@ export default function Header() {
 
         {/* NAV LINKS DESKTOP */}
         <nav className="hidden md:flex items-center gap-4 lg:gap-6 text-sm font-medium text-white/70">
-          <Link
-            href="/season"
-            className="hover:text-white transition-colors"
-          >
+          <Link href="/season" className="hover:text-white transition-colors">
             Temporada
           </Link>
         </nav>

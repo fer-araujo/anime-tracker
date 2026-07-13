@@ -6,7 +6,7 @@ import { getProvidersForAnime } from "../services/provider.service.js";
 export async function getAnimeProviders(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const rawId = req.params.anilistId;
@@ -24,7 +24,7 @@ export async function getAnimeProviders(
 
     const { title, tmdbId, providers } = await getProvidersForAnime(
       anilistId,
-      country
+      country,
     );
 
     return res.json({

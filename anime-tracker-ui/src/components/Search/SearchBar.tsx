@@ -150,7 +150,11 @@ export default function SearchBar({
           className="absolute right-1 top-1/2 flex h-8 w-8 items-center justify-center -translate-y-1/2 bg-transparent hover:bg-white/10 text-white/70 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed border-none rounded-full transition-colors cursor-pointer"
         >
           {loading ? (
-            <Icon name="Loader2" size={16} className="animate-spin text-primary" />
+            <Icon
+              name="Loader2"
+              size={16}
+              className="animate-spin text-primary"
+            />
           ) : (
             <Icon name="Search" size={16} />
           )}

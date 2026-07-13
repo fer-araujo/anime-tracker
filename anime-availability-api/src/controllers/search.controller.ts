@@ -21,7 +21,7 @@ function mapStatus(core: AnimeCore): "ongoing" | "finished" | null {
 export async function searchTitle(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const { title, country } = ((req.validated || req.body) ??
@@ -54,8 +54,7 @@ export async function searchTitle(
 
       const poster = core.images.poster ?? null;
 
-      const bestArtwork =
-        core.images.artworkCandidates?.[0] ?? null;
+      const bestArtwork = core.images.artworkCandidates?.[0] ?? null;
 
       const backdrop =
         bestArtwork?.url_1280 ??
@@ -79,7 +78,8 @@ export async function searchTitle(
 
       // En AnimeCore ya sanitizamos, así que reutilizamos:
       const synopsisHtml = core.synopses.synopsisHtml ?? null;
-      const synopsis = core.synopses.synopsisShort ?? core.synopses.synopsisText ?? null;
+      const synopsis =
+        core.synopses.synopsisShort ?? core.synopses.synopsisText ?? null;
       const synopsisShort = core.synopses.synopsisText ?? null;
 
       const startDate = core.meta.startDate ?? null;

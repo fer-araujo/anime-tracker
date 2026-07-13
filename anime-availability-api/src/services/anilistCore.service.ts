@@ -23,7 +23,6 @@ const STREAMING_SITES = new Set([
   "Funimation",
 ]);
 
-
 function fuzzyToISO(fd: AniMedia["startDate"]): string | null {
   if (!fd?.year) return null;
   const y = fd.year;
@@ -70,7 +69,9 @@ function matchesQuery(q: string, titles: AnimeTitleSet) {
   const nq = normalizeText(q);
   if (!nq) return false;
 
-  const pool = [titles.english, titles.romaji, titles.native].map(normalizeText);
+  const pool = [titles.english, titles.romaji, titles.native].map(
+    normalizeText,
+  );
   return pool.some((t) => t.includes(nq));
 }
 
@@ -78,7 +79,9 @@ function isPrefix(q: string, titles: AnimeTitleSet) {
   const nq = normalizeText(q);
   if (!nq) return false;
 
-  const pool = [titles.english, titles.romaji, titles.native].map(normalizeText);
+  const pool = [titles.english, titles.romaji, titles.native].map(
+    normalizeText,
+  );
   return pool.some((t) => t.startsWith(nq));
 }
 
@@ -87,7 +90,7 @@ function isPrefix(q: string, titles: AnimeTitleSet) {
  */
 export async function searchAnimeFromAnilist(
   query: string,
-  opts?: { perPage?: number }
+  opts?: { perPage?: number },
 ): Promise<AnimeCore[]> {
   const perPage = opts?.perPage ?? 12;
 
@@ -147,7 +150,7 @@ export async function searchAnimeFromAnilist(
       romaji: m.title?.romaji ?? null,
       english: m.title?.english ?? null,
       native: m.title?.native ?? null,
-    })
+    }),
   );
   const rest = filtered.filter((m) => !prefix.includes(m));
   const ordered = [...prefix, ...rest].slice(0, perPage);

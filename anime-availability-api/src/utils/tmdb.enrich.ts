@@ -125,7 +125,10 @@ export async function enrichWithTmdb(
         break; // Si TMDB encuentra algo, rompemos el ciclo
       }
     } catch (err) {
-      logger.warn({ err }, `[tmdb.enrich] Error buscando la variante "${variant}"`);
+      logger.warn(
+        { err },
+        `[tmdb.enrich] Error buscando la variante "${variant}"`,
+      );
     }
   }
 
@@ -136,9 +139,7 @@ export async function enrichWithTmdb(
 
   const poster =
     base.poster ??
-    (best.poster_path
-      ? tmdbPosterUrl(best.poster_path, "w780")
-      : undefined);
+    (best.poster_path ? tmdbPosterUrl(best.poster_path, "w780") : undefined);
 
   const backdrop =
     base.backdrop ??

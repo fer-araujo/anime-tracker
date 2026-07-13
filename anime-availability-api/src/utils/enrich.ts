@@ -1,4 +1,3 @@
-
 import pLimit from "p-limit";
 import { malSearchAnime } from "../services/mal.service.js";
 import { kitsuSearchAnime } from "../services/kitsu.service.js";
@@ -15,10 +14,18 @@ function pickRating(mal?: number | null, kitsu?: number | null): number | null {
   return null;
 }
 
-export async function enrichFromMalAndKitsu(title: string): Promise<Enrichment> {
+export async function enrichFromMalAndKitsu(
+  title: string,
+): Promise<Enrichment> {
   const key = `enrich:${title.toLowerCase()}`;
   const cached = memoryCache.get(key);
-  if (cached && typeof cached === "object" && cached !== null && "sources" in cached) return cached as Enrichment;
+  if (
+    cached &&
+    typeof cached === "object" &&
+    cached !== null &&
+    "sources" in cached
+  )
+    return cached as Enrichment;
 
   // MAL y Kitsu en paralelo (con límite de concurrencia global)
   const [mal, kitsu] = await Promise.all([
@@ -33,15 +40,20 @@ export async function enrichFromMalAndKitsu(title: string): Promise<Enrichment> 
 
   // Intentar obtener episodios si algún service lo trae (BaseAnimeInfo permite episodes)
   const episodes: number | null = ((): number | null => {
-    if (typeof (mal as BaseAnimeInfo | null)?.episodes === "number") return (mal as BaseAnimeInfo).episodes!;
-    if (typeof (kitsu as BaseAnimeInfo | null)?.episodes === "number") return (kitsu as BaseAnimeInfo).episodes!;
+    if (typeof (mal as BaseAnimeInfo | null)?.episodes === "number")
+      return (mal as BaseAnimeInfo).episodes!;
+    if (typeof (kitsu as BaseAnimeInfo | null)?.episodes === "number")
+      return (kitsu as BaseAnimeInfo).episodes!;
     return null;
   })();
 
   const startDate: string | null = null; // No disponible ahora
 
   // Poster alterno: prioriza Kitsu, luego MAL
-  const posterAlt = (kitsu?.poster as string | undefined) ?? (mal?.poster as string | undefined) ?? null;
+  const posterAlt =
+    (kitsu?.poster as string | undefined) ??
+    (mal?.poster as string | undefined) ??
+    null;
 
   const value: Enrichment = {
     synopsis,
@@ -52,7 +64,9 @@ export async function enrichFromMalAndKitsu(title: string): Promise<Enrichment> 
     posterAlt,
     sources: {
       mal: mal ? { id: mal.id, title: mal.title } : null,
-      kitsu: kitsu ? { id: kitsu.id as string | number, title: kitsu.title } : null,
+      kitsu: kitsu
+        ? { id: kitsu.id as string | number, title: kitsu.title }
+        : null,
     },
   };
 

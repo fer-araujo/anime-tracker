@@ -42,14 +42,16 @@ export async function getSeason(
     const currentYear = now.getFullYear();
     const isCurrentYear = year === currentYear;
     const ttlMs = isCurrentYear
-      ? 1000 * 60 * 60      // 1 hour for current year
+      ? 1000 * 60 * 60 // 1 hour for current year
       : 1000 * 60 * 60 * 24; // 24 hours for past/future years
 
     // --- Punto 3: "Populares" busca en todo el año, no solo una temporada ---
     const isPopularYearQuery = query.rank === "popular";
-    const sortParam = isPopularYearQuery ? "POPULARITY_DESC"
-      : query.rank === "trending" ? "TRENDING_DESC"
-      : "POPULARITY_DESC";
+    const sortParam = isPopularYearQuery
+      ? "POPULARITY_DESC"
+      : query.rank === "trending"
+        ? "TRENDING_DESC"
+        : "POPULARITY_DESC";
 
     // Cuando rank=popular, omitimos el filtro `season` para abarcar el año completo.
     // Así "Animes populares" y "Trending esta temporada" no duplican contenido.
@@ -64,10 +66,7 @@ export async function getSeason(
       gqlVariables.season = season;
     }
 
-    const aniJson = await anilistFetch(
-      gql,
-      gqlVariables,
-    );
+    const aniJson = await anilistFetch(gql, gqlVariables);
 
     if (!aniJson) {
       return res.status(503).json({ error: "AniList unavailable" });
@@ -76,7 +75,7 @@ export async function getSeason(
     const rawMedia = aniJson?.data?.Page?.media as AniMedia[] | undefined;
 
     if (!rawMedia || rawMedia.length === 0) {
-      setCacheControl(res, 'season');
+      setCacheControl(res, "season");
       return res.json({ meta: { season, year, count: 0 }, data: [] });
     }
 
@@ -96,7 +95,7 @@ export async function getSeason(
       return a.title.localeCompare(b.title);
     });
 
-    setCacheControl(res, 'season');
+    setCacheControl(res, "season");
 
     const responseBody = {
       meta: {
