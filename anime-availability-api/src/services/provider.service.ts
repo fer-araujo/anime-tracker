@@ -43,7 +43,7 @@ async function fetchAniListTitleAndKind(
   }
 
   const m = json.data.Media;
-  const title = preferTitle(m.title);
+  const title = preferTitle(m.title ?? { native: "Untitled" });
   const kind = inferKind(m.format);
   return { title, kind };
 }
