@@ -1,4 +1,19 @@
-export function normalizeAnimeFromAnilist(media: any) {
+export function normalizeAnimeFromAnilist(media: {
+  id: number;
+  idMal?: number | null;
+  title?: { romaji?: string | null; english?: string | null; native?: string | null };
+  description?: string | null;
+  coverImage?: { extraLarge?: string | null; large?: string | null } | null;
+  bannerImage?: string | null;
+  episodes?: number | null;
+  status?: string | null;
+  season?: string | null;
+  seasonYear?: number | null;
+  nextAiringEpisode?: { airingAt?: number | null } | null;
+  genres?: string[] | null;
+  studios?: { nodes?: { name?: string | null }[] | null } | null;
+  format?: string | null;
+}) {
   const nextEpisodeAt =
     media?.nextAiringEpisode?.airingAt
       ? new Date(media.nextAiringEpisode.airingAt * 1000).toISOString()
@@ -35,7 +50,7 @@ export function normalizeAnimeFromAnilist(media: any) {
     genres: media.genres ?? [],
 
     studios:
-      media.studios?.nodes?.map((s: any) => s.name) ?? [],
+      media.studios?.nodes?.map((s: { name?: string | null }) => s.name) ?? [],
 
     format: media.format ?? null,
   };

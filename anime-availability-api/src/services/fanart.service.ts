@@ -16,6 +16,8 @@ export interface FanartTvImage {
   likes: string;
   lang: string;
   season?: string;
+  width?: number;
+  height?: number;
 }
 
 /** Full response from GET /v3/tv/{tvdb_id} (relevant fields only) */
@@ -60,14 +62,14 @@ function firstUrl<T extends FanartTvImage>(items: T[]): string | null {
 }
 
 /** Like firstUrl but returns ALL items (sorted, filtered) for gallery use */
-function allUrls<T extends FanartTvImage>(items: T[]): { url: string; likes: number; width?: number; height?: number }[] {
+function allUrls(items: FanartTvImage[]): { url: string; likes: number; width?: number; height?: number }[] {
   const filtered = filterEnglishOrNoLang(items);
   const sorted = sortByLikes(filtered);
   return sorted.map((img) => ({
     url: img.url,
     likes: Number(img.likes),
-    ...("width" in img ? { width: (img as any).width } : {}),
-    ...("height" in img ? { height: (img as any).height } : {}),
+    width: img.width,
+    height: img.height,
   }));
 }
 

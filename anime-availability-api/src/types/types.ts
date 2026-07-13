@@ -79,6 +79,8 @@ export interface AniListMedia {
   bannerImage?: string | null;
   coverImage?: { large?: string };
   averageScore?: number; // 0..100
+  popularity?: number;
+  favourites?: number;
   genres?: string[];
   description?: string | null;
   isAdult?: boolean;
@@ -111,7 +113,11 @@ export interface AniMedia {
   startDate?: { year?: number; month?: number; day?: number } | null;
   nextAiringEpisode?: { episode?: number; airingAt?: number } | null;
   format?: string;
-  studios: any;
+  bannerImage?: string | null;
+  studios?: {
+    edges?: { isMain?: boolean | null; node?: { name?: string | null } | null }[] | null;
+    nodes?: { name?: string | null }[] | null;
+  } | null;
 
   // campo auxiliar opcional para fallback TMDB en search
   __tmdb__?: TMDBSearchTVItem;

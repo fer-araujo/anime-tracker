@@ -1,6 +1,7 @@
 // src/controllers/anime.controller.ts
 import type { Request, Response, NextFunction } from "express";
-import pLimit from "p-limit";
+import type pLimit from "p-limit";
+import type { AniMedia } from "../types/animeCore.js";
 
 import { logger } from "../utils/logger.js";
 import { ENV } from "../config/env.js";
@@ -13,6 +14,54 @@ import { resolveProvidersForAnimeDetailed } from "../utils/resolveProviders.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
 import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
+
+// ─── Local types for AniList media detail response ───────────────────────────
+
+interface AniRelationEdge {
+  relationType?: string;
+  node?: {
+    id?: number;
+    title?: { romaji?: string; english?: string; native?: string };
+    coverImage?: { large?: string | null };
+    format?: string | null;
+  } | null;
+}
+
+interface AniRanking {
+  type?: string;
+  rank?: number;
+  allTime?: boolean;
+}
+
+interface AniMediaDetail {
+  id: number;
+  title?: { romaji?: string; english?: string; native?: string } | null;
+  format?: string | null;
+  status?: string | null;
+  bannerImage?: string | null;
+  coverImage?: { extraLarge?: string | null; large?: string | null } | null;
+  seasonYear?: number | null;
+  episodes?: number | null;
+  startDate?: { year?: number | null; month?: number | null; day?: number | null } | null;
+  description?: string | null;
+  averageScore?: number | null;
+  genres?: string[] | null;
+  isAdult?: boolean | null;
+  duration?: number | null;
+  studios?: {
+    edges?: { isMain?: boolean | null; node?: { name?: string | null } | null }[] | null;
+    nodes?: { name?: string | null }[] | null;
+  } | null;
+  trailer?: { id?: string | null; site?: string | null } | null;
+  nextAiringEpisode?: { episode?: number | null; airingAt?: number | null } | null;
+  streamingEpisodes?: Array<{ title?: string; thumbnail?: string; url?: string }> | null;
+  recommendations?: {
+    nodes?: Array<{ mediaRecommendation?: Record<string, unknown> } | null> | null;
+  } | null;
+  relations?: { edges?: (AniRelationEdge | null)[] | null } | null;
+  rankings?: AniRanking[] | null;
+  type?: string | null;
+}
 
 export async function getAnimeDetails(
   req: Request,
@@ -36,7 +85,7 @@ export async function getAnimeDetails(
       });
     }
 
-    const media = aniJson?.data?.Media;
+    const media = aniJson?.data?.Media as unknown as AniMediaDetail;
     if (!media) {
       logger.error(`AniList returned no data for ID ${anilistId}`);
       return res.status(404).json({
@@ -78,10 +127,11 @@ export async function getAnimeDetails(
       ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", aniYear, aniMonth, media.nextAiringEpisode?.airingAt)
       : null;
 
-    const rawRecommendations =
+    const rawRecommendations = (
       media.recommendations?.nodes
-        ?.map((node: any) => node.mediaRecommendation)
-        .filter(Boolean) || [];
+        ?.map((node) => node?.mediaRecommendation)
+        .filter((r): r is Record<string, unknown> => !!r) || []
+    ) as AniMedia[];
 
     const formattedRecommendations = await formatAnimeList(
       rawRecommendations,
@@ -91,28 +141,28 @@ export async function getAnimeDetails(
     // 4. Mapeo de Relaciones para "Franquicia"
     const parsedRelations =
       media.relations?.edges
-        ?.filter((edge: any) =>
+        ?.filter((edge: AniRelationEdge | null | undefined) =>
           ["PREQUEL", "SEQUEL", "SPIN_OFF", "ALTERNATIVE"].includes(
-            edge.relationType,
+            edge?.relationType ?? "",
           ),
         )
-        .map((edge: any) => ({
-          id: edge.node.id,
-          relationType: edge.relationType,
+        .map((edge: AniRelationEdge | null | undefined) => ({
+          id: edge?.node?.id,
+          relationType: edge?.relationType,
           title:
-            edge.node.title?.english ||
-            edge.node.title?.romaji ||
-            edge.node.title?.native ||
+            edge?.node?.title?.english ||
+            edge?.node?.title?.romaji ||
+            edge?.node?.title?.native ||
             "Unknown Title",
-          poster: edge.node.coverImage?.large || null,
-          type: edge.node.format || "TV",
+          poster: edge?.node?.coverImage?.large || null,
+          type: edge?.node?.format || "TV",
         })) || [];
 
     const bestRated = media.rankings?.find(
-      (r: any) => r.type === "RATED" && r.allTime,
+      (r: AniRanking) => r.type === "RATED" && r.allTime,
     );
     const mostPopular = media.rankings?.find(
-      (r: any) => r.type === "POPULAR" && r.allTime,
+      (r: AniRanking) => r.type === "POPULAR" && r.allTime,
     );
     const topRanking = bestRated || mostPopular;
 
@@ -153,7 +203,7 @@ export async function getAnimeDetails(
             ? `https://www.youtube.com/watch?v=${media.trailer.id}`
             : null,
         nextAiring: media.nextAiringEpisode
-          ? `Episodio ${media.nextAiringEpisode.episode} en ${Math.ceil((media.nextAiringEpisode.airingAt * 1000 - Date.now()) / (1000 * 60 * 60 * 24))} días`
+          ? `Episodio ${media.nextAiringEpisode.episode} en ${Math.ceil(((media.nextAiringEpisode.airingAt ?? 0) * 1000 - Date.now()) / (1000 * 60 * 60 * 24))} días`
           : null,
         nextEpisodeAt: media.nextAiringEpisode?.airingAt ?? null,
         recommendations: formattedRecommendations,

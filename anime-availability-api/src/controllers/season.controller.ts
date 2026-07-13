@@ -1,15 +1,16 @@
 import { logger } from "../utils/logger.js";
 import type { Request, Response, NextFunction } from "express";
 import { ENV } from "../config/env.js";
-import { SeasonQuery } from "../models/schema.js";
+import type { SeasonQuery } from "../models/schema.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
+import type { AniMedia } from "../types/animeCore.js";
 import { setCacheControl, hybridCache } from "../utils/cache.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
 import { buildSeasonPageQuery } from "../graphql/queries/seasonPage.gql.js";
 import { getCurrentSeasonYearLocal } from "../utils/season.js";
 
 export async function getSeason(
-  req: Request & { validated?: SeasonQuery },
+  req: Request,
   res: Response,
   next: NextFunction,
 ) {
@@ -72,7 +73,7 @@ export async function getSeason(
       return res.status(503).json({ error: "AniList unavailable" });
     }
 
-    const rawMedia = aniJson?.data?.Page?.media;
+    const rawMedia = aniJson?.data?.Page?.media as AniMedia[] | undefined;
 
     if (!rawMedia || rawMedia.length === 0) {
       setCacheControl(res, 'season');

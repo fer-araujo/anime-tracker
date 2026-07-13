@@ -1,5 +1,6 @@
 // src/controllers/schedule.controller.ts
 import type { Request, Response, NextFunction } from "express";
+import type { AniMedia } from "../types/animeCore.js";
 import { hybridCache, setCacheControl } from "../utils/cache.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
@@ -10,6 +11,12 @@ import {
 } from "../graphql/queries/schedule.gql.js";
 
 const DEFAULT_COUNTRY = process.env.DEFAULT_COUNTRY || "MX";
+
+interface AiringSchedule {
+  media: AniMedia;
+  airingAt?: number;
+  episode?: number;
+}
 
 /**
  * Compute CDMX (UTC-6) day bounds as Unix epoch seconds.
@@ -42,7 +49,7 @@ export async function getSchedule(
     const type = (req.query.type as string) || "airing";
     const cacheKey = `schedule:${type}`;
 
-    const cached = await hybridCache.get<any>(cacheKey);
+    const cached = await hybridCache.get<{ data: unknown[] }>(cacheKey);
     if (cached) {
       setCacheControl(res, "schedule");
       return res.json(cached);
@@ -50,7 +57,7 @@ export async function getSchedule(
 
     const { season, year } = getCurrentSeasonYearLocal();
     const country = DEFAULT_COUNTRY;
-    let items: any[] = [];
+    let items: Array<{ title: string; meta?: { rating?: number | null } }> = [];
 
     if (type === "airing") {
       const { greater, lesser } = getCDMXDayBounds();
@@ -60,10 +67,10 @@ export async function getSchedule(
         return res.status(503).json({ error: "AniList unavailable" });
 
       const schedules =
-        (aniJson.data?.Page?.airingSchedules as any[]) ?? [];
+        (aniJson.data?.Page?.airingSchedules as AiringSchedule[]) ?? [];
 
-      let rawMedia = schedules.map((s: any) => s.media);
-      rawMedia = rawMedia.filter((m: any) => !m.isAdult);
+      let rawMedia: AniMedia[] = schedules.map((s) => s.media);
+      rawMedia = rawMedia.filter((m) => !m.isAdult);
       items = await formatAnimeList(rawMedia, country, season, year);
 
       // Ordenar por rating (mejor → peor), como en season controller
@@ -78,7 +85,7 @@ export async function getSchedule(
       if (!aniJson)
         return res.status(503).json({ error: "AniList unavailable" });
 
-      const rawMedia = (aniJson.data?.Page?.media as any[]) ?? [];
+      const rawMedia = (aniJson.data?.Page?.media as AniMedia[]) ?? [];
 
       items = await formatAnimeList(rawMedia, country, season, year);
 

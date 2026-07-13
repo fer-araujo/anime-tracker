@@ -130,7 +130,7 @@ export async function searchAnimeFromAnilist(
   const json = await anilistFetch(gql, { search: query, perPage: fetchN });
   if (!json) return [];
 
-  const media: AniMedia[] = json?.data?.Page?.media ?? [];
+  const media = (json?.data?.Page?.media as AniMedia[]) ?? [];
 
   // ✅ POST-FILTER (evita resultados que no contienen el query en ningún title)
   const filtered = media.filter((m) => {
@@ -199,14 +199,14 @@ export async function searchAnimeFromAnilist(
         artworkCandidates,
       },
       meta: {
-        format: (m.format as any) ?? null,
-        season: (m.season as any) ?? null,
+        format: m.format ?? null,
+        season: m.season ?? null,
         seasonYear: m.seasonYear ?? null,
         episodes: m.episodes ?? null,
         score: typeof m.averageScore === "number" ? m.averageScore / 10 : null,
         popularity: m.popularity ?? null,
         favourites: m.favourites ?? null,
-        status: (m.status as any) ?? null,
+        status: m.status ?? null,
         isAdult: typeof m.isAdult === "boolean" ? m.isAdult : null,
         genres: m.genres ?? [],
         studioMain,

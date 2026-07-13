@@ -114,6 +114,9 @@ export type AniMedia = {
     edges?:
       | { isMain?: boolean | null; node?: { name?: string | null } | null }[]
       | null;
+    nodes?: { name?: string | null }[] | null;
   } | null;
   externalLinks?: { site?: string | null; url?: string | null }[] | null;
+  type?: string | null;
+  trailer?: { id?: string | null; site?: string | null } | null;
 };

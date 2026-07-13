@@ -50,16 +50,34 @@ export const tmdbImageUrl = (path?: string | null, size = "original") =>
 export const tmdbBackdropUrl = (path?: string | null, size = "original") =>
   path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined;
 
+// ─── TMDB image item type ─────────────────────────────────────────────────────
+
+interface TMDBImageItem {
+  file_path: string;
+  width?: number;
+  height?: number;
+  iso_639_1?: string | null;
+  vote_average?: number;
+  vote_count?: number;
+  aspect_ratio?: number;
+}
+
+interface TMDBImagesResponse {
+  backdrops?: TMDBImageItem[];
+  logos?: TMDBImageItem[];
+  posters?: TMDBImageItem[];
+}
+
 // ─── In-flight request deduplication ──────────────────────────────────────────
 
-export function withDedup<T extends (...args: any[]) => Promise<any>>(
-  fn: T,
-  keyFn?: (...args: any[]) => string,
-): T {
-  const inFlight = new Map<string, Promise<any>>();
-  const getKey = keyFn ?? ((...args: any[]) => JSON.stringify(args));
+export function withDedup<A extends unknown[], R>(
+  fn: (...args: A) => Promise<R>,
+  keyFn?: (...args: A) => string,
+): (...args: A) => Promise<R> {
+  const inFlight = new Map<string, Promise<R>>();
+  const getKey = keyFn ?? ((...args: A) => JSON.stringify(args));
   
-  return ((...args: any[]) => {
+  return (...args: A) => {
     const key = getKey(...args);
     const existing = inFlight.get(key);
     if (existing) return existing;
@@ -67,7 +85,7 @@ export function withDedup<T extends (...args: any[]) => Promise<any>>(
     const promise = fn(...args).finally(() => inFlight.delete(key));
     inFlight.set(key, promise);
     return promise;
-  }) as T;
+  };
 }
 
 // --- FUNCIONES API ---
@@ -90,7 +108,7 @@ async function _tmdbSearch(kind: "tv" | "movie", query: string) {
  * NUEVA FUNCIÓN: Obtiene todas las imágenes de una serie.
  * Filtra por idiomas para buscar "textless" (null) o arte original.
  */
-async function _getTmdbImages(id: number, kind: "tv" | "movie" = "tv") {
+async function _getTmdbImages(id: number, kind: "tv" | "movie" = "tv"): Promise<TMDBImagesResponse | null> {
   const url = new URL(`${TMDB_BASE}/${kind}/${id}/images`);
   
   // Pedimos imágenes sin texto (null), en inglés (en) o japonés (ja)
@@ -313,7 +331,7 @@ async function _resolveTmdbSeasonNumber(
 async function _getTmdbSeasonImages(
   id: number,
   seasonNumber: number,
-): Promise<{ backdrops?: any[]; logos?: any[]; posters?: any[] } | null> {
+): Promise<TMDBImagesResponse | null> {
   try {
     const url = new URL(
       `${TMDB_BASE}/tv/${id}/season/${seasonNumber}/images`,

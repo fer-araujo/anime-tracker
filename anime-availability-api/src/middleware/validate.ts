@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { ZodSchema } from "zod";
 
-export default function validate<T extends ZodSchema<any>>(schema: T) {
+export default function validate<T extends ZodSchema<unknown>>(schema: T) {
   return (req: Request, res: Response, next: NextFunction) => {
     const parsed = schema.safeParse(req.query);
     if (!parsed.success) {

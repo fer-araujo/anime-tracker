@@ -80,8 +80,8 @@ function buildSeasonOptions(): SelectOption[] {
 
 function buildYearOptions(): SelectOption[] {
   const current = new Date().getFullYear();
-  // Past 5 years + current year — no future years
-  return Array.from({ length: 6 }, (_, i) => {
+  // Past 5 years + current + 1 future year (for upcoming seasons with data)
+  return Array.from({ length: 7 }, (_, i) => {
     const y = current - 5 + i;
     return { value: String(y), label: String(y) };
   });

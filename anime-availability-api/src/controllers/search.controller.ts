@@ -1,14 +1,14 @@
 // src/controllers/search.controller.ts
 import type { Request, Response, NextFunction } from "express";
 import { ENV } from "../config/env.js";
-import { SearchQuery } from "../models/schema.js";
+import type { SearchQuery } from "../models/schema.js";
 import { searchAnimeUnified } from "../services/animeAggregate.service.js";
 import type { AnimeCore } from "../types/animeCore.js";
 import { normalizeProviderNames } from "../utils/providers.js";
 
 // AniList usa otros nombres de status; los mapeamos al formato viejo
 function mapStatus(core: AnimeCore): "ongoing" | "finished" | null {
-  // si hay próximo episodio, lo consideramos “ongoing”
+  // si hay próximo episodio, lo consideramos "ongoing"
   if (core.meta.nextEpisodeAt) return "ongoing";
 
   const raw = (core.meta.status || "").toUpperCase();
@@ -19,7 +19,7 @@ function mapStatus(core: AnimeCore): "ongoing" | "finished" | null {
 }
 
 export async function searchTitle(
-  req: Request & { validated?: SearchQuery },
+  req: Request,
   res: Response,
   next: NextFunction
 ) {

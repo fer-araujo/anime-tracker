@@ -1,5 +1,6 @@
 // src/controllers/home.controller.ts
 import type { Request, Response, NextFunction } from "express";
+import type { AniMedia } from "../types/animeCore.js";
 import { hybridCache, setCacheControl } from "../utils/cache.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
@@ -15,6 +16,26 @@ function stripHtml(input?: string | null) {
   return noTags.trim();
 }
 
+interface HeroPayload {
+  data: Array<{
+    id: { anilist: number; tmdb: number | null };
+    title: string;
+    images: { banner: string | null; backdrop: string | null; logo: string | null; poster: string | null };
+    meta: {
+      synopsis: string;
+      synopsisShort: string;
+      year: number | null;
+      rating: number | null;
+      genres: string[];
+      status: string | null;
+      episodes: number | null;
+      type: string | null;
+      studio: string | null;
+      trailer: string | null;
+    };
+  }>;
+}
+
 export async function getHomeHero(
   req: Request,
   res: Response,
@@ -22,7 +43,7 @@ export async function getHomeHero(
 ) {
   try {
     const cacheKey = "home:hero:cinematic:v5";
-    const cached = await hybridCache.get<any>(cacheKey);
+    const cached = await hybridCache.get<HeroPayload>(cacheKey);
     if (cached) return res.json(cached);
 
     // Fetch top 5 of current season by score
@@ -31,7 +52,7 @@ export async function getHomeHero(
 
     if (!aniJson)
       return res.status(503).json({ error: "AniList unavailable" });
-    let media = aniJson.data?.Page?.media || [];
+    let media = (aniJson.data?.Page?.media as AniMedia[]) || [];
 
     // Fallback: if season returned fewer than 3 items, use trending/releasing
     if (media.length < 3) {
@@ -60,11 +81,11 @@ export async function getHomeHero(
       `;
       const fallbackJson = await anilistFetch(trendingQuery, {});
       if (fallbackJson) {
-        media = fallbackJson.data?.Page?.media || [];
+        media = (fallbackJson.data?.Page?.media as AniMedia[]) || [];
       }
     }
 
-    const itemsProm = media.map(async (m: any) => {
+    const itemsProm = media.map(async (m: AniMedia) => {
       const title = preferTitle(m.title);
       const kind = m.type === "MOVIE" ? "movie" : "tv";
 

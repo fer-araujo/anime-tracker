@@ -1,7 +1,8 @@
 // src/utils/formatAnimeList.ts
 import { logger } from "../utils/logger.js";
 import pLimit from "p-limit";
-import { getTitleVariations } from "./tmdb.enrich.js"; // NUEVO
+import type { AniMedia } from "../types/animeCore.js";
+import { getTitleVariations } from "./tmdb.enrich.js";
 import {
   tmdbSearch,
   isAnimeCandidate,
@@ -17,7 +18,7 @@ import { extractStudio } from "./extractStudio.js";
 const limit = pLimit(10);
 
 export async function formatAnimeList(
-  rawAnimeList: any[],
+  rawAnimeList: AniMedia[],
   country: string,
   baseSeason?: string,
   baseYear?: number,

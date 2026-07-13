@@ -70,12 +70,12 @@ export async function fetchAniListBySearch(
     episodes: m.episodes,
     airingStatus: normalizeStatus(m.status),
     popularity:
-      typeof (m as any).popularity === "number"
-        ? (m as any).popularity
+      typeof m.popularity === "number"
+        ? m.popularity
         : undefined,
     favourites:
-      typeof (m as any).favourites === "number"
-        ? (m as any).favourites
+      typeof m.favourites === "number"
+        ? m.favourites
         : undefined,
     score:
       typeof m.averageScore === "number" ? m.averageScore / 10 : undefined,

@@ -5,6 +5,21 @@
 // Also caches GraphQL responses by query+variables hash.
 
 import { hybridCache } from "./cache.js";
+
+type AniListDefaultResponse = {
+  data?: {
+    Page?: {
+      media?: unknown[];
+      airingSchedules?: unknown[];
+      pageInfo?: {
+        total?: number;
+        currentPage?: number;
+        lastPage?: number;
+      };
+    };
+    Media?: Record<string, unknown>;
+  };
+};
 import { logger } from "./logger.js";
 
 const MAX_REQUESTS_PER_MINUTE = 25;
@@ -64,7 +79,7 @@ function hashQuery(query: string, variables: Record<string, unknown>): string {
  * - On 429, reads Retry-After header and waits
  * - On failure, returns null (caller handles gracefully)
  */
-export async function anilistFetch<T = { data?: Record<string, unknown> }>(
+export async function anilistFetch<T = AniListDefaultResponse>(
   query: string,
   variables: Record<string, unknown>,
   endpoint: string = "https://graphql.anilist.co",

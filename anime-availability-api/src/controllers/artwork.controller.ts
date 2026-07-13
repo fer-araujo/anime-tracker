@@ -30,7 +30,7 @@ export async function getArtwork(req: Request, res: Response, next: NextFunction
 
     const best = (backdrops ?? [])
       // filtra por idioma preferido
-      .filter((b) => ["es", "en", null].includes(b.iso_639_1 as any))
+      .filter((b) => b.iso_639_1 === null || b.iso_639_1 === "es" || b.iso_639_1 === "en")
       // umbrales mínimos (relaja si quieres)
       .filter((b) => (b.vote_count ?? 0) >= 2 && (b.vote_average ?? 0) >= 5.0)
       // orden: rating, luego ancho
