@@ -64,7 +64,7 @@ function hashQuery(query: string, variables: Record<string, unknown>): string {
  * - On 429, reads Retry-After header and waits
  * - On failure, returns null (caller handles gracefully)
  */
-export async function anilistFetch<T = any>(
+export async function anilistFetch<T = { data?: Record<string, unknown> }>(
   query: string,
   variables: Record<string, unknown>,
   endpoint: string = "https://graphql.anilist.co",
