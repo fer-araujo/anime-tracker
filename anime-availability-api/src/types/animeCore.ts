@@ -16,14 +16,7 @@ export type AnimeTitleSet = {
 
 export type AnimeCoreMeta = {
   format?:
-    | "TV"
-    | "ONA"
-    | "MOVIE"
-    | "OVA"
-    | "SPECIAL"
-    | "TV_SHORT"
-    | string
-    | null;
+    "TV" | "ONA" | "MOVIE" | "OVA" | "SPECIAL" | "TV_SHORT" | string | null;
   season?: "WINTER" | "SPRING" | "SUMMER" | "FALL" | string | null;
   seasonYear?: number | null;
   episodes?: number | null;
@@ -114,6 +107,9 @@ export type AniMedia = {
     edges?:
       | { isMain?: boolean | null; node?: { name?: string | null } | null }[]
       | null;
+    nodes?: { name?: string | null }[] | null;
   } | null;
   externalLinks?: { site?: string | null; url?: string | null }[] | null;
+  type?: string | null;
+  trailer?: { id?: string | null; site?: string | null } | null;
 };

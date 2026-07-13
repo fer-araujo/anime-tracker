@@ -1,5 +1,4 @@
 // src/services/anilist.service.ts
-import { logger } from "../utils/logger.js";
 import { memoryCache } from "../utils/cache.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
 import type {
@@ -26,7 +25,7 @@ function normalizeStatus(status?: string): AiringStatus | undefined {
  * podremos enriquecer con TMDB / otros servicios.
  */
 export async function fetchAniListBySearch(
-  title: string
+  title: string,
 ): Promise<BaseAnimeInfo | null> {
   const cacheKey = `anilist:search:${title.toLowerCase()}`;
   const cached = memoryCache.get(cacheKey);
@@ -69,16 +68,9 @@ export async function fetchAniListBySearch(
     season: m.season,
     episodes: m.episodes,
     airingStatus: normalizeStatus(m.status),
-    popularity:
-      typeof (m as any).popularity === "number"
-        ? (m as any).popularity
-        : undefined,
-    favourites:
-      typeof (m as any).favourites === "number"
-        ? (m as any).favourites
-        : undefined,
-    score:
-      typeof m.averageScore === "number" ? m.averageScore / 10 : undefined,
+    popularity: typeof m.popularity === "number" ? m.popularity : undefined,
+    favourites: typeof m.favourites === "number" ? m.favourites : undefined,
+    score: typeof m.averageScore === "number" ? m.averageScore / 10 : undefined,
     poster: poster ?? undefined,
     backdrop: backdrop ?? undefined,
     banner: m.bannerImage ?? undefined,

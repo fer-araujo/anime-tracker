@@ -13,7 +13,10 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "img1.ak.crunchyroll.com" },
       { protocol: "https", hostname: "assets.fanart.tv" },
       // Agrega este por si acaso (backups de Kitsu)
-      { protocol: "https", hostname: "kitsu-production-media.s3.us-west-002.backblazeb2.com" }, 
+      {
+        protocol: "https",
+        hostname: "kitsu-production-media.s3.us-west-002.backblazeb2.com",
+      },
     ],
   },
 };

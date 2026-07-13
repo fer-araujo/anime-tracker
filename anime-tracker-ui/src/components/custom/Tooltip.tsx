@@ -91,7 +91,8 @@ export default function Tooltip({
           : triggerRect.bottom + margin;
 
       // X-axis: center on trigger, then clamp to viewport bounds
-      const idealLeft = triggerRect.left + (triggerRect.width - tooltipWidth) / 2;
+      const idealLeft =
+        triggerRect.left + (triggerRect.width - tooltipWidth) / 2;
       const left = Math.max(
         margin,
         Math.min(idealLeft, window.innerWidth - tooltipWidth - margin),
@@ -237,30 +238,30 @@ export default function Tooltip({
               ref={tooltipRef}
               id={tooltipId}
               role="tooltip"
-                style={{
-                  position: "fixed",
-                  top: position.top,
-                  left: position.left,
-                  zIndex: 50,
-                  pointerEvents: "auto",
-                  opacity: tooltipState === "measuring" ? 0 : 1,
-                }}
-                className="whitespace-normal break-words max-w-[min(90vw,35rem)] rounded-md border border-neutral-600 bg-neutral-900/95 backdrop-blur-sm px-4 py-3 text-sm text-foreground shadow-lg shadow-black/40 leading-relaxed transition-opacity duration-150"
-                onMouseEnter={() => {
-                  if (hideTimeoutRef.current) {
-                    clearTimeout(hideTimeoutRef.current);
-                    hideTimeoutRef.current = null;
-                  }
-                }}
-                onMouseLeave={() => hideTooltip()}
-              >
-                {content}
-                {synopsisLang && synopsisLang !== "es" && (
-                  <div className="flex items-center gap-1 mt-3 pt-2 border-t border-white/10 text-[11px] text-white/40">
-                    🇬🇧 Solo disponible en inglés
-                  </div>
-                )}
-              </div>,
+              style={{
+                position: "fixed",
+                top: position.top,
+                left: position.left,
+                zIndex: 50,
+                pointerEvents: "auto",
+                opacity: tooltipState === "measuring" ? 0 : 1,
+              }}
+              className="whitespace-normal break-words max-w-[min(90vw,35rem)] rounded-md border border-neutral-600 bg-neutral-900/95 backdrop-blur-sm px-4 py-3 text-sm text-foreground shadow-lg shadow-black/40 leading-relaxed transition-opacity duration-150"
+              onMouseEnter={() => {
+                if (hideTimeoutRef.current) {
+                  clearTimeout(hideTimeoutRef.current);
+                  hideTimeoutRef.current = null;
+                }
+              }}
+              onMouseLeave={() => hideTooltip()}
+            >
+              {content}
+              {synopsisLang && synopsisLang !== "es" && (
+                <div className="flex items-center gap-1 mt-3 pt-2 border-t border-white/10 text-[11px] text-white/40">
+                  🇬🇧 Solo disponible en inglés
+                </div>
+              )}
+            </div>,
             document.body,
           )
         : null}

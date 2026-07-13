@@ -94,14 +94,38 @@ describe("fanart.service", () => {
                 name: "Test Show",
                 tvdb_id: 54321,
                 seasonposter: [
-                  { id: "1", url: "https://example.com/s1.jpg", lang: "en", likes: "10", season: "1" },
-                  { id: "2", url: "https://example.com/s2.jpg", lang: "en", likes: "5", season: "2" },
+                  {
+                    id: "1",
+                    url: "https://example.com/s1.jpg",
+                    lang: "en",
+                    likes: "10",
+                    season: "1",
+                  },
+                  {
+                    id: "2",
+                    url: "https://example.com/s2.jpg",
+                    lang: "en",
+                    likes: "5",
+                    season: "2",
+                  },
                 ],
                 seasonbanner: [
-                  { id: "3", url: "https://example.com/b1.jpg", lang: "en", likes: "3", season: "1" },
+                  {
+                    id: "3",
+                    url: "https://example.com/b1.jpg",
+                    lang: "en",
+                    likes: "3",
+                    season: "1",
+                  },
                 ],
                 seasonthumb: [
-                  { id: "4", url: "https://example.com/t1.jpg", lang: "en", likes: "7", season: "2" },
+                  {
+                    id: "4",
+                    url: "https://example.com/t1.jpg",
+                    lang: "en",
+                    likes: "7",
+                    season: "2",
+                  },
                 ],
               }),
               {
@@ -126,7 +150,7 @@ describe("fanart.service", () => {
 });
 
 /** Minimal fetch mock that proxies to the real setup.ts mockFetch for TMDB/fanart.tv endpoints. */
-function mockFetch(url: string | URL | Request, init?: RequestInit) {
+function mockFetch(url: string | URL | Request, _init?: RequestInit) {
   const urlStr = typeof url === "string" ? url : url.toString();
 
   if (urlStr.includes("webservice.fanart.tv")) {

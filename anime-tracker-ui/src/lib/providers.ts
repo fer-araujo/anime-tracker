@@ -1,4 +1,4 @@
-import { ProviderLabel } from "@/types/anime";
+import type { ProviderLabel } from "@/types/anime";
 
 export function normalizeProviderName(raw: string): ProviderLabel | null {
   const lower = raw.toLowerCase();

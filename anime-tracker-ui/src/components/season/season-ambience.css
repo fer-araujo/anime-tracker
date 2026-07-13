@@ -22,7 +22,8 @@
    Unlike the old animate-breathe, this is VISIBLE because the glow actually
    adds brightness to the page instead of modulating an already-dark overlay. */
 @keyframes glow-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.15;
     transform: scaleY(0.95);
   }

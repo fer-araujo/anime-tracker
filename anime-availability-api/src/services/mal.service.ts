@@ -14,7 +14,9 @@ function normalizeStatus(status?: string): AiringStatus | undefined {
   return map[status.toLowerCase()] ?? undefined;
 }
 
-export async function malSearchAnime(title: string): Promise<BaseAnimeInfo | null> {
+export async function malSearchAnime(
+  title: string,
+): Promise<BaseAnimeInfo | null> {
   const cacheKey = `mal:${title.toLowerCase()}`;
   const cached = memoryCache.get(cacheKey);
   if (cached) return cached as BaseAnimeInfo;

@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import Header from "@/components/Header";
 import "./globals.css";
 
@@ -12,9 +12,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="es">
       <body className="min-h-screen bg-background text-foreground">
         <Header />
-        <main className="relative flex flex-col min-h-screen">
-          {children}
-        </main>
+        <main className="relative flex flex-col min-h-screen">{children}</main>
       </body>
     </html>
   );

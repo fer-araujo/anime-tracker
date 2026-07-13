@@ -69,7 +69,7 @@ export default function Select({
           "flex w-full items-center justify-between h-10 px-3 bg-white/10 border text-sm rounded-xl transition-all duration-300 backdrop-blur-xs focus:outline-none focus:ring-1 shadow-sm cursor-pointer",
           isOpen
             ? "border-primary/50 ring-1 ring-primary bg-black/40 text-foreground"
-            : "border-white/10 text-foreground hover:bg-white/20"
+            : "border-white/10 text-foreground hover:bg-white/20",
         )}
       >
         <span className="truncate">
@@ -118,7 +118,7 @@ export default function Select({
                   "flex items-center justify-between px-3 py-2.5 text-sm cursor-pointer transition-colors",
                   value === option.value
                     ? "bg-primary/20 text-primary font-medium"
-                    : "text-white/70 hover:bg-white/10 hover:text-foreground"
+                    : "text-white/70 hover:bg-white/10 hover:text-foreground",
                 )}
               >
                 <span className="truncate">{option.label}</span>

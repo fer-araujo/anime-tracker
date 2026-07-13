@@ -130,9 +130,7 @@ export function Pagination({
     >
       {/* Info */}
       <p className="text-xs text-muted-foreground order-1 sm:order-none">
-        Mostrando{" "}
-        <span className="text-foreground font-medium">{from}</span>
-        –
+        Mostrando <span className="text-foreground font-medium">{from}</span>–
         <span className="text-foreground font-medium">{to}</span> de{" "}
         <span className="text-foreground font-medium">{totalItems}</span>
       </p>
@@ -158,23 +156,17 @@ export function Pagination({
         {/* Page numbers */}
         {pages.map((page, i) => (
           <PageButton
-            key={
-              page === "ellipsis" ? `ellipsis-${i}` : `page-${page}`
-            }
+            key={page === "ellipsis" ? `ellipsis-${i}` : `page-${page}`}
             page={page}
             active={page === currentPage}
-            onClick={() =>
-              page !== "ellipsis" && onPageChange(page)
-            }
+            onClick={() => page !== "ellipsis" && onPageChange(page)}
           />
         ))}
 
         {/* Next */}
         <button
           type="button"
-          onClick={() =>
-            onPageChange(Math.min(totalPages, currentPage + 1))
-          }
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
           aria-label="Página siguiente"
           className={cn(

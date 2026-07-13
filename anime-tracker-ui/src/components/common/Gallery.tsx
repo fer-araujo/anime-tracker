@@ -2,7 +2,7 @@
 import React, { useEffect, useRef } from "react";
 import Image from "next/image";
 import Icon from "@/components/custom/Icon";
-import { ArtworkCandidate } from "@/types/anime";
+import type { ArtworkCandidate } from "@/types/anime";
 
 interface GalleryLightboxProps {
   images: ArtworkCandidate[];

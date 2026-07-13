@@ -8,10 +8,15 @@ export function htmlToText(raw?: string | null): string {
   s = s.replace(/<[^>]+>/g, "");
 
   // 2) decodificar entidades mínimas
-  const map: Record<string,string> = {
-    "&nbsp;":" ", "&amp;":"&", "&lt;":"<", "&gt;":">", "&quot;":'"', "&#39;":"'"
+  const map: Record<string, string> = {
+    "&nbsp;": " ",
+    "&amp;": "&",
+    "&lt;": "<",
+    "&gt;": ">",
+    "&quot;": '"',
+    "&#39;": "'",
   };
-  s = s.replace(/&(?:nbsp|amp|lt|gt|quot|#39);/g, (m)=>map[m]||m);
+  s = s.replace(/&(?:nbsp|amp|lt|gt|quot|#39);/g, (m) => map[m] || m);
 
   // 3) remover “Source:” al final o entre corchetes/paréntesis
   //   (varias variantes que suelen devolver AniList/MAL/Kitsu)
@@ -25,10 +30,11 @@ export function htmlToText(raw?: string | null): string {
     .replace(/\s*source\s*:\s*.*$/gim, "");
 
   // 4) normalización básica
-  s = s.replace(/\r/g, "")
-       .replace(/\n{3,}/g, "\n\n")
-       .replace(/[ \t]{2,}/g, " ")
-       .trim();
+  s = s
+    .replace(/\r/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
 
   return s;
 }

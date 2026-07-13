@@ -18,4 +18,4 @@ export const PosterSkeleton = ({ title }: { title: string }) => {
       </div>
     </div>
   );
-}
+};

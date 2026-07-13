@@ -21,7 +21,10 @@ function CardRoot({
   className = "",
   children,
   ...props
-}: { className?: string; children?: ReactNode } & HTMLAttributes<HTMLDivElement>) {
+}: {
+  className?: string;
+  children?: ReactNode;
+} & HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={`flex flex-col gap-6 rounded-xl border bg-card text-card-foreground py-6 shadow-sm ${className}`}
@@ -39,7 +42,10 @@ function CardHeader({
   className = "",
   children,
   ...props
-}: { className?: string; children?: ReactNode } & HTMLAttributes<HTMLDivElement>) {
+}: {
+  className?: string;
+  children?: ReactNode;
+} & HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={className} {...props}>
       {children}
@@ -54,7 +60,10 @@ function CardContent({
   className = "",
   children,
   ...props
-}: { className?: string; children?: ReactNode } & HTMLAttributes<HTMLDivElement>) {
+}: {
+  className?: string;
+  children?: ReactNode;
+} & HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={className} {...props}>
       {children}
@@ -69,7 +78,10 @@ function CardFooter({
   className = "",
   children,
   ...props
-}: { className?: string; children?: ReactNode } & HTMLAttributes<HTMLDivElement>) {
+}: {
+  className?: string;
+  children?: ReactNode;
+} & HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={className} {...props}>
       {children}

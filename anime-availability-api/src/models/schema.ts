@@ -10,11 +10,20 @@ export const seasonQuerySchema = z.object({
   // MEJORA: Acepta minúsculas y mayúsculas, y normaliza a UPPERCASE
   season: z
     .enum([
-      "WINTER", "SPRING", "SUMMER", "FALL",
-      "winter", "spring", "summer", "fall"
+      "WINTER",
+      "SPRING",
+      "SUMMER",
+      "FALL",
+      "winter",
+      "spring",
+      "summer",
+      "fall",
     ])
     .optional()
-    .transform((v) => v?.toUpperCase() as "WINTER" | "SPRING" | "SUMMER" | "FALL" | undefined),
+    .transform(
+      (v) =>
+        v?.toUpperCase() as "WINTER" | "SPRING" | "SUMMER" | "FALL" | undefined,
+    ),
 
   year: z.coerce.number().int().positive().optional(),
 
@@ -24,7 +33,7 @@ export const seasonQuerySchema = z.object({
 
 export const searchQuerySchema = z.object({
   title: z.string().min(1, "Title is required"),
-  
+
   country: z
     .string()
     .length(2, "Country must be 2-letter code")

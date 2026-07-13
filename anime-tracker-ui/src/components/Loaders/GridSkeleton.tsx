@@ -6,7 +6,11 @@ type Props = {
   variant?: "shelf" | "grid";
 };
 
-export default function GridSkeleton({ count = 10, className, variant = "shelf" }: Props) {
+export default function GridSkeleton({
+  count = 10,
+  className,
+  variant = "shelf",
+}: Props) {
   if (variant === "grid") {
     return (
       <div

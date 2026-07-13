@@ -28,7 +28,9 @@ export function HeroCarouselCinematic({
   const [index, setIndex] = useState(0);
   const [holdAutoplayUntil, setHoldAutoplayUntil] = useState(0);
   const [touchStartX, setTouchStartX] = useState(0);
-  const [backdropLoaded, setBackdropLoaded] = useState<Record<number, boolean>>({});
+  const [backdropLoaded, setBackdropLoaded] = useState<Record<number, boolean>>(
+    {},
+  );
 
   const router = useRouter();
   const total = items.length || 0;
@@ -262,7 +264,11 @@ export function HeroCarouselCinematic({
               {current.meta?.rating && (
                 <span className="flex items-center gap-1">
                   {/* ÍCONO ELEGANTE EN LUGAR DE EMOJI */}
-                  <Icon name="Star" size={14} className="fill-primary text-primary" />
+                  <Icon
+                    name="Star"
+                    size={14}
+                    className="fill-primary text-primary"
+                  />
                   {Number(current.meta.rating).toFixed(1)}
                 </span>
               )}

@@ -125,7 +125,10 @@ export async function enrichWithTmdb(
         break; // Si TMDB encuentra algo, rompemos el ciclo
       }
     } catch (err) {
-      logger.warn({ err }, `[tmdb.enrich] Error buscando la variante "${variant}"`);
+      logger.warn(
+        { err },
+        `[tmdb.enrich] Error buscando la variante "${variant}"`,
+      );
     }
   }
 
@@ -136,21 +139,19 @@ export async function enrichWithTmdb(
 
   const poster =
     base.poster ??
-    ((best as any).poster_path
-      ? tmdbPosterUrl((best as any).poster_path, "w780")
-      : undefined);
+    (best.poster_path ? tmdbPosterUrl(best.poster_path, "w780") : undefined);
 
   const backdrop =
     base.backdrop ??
-    ((best as any).backdrop_path
-      ? tmdbBackdropUrl((best as any).backdrop_path, "w1280")
+    (best.backdrop_path
+      ? tmdbBackdropUrl(best.backdrop_path, "w1280")
       : undefined);
 
   let providers: ProviderInfo[] | undefined = base.providers;
 
   try {
-    if ((best as any).id) {
-      const provList = await tmdbWatchProviders(kind, (best as any).id, region);
+    if (best.id) {
+      const provList = await tmdbWatchProviders(kind, best.id, region);
       if (Array.isArray(provList) && provList.length) providers = provList;
     }
   } catch (err) {
@@ -162,6 +163,6 @@ export async function enrichWithTmdb(
     poster,
     backdrop,
     providers,
-    tmdbId: (best as any).id ?? null,
+    tmdbId: best.id ?? null,
   };
 }

@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { AppError } from "../errors/AppError.js";
 
 export function notFound(req: Request, res: Response, _next: NextFunction) {
@@ -15,7 +15,7 @@ export function errorHandler(
   err: Error,
   req: Request,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   if (err instanceof AppError) {
     res.status(err.statusCode).json({

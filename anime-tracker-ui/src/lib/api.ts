@@ -1,6 +1,7 @@
-import { Anime } from "@/types/anime";
-import { SeasonResp, HeroResponseSchema, SeasonRespSchema, type HeroResponse } from "@/types/api";
-import { SearchResultItem } from "@/types/search";
+import type { Anime } from "@/types/anime";
+import { HeroResponseSchema, SeasonRespSchema } from "@/types/api";
+import type { SeasonResp, HeroResponse } from "@/types/api";
+import type { SearchResultItem } from "@/types/search";
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
@@ -21,7 +22,7 @@ export async function fetchSearch(opts: {
   u.searchParams.set("country", (opts.country ?? "MX").toUpperCase());
   u.searchParams.set(
     "limit",
-    String(Math.max(5, Math.min(opts.limit ?? 12, 15)))
+    String(Math.max(5, Math.min(opts.limit ?? 12, 15))),
   );
   u.searchParams.set("onlyAnime", "1");
   u.searchParams.set("enrich", "0");
@@ -48,8 +49,10 @@ export async function fetchSeason(opts?: {
   const json = await res.json();
   const parsed = SeasonRespSchema.safeParse(json);
   if (!parsed.success) {
-    console.warn("Season response shape mismatch, returning empty fallback", parsed.error);
-    return { meta: { country: "", season: "", year: 0, total: 0, source: "" }, data: [] };
+    return {
+      meta: { country: "", season: "", year: 0, total: 0, source: "" },
+      data: [],
+    };
   }
   return parsed.data as SeasonResp;
 }
@@ -61,17 +64,18 @@ export async function fetchHomeHero(): Promise<HeroResponse> {
   const json = await res.json();
   const parsed = HeroResponseSchema.safeParse(json);
   if (!parsed.success) {
-    console.warn("Hero response shape mismatch, returning empty fallback", parsed.error);
     return { data: [] };
   }
   return parsed.data;
 }
 
-export async function fetchAnimeDetails(id: string | number): Promise<{ data: Anime }> {
-  const res = await fetch(`${API_BASE}/anime/${id}`, { 
-    next: { revalidate: 7200 } 
+export async function fetchAnimeDetails(
+  id: string | number,
+): Promise<{ data: Anime }> {
+  const res = await fetch(`${API_BASE}/anime/${id}`, {
+    next: { revalidate: 7200 },
   });
-  
+
   if (!res.ok) {
     throw new Error(`Failed to fetch anime details: ${res.status}`);
   }

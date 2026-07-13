@@ -1,14 +1,14 @@
 // src/controllers/search.controller.ts
 import type { Request, Response, NextFunction } from "express";
 import { ENV } from "../config/env.js";
-import { SearchQuery } from "../models/schema.js";
+import type { SearchQuery } from "../models/schema.js";
 import { searchAnimeUnified } from "../services/animeAggregate.service.js";
 import type { AnimeCore } from "../types/animeCore.js";
 import { normalizeProviderNames } from "../utils/providers.js";
 
 // AniList usa otros nombres de status; los mapeamos al formato viejo
 function mapStatus(core: AnimeCore): "ongoing" | "finished" | null {
-  // si hay próximo episodio, lo consideramos “ongoing”
+  // si hay próximo episodio, lo consideramos "ongoing"
   if (core.meta.nextEpisodeAt) return "ongoing";
 
   const raw = (core.meta.status || "").toUpperCase();
@@ -19,9 +19,9 @@ function mapStatus(core: AnimeCore): "ongoing" | "finished" | null {
 }
 
 export async function searchTitle(
-  req: Request & { validated?: SearchQuery },
+  req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const { title, country } = ((req.validated || req.body) ??
@@ -54,8 +54,7 @@ export async function searchTitle(
 
       const poster = core.images.poster ?? null;
 
-      const bestArtwork =
-        core.images.artworkCandidates?.[0] ?? null;
+      const bestArtwork = core.images.artworkCandidates?.[0] ?? null;
 
       const backdrop =
         bestArtwork?.url_1280 ??
@@ -79,7 +78,8 @@ export async function searchTitle(
 
       // En AnimeCore ya sanitizamos, así que reutilizamos:
       const synopsisHtml = core.synopses.synopsisHtml ?? null;
-      const synopsis = core.synopses.synopsisShort ?? core.synopses.synopsisText ?? null;
+      const synopsis =
+        core.synopses.synopsisShort ?? core.synopses.synopsisText ?? null;
       const synopsisShort = core.synopses.synopsisText ?? null;
 
       const startDate = core.meta.startDate ?? null;

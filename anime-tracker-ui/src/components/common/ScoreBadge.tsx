@@ -7,7 +7,7 @@ export const ScoreBadge = ({ value }: { value: number }) => {
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full pl-1.5 pr-2 py-1 text-xs font-semibold",
-        "bg-black/65 border border-white/15 text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)]"
+        "bg-black/65 border border-white/15 text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)]",
       )}
       aria-label={`Rating ${v.toFixed(1)}`}
     >
@@ -17,4 +17,4 @@ export const ScoreBadge = ({ value }: { value: number }) => {
       {v.toFixed(1)}
     </span>
   );
-}
+};

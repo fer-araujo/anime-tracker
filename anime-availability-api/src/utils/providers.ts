@@ -46,7 +46,7 @@ export function flattenProviders(
     free?: { provider_name: string }[];
     ads?: { provider_name: string }[];
   },
-  opts?: { includeBuyRent?: boolean }
+  opts?: { includeBuyRent?: boolean },
 ): string[] {
   const includeBuyRent = opts?.includeBuyRent ?? false;
 
@@ -59,7 +59,7 @@ export function flattenProviders(
   if (includeBuyRent) {
     merged.push(
       ...(input?.buy ?? []).map((x) => x.provider_name),
-      ...(input?.rent ?? []).map((x) => x.provider_name)
+      ...(input?.rent ?? []).map((x) => x.provider_name),
     );
   }
 
@@ -68,7 +68,7 @@ export function flattenProviders(
 
 export function mergeProviders(
   primary?: string[] | null,
-  extras?: string[] | null
+  extras?: string[] | null,
 ): string[] {
   const combined = [...(primary ?? []), ...(extras ?? [])];
   return normalizeProviderNames(combined);

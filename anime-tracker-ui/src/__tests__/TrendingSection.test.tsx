@@ -13,7 +13,9 @@ const mockAnime = (overrides?: Partial<Anime>): Anime => ({
 
 describe("MinimalShelf (used by TrendingSection)", () => {
   it("renders the section title", () => {
-    render(<MinimalShelf title="Trending esta temporada" items={[mockAnime()]} />);
+    render(
+      <MinimalShelf title="Trending esta temporada" items={[mockAnime()]} />,
+    );
     expect(screen.getByText("Trending esta temporada")).toBeDefined();
   });
 

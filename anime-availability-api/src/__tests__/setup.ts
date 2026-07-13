@@ -25,7 +25,7 @@ function mockFetch(url: string | URL | Request, init?: RequestInit) {
       new Response(JSON.stringify(mockAniListResponse(urlStr, init)), {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      })
+      }),
     );
   }
 
@@ -35,7 +35,7 @@ function mockFetch(url: string | URL | Request, init?: RequestInit) {
       new Response(JSON.stringify(mockTmdbResponse(urlStr)), {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      })
+      }),
     );
   }
 
@@ -45,7 +45,7 @@ function mockFetch(url: string | URL | Request, init?: RequestInit) {
       new Response(JSON.stringify({ shows: [] }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      })
+      }),
     );
   }
 
@@ -55,7 +55,7 @@ function mockFetch(url: string | URL | Request, init?: RequestInit) {
       new Response(JSON.stringify(mockFanartTvResponse(urlStr)), {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      })
+      }),
     );
   }
 
@@ -65,7 +65,7 @@ function mockFetch(url: string | URL | Request, init?: RequestInit) {
       new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      })
+      }),
     );
   }
 
@@ -74,7 +74,7 @@ function mockFetch(url: string | URL | Request, init?: RequestInit) {
     new Response(JSON.stringify({}), {
       status: 200,
       headers: { "Content-Type": "application/json" },
-    })
+    }),
   );
 }
 
@@ -88,8 +88,15 @@ function mockAniListResponse(url: string, init?: RequestInit): unknown {
       data: {
         Media: {
           id: body.variables?.id || 21,
-          title: { romaji: "Test Anime", english: "Test Anime", native: "テスト" },
-          coverImage: { extraLarge: "https://example.com/cover.jpg", large: "https://example.com/cover.jpg" },
+          title: {
+            romaji: "Test Anime",
+            english: "Test Anime",
+            native: "テスト",
+          },
+          coverImage: {
+            extraLarge: "https://example.com/cover.jpg",
+            large: "https://example.com/cover.jpg",
+          },
           bannerImage: "https://example.com/banner.jpg",
           description: "<p>A test anime description</p>",
           episodes: 24,
@@ -118,7 +125,11 @@ function mockAniListResponse(url: string, init?: RequestInit): unknown {
           media: [
             {
               id: 1,
-              title: { romaji: "Test Anime 1", english: "Test Anime 1", native: "テスト1" },
+              title: {
+                romaji: "Test Anime 1",
+                english: "Test Anime 1",
+                native: "テスト1",
+              },
               coverImage: { extraLarge: "https://example.com/cover.jpg" },
               bannerImage: null,
               description: "<p>Test description</p>",
@@ -146,8 +157,15 @@ function mockAniListResponse(url: string, init?: RequestInit): unknown {
           media: [
             {
               id: 1,
-              title: { romaji: "Seasonal Anime", english: "Seasonal Anime", native: "季節のアニメ" },
-              coverImage: { extraLarge: "https://example.com/cover.jpg", large: "https://example.com/cover.jpg" },
+              title: {
+                romaji: "Seasonal Anime",
+                english: "Seasonal Anime",
+                native: "季節のアニメ",
+              },
+              coverImage: {
+                extraLarge: "https://example.com/cover.jpg",
+                large: "https://example.com/cover.jpg",
+              },
               bannerImage: null,
               description: "<p>Seasonal anime</p>",
               episodes: 12,
@@ -201,7 +219,7 @@ function mockTmdbResponse(url: string): unknown {
   return {};
 }
 
-function mockFanartTvResponse(url: string): unknown {
+function mockFanartTvResponse(_url: string): unknown {
   // Return full mock artwork for TV shows
   return {
     name: "Mushoku Tensei: Jobless Reincarnation",

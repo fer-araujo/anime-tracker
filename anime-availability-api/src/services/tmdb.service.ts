@@ -50,24 +50,42 @@ export const tmdbImageUrl = (path?: string | null, size = "original") =>
 export const tmdbBackdropUrl = (path?: string | null, size = "original") =>
   path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined;
 
+// ─── TMDB image item type ─────────────────────────────────────────────────────
+
+interface TMDBImageItem {
+  file_path: string;
+  width?: number;
+  height?: number;
+  iso_639_1?: string | null;
+  vote_average?: number;
+  vote_count?: number;
+  aspect_ratio?: number;
+}
+
+interface TMDBImagesResponse {
+  backdrops?: TMDBImageItem[];
+  logos?: TMDBImageItem[];
+  posters?: TMDBImageItem[];
+}
+
 // ─── In-flight request deduplication ──────────────────────────────────────────
 
-export function withDedup<T extends (...args: any[]) => Promise<any>>(
-  fn: T,
-  keyFn?: (...args: any[]) => string,
-): T {
-  const inFlight = new Map<string, Promise<any>>();
-  const getKey = keyFn ?? ((...args: any[]) => JSON.stringify(args));
-  
-  return ((...args: any[]) => {
+export function withDedup<A extends unknown[], R>(
+  fn: (...args: A) => Promise<R>,
+  keyFn?: (...args: A) => string,
+): (...args: A) => Promise<R> {
+  const inFlight = new Map<string, Promise<R>>();
+  const getKey = keyFn ?? ((...args: A) => JSON.stringify(args));
+
+  return (...args: A) => {
     const key = getKey(...args);
     const existing = inFlight.get(key);
     if (existing) return existing;
-    
+
     const promise = fn(...args).finally(() => inFlight.delete(key));
     inFlight.set(key, promise);
     return promise;
-  }) as T;
+  };
 }
 
 // --- FUNCIONES API ---
@@ -90,9 +108,12 @@ async function _tmdbSearch(kind: "tv" | "movie", query: string) {
  * NUEVA FUNCIÓN: Obtiene todas las imágenes de una serie.
  * Filtra por idiomas para buscar "textless" (null) o arte original.
  */
-async function _getTmdbImages(id: number, kind: "tv" | "movie" = "tv") {
+async function _getTmdbImages(
+  id: number,
+  kind: "tv" | "movie" = "tv",
+): Promise<TMDBImagesResponse | null> {
   const url = new URL(`${TMDB_BASE}/${kind}/${id}/images`);
-  
+
   // Pedimos imágenes sin texto (null), en inglés (en) o japonés (ja)
   url.searchParams.set("include_image_language", "null,en,ja");
 
@@ -100,19 +121,19 @@ async function _getTmdbImages(id: number, kind: "tv" | "movie" = "tv") {
     const res = await fetchWithRetry(url.toString(), {
       headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
     });
-    
+
     if (!res.ok) return null;
     return await res.json(); // Retorna { backdrops: [], posters: [] }
   } catch (e) {
-logger.warn({ err: e, id }, "Error fetching TMDB images");
-      return null;
+    logger.warn({ err: e, id }, "Error fetching TMDB images");
+    return null;
   }
 }
 
 /**
  * Obtiene la sinopsis en un idioma específico, con fallback automático
  * a otros idiomas si el solicitado no tiene overview.
- * 
+ *
  * Cadena de fallback: "es-MX" → "es-ES" → "en"
  */
 const SYNOPSIS_LANG_FALLBACKS = ["es-MX", "es-ES", "en"];
@@ -120,11 +141,9 @@ const SYNOPSIS_LANG_FALLBACKS = ["es-MX", "es-ES", "en"];
 export async function getTmdbSynopsis(
   id: number,
   kind: "tv" | "movie" = "tv",
-  language: string = "es-MX"
+  language: string = "es-MX",
 ): Promise<string | null> {
-  const languages = language === "es-MX"
-    ? SYNOPSIS_LANG_FALLBACKS
-    : [language];
+  const languages = language === "es-MX" ? SYNOPSIS_LANG_FALLBACKS : [language];
 
   for (const lang of languages) {
     try {
@@ -139,7 +158,10 @@ export async function getTmdbSynopsis(
       const data = await res.json();
       if (data.overview?.trim()) return data.overview.trim();
     } catch (e) {
-      logger.warn({ err: e, id, language: lang }, "Error fetching TMDB synopsis");
+      logger.warn(
+        { err: e, id, language: lang },
+        "Error fetching TMDB synopsis",
+      );
       continue;
     }
   }
@@ -177,7 +199,10 @@ export async function getTmdbSpecificSynopsis(
     const airDate = new Date(nextAiringAt * 1000);
     aniYear = airDate.getFullYear();
     aniMonth = airDate.getMonth() + 1;
-    logger.debug({ aniYear, aniMonth, nextAiringAt }, "[tmdb] season derived from nextAiringEpisode fallback");
+    logger.debug(
+      { aniYear, aniMonth, nextAiringAt },
+      "[tmdb] season derived from nextAiringEpisode fallback",
+    );
   }
 
   // --- TV: buscar temporada específica por año/mes ---
@@ -247,7 +272,11 @@ export async function getTmdbSpecificSynopsis(
     }
 
     const seasonData: TMDBSeasonDetail = await sRes.json();
-    return seasonData.overview || tvData.overview || getTmdbSynopsis(id, kind, language);
+    return (
+      seasonData.overview ||
+      tvData.overview ||
+      getTmdbSynopsis(id, kind, language)
+    );
   } catch (e) {
     logger.warn({ err: e, id }, "Error fetching TMDB specific synopsis");
     return getTmdbSynopsis(id, kind, language);
@@ -313,11 +342,9 @@ async function _resolveTmdbSeasonNumber(
 async function _getTmdbSeasonImages(
   id: number,
   seasonNumber: number,
-): Promise<{ backdrops?: any[]; logos?: any[]; posters?: any[] } | null> {
+): Promise<TMDBImagesResponse | null> {
   try {
-    const url = new URL(
-      `${TMDB_BASE}/tv/${id}/season/${seasonNumber}/images`,
-    );
+    const url = new URL(`${TMDB_BASE}/tv/${id}/season/${seasonNumber}/images`);
     url.searchParams.set("include_image_language", "null,en,ja");
 
     const res = await fetchWithRetry(url.toString(), {
@@ -326,7 +353,10 @@ async function _getTmdbSeasonImages(
     if (!res.ok) return null;
     return await res.json();
   } catch (e) {
-    logger.warn({ err: e, id, seasonNumber }, "Error fetching TMDB season images");
+    logger.warn(
+      { err: e, id, seasonNumber },
+      "Error fetching TMDB season images",
+    );
     return null;
   }
 }
@@ -334,7 +364,7 @@ async function _getTmdbSeasonImages(
 export async function tmdbWatchProviders(
   kind: "tv" | "movie",
   id: number,
-  region = "MX"
+  region = "MX",
 ): Promise<ProviderInfo[]> {
   const cacheKey = `providers:${kind}:${id}:${region}`;
   const cached = await hybridCache.get<ProviderInfo[]>(cacheKey);
@@ -354,7 +384,7 @@ export async function tmdbWatchProviders(
     id: idx + 1,
     name,
   }));
-  
+
   await hybridCache.set(cacheKey, normalized, 1000 * 60 * 60 * 12);
   return normalized;
 }
@@ -367,7 +397,7 @@ export function isAnimeCandidate(item: TMDBSearchTVItem) {
   const origins = Array.isArray(item.origin_country) ? item.origin_country : [];
 
   const fromAnimeRegions = origins.some((c) =>
-    ["JP", "CN", "KR", "TW"].includes(c)
+    ["JP", "CN", "KR", "TW"].includes(c),
   );
 
   return isAnimation || fromAnimeRegions;
@@ -402,8 +432,23 @@ async function _getTmdbExternalIds(id: number): Promise<{
 
 // ─── Deduplicated exports ────────────────────────────────────────────────────
 
-export const tmdbSearch = withDedup(_tmdbSearch, (kind, query) => `tmdbSearch:${kind}:${query}`);
-export const getTmdbImages = withDedup(_getTmdbImages, (id, kind) => `getTmdbImages:${kind}:${id}`);
-export const getTmdbSeasonImages = withDedup(_getTmdbSeasonImages, (id, season) => `getTmdbSeasonImages:${id}:S${season}`);
-export const resolveTmdbSeasonNumber = withDedup(_resolveTmdbSeasonNumber, (id, y, m) => `resolveTmdbSeasonNumber:${id}:${y}:${m}`);
-export const getTmdbExternalIds = withDedup(_getTmdbExternalIds, (id) => `tmdbExtIds:${id}`);
+export const tmdbSearch = withDedup(
+  _tmdbSearch,
+  (kind, query) => `tmdbSearch:${kind}:${query}`,
+);
+export const getTmdbImages = withDedup(
+  _getTmdbImages,
+  (id, kind) => `getTmdbImages:${kind}:${id}`,
+);
+export const getTmdbSeasonImages = withDedup(
+  _getTmdbSeasonImages,
+  (id, season) => `getTmdbSeasonImages:${id}:S${season}`,
+);
+export const resolveTmdbSeasonNumber = withDedup(
+  _resolveTmdbSeasonNumber,
+  (id, y, m) => `resolveTmdbSeasonNumber:${id}:${y}:${m}`,
+);
+export const getTmdbExternalIds = withDedup(
+  _getTmdbExternalIds,
+  (id) => `tmdbExtIds:${id}`,
+);

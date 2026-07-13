@@ -1,6 +1,7 @@
 // src/utils/artwork.ts
 import { logger } from "../utils/logger.js";
 import type { ArtworkCandidate } from "../types/animeCore.js";
+import type { TMDBSearchTVItem } from "../types/types.js";
 import {
   tmdbSearch,
   tmdbBackdropUrl,
@@ -12,6 +13,35 @@ import {
 } from "../services/tmdb.service.js";
 import { getFanartTvArtwork } from "../services/fanart.service.js";
 import { getTitleVariations, isSeasonSequel } from "./tmdb.enrich.js";
+
+/** TMDB image item within /images response */
+interface TmdbImageItem {
+  file_path: string;
+  width?: number;
+  height?: number;
+  iso_639_1?: string | null;
+  vote_average?: number;
+  vote_count?: number;
+  aspect_ratio?: number;
+}
+
+/** A single artwork candidate entry used in artworkCandidates array */
+interface ArtworkCandidateEntry {
+  url_original: string | undefined;
+  width?: number | null;
+  is_textless: boolean;
+  source?: string;
+  likes?: number;
+  season?: number;
+}
+
+/** Return shape of resolveHeroArtwork */
+interface ResolveHeroResult {
+  backdrop: string | null;
+  logo: string | null;
+  artworkCandidates: ArtworkCandidateEntry[];
+  tmdbId: number | null;
+}
 
 export type BasicAniListMedia = {
   bannerImage?: string | null;
@@ -70,15 +100,18 @@ const tmdbImageUrl = (path: string | null, size = "original") =>
 export async function resolveHeroArtwork(
   searchTitle: string,
   kind: "tv" | "movie",
-  media: { bannerImage?: string | null; coverImage?: any },
-  aniStartDate?: { year?: number; month?: number } | null,
-  opts?: { allowSeasonBackdrop?: boolean },
-): Promise<{ backdrop: string | null; logo: string | null; artworkCandidates: any[]; tmdbId: number | null }> {
+  media: {
+    bannerImage?: string | null;
+    coverImage?: { extraLarge?: string | null; large?: string | null } | null;
+  },
+  aniStartDate?: { year?: number | null; month?: number | null } | null,
+  _opts?: { allowSeasonBackdrop?: boolean },
+): Promise<ResolveHeroResult> {
   let tmdbId: number | null = null;
   let backdrop: string | null = null;
   let logo: string | null = null;
-  let artworkCandidates: any[] = [];
-  let bestTmdb: any = null;
+  let artworkCandidates: ArtworkCandidateEntry[] = [];
+  let bestTmdb: TMDBSearchTVItem | undefined;
 
   try {
     // Búsqueda TMDB (siempre necesitamos el tmdbId para providers)
@@ -96,36 +129,32 @@ export async function resolveHeroArtwork(
       }
     }
 
-    if (bestTmdb && bestTmdb.id) {
+    if (bestTmdb?.id) {
       tmdbId = bestTmdb.id;
 
       // ----------------------------------------------------------------
       // PASO 1: BACKDROPS + LOGO BASE — Siempre desde /tv/{id}/images (raíz)
       // ----------------------------------------------------------------
-      // REGLA: Prohibido usar backdrops de temporada específica. Todas las
-      // temporadas (incluyendo secuelas) usan el backdrop principal del TV
-      // Show para mantener consistencia visual y proporciones correctas.
-      // ----------------------------------------------------------------
-      const imagesData = await getTmdbImages(tmdbId as number, kind);
+      const imagesData = await getTmdbImages(tmdbId, kind);
 
       if (imagesData) {
         // Backdrops root level
-        if (imagesData.backdrops?.length > 0) {
+        if (imagesData.backdrops?.length) {
           const highQualityArt = imagesData.backdrops
-            .filter((img: any) => img.width >= 1920)
-            .sort((a: any, b: any) => {
+            .filter((img: TmdbImageItem) => (img.width ?? 0) >= 1920)
+            .sort((a: TmdbImageItem, b: TmdbImageItem) => {
               const scoreA =
                 (a.iso_639_1 === null ? 50 : 0) +
-                a.vote_average * 5 +
-                a.vote_count;
+                (a.vote_average ?? 0) * 5 +
+                (a.vote_count ?? 0);
               const scoreB =
                 (b.iso_639_1 === null ? 50 : 0) +
-                b.vote_average * 5 +
-                b.vote_count;
+                (b.vote_average ?? 0) * 5 +
+                (b.vote_count ?? 0);
               return scoreB - scoreA;
             });
 
-          artworkCandidates = highQualityArt.map((img: any) => ({
+          artworkCandidates = highQualityArt.map((img: TmdbImageItem) => ({
             url_original: tmdbBackdropUrl(img.file_path, "original"),
             width: img.width,
             is_textless: img.iso_639_1 === null,
@@ -137,11 +166,17 @@ export async function resolveHeroArtwork(
           }
         }
 
-        // Logo base del TV Show (Paso 2 de cascada para secuelas)
-        if (imagesData.logos?.length > 0) {
+        // Logo base del TV Show
+        if (imagesData.logos?.length) {
           const bestLogo = imagesData.logos
-            .filter((l: any) => l.iso_639_1 === "en" || l.iso_639_1 === null)
-            .sort((a: any, b: any) => b.vote_average - a.vote_average)[0];
+            .filter(
+              (l: TmdbImageItem) =>
+                l.iso_639_1 === "en" || l.iso_639_1 === null,
+            )
+            .sort(
+              (a: TmdbImageItem, b: TmdbImageItem) =>
+                (b.vote_average ?? 0) - (a.vote_average ?? 0),
+            )[0];
 
           if (bestLogo) {
             logo = tmdbImageUrl(bestLogo.file_path, "original");
@@ -156,10 +191,6 @@ export async function resolveHeroArtwork(
 
       // ----------------------------------------------------------------
       // PASO 1.5: fanart.tv — Additional artwork for TV shows
-      // Backdrop: fanart.tv showbackground WINS over TMDB (better quality
-      // and curation for most anime). Season banners/posters/thumbs go
-      // to artworkCandidates ONLY (they're narrow banners, not hero-grade).
-      // Movies (kind === "movie") are skipped entirely.
       // ----------------------------------------------------------------
       if (kind === "tv" && tmdbId) {
         try {
@@ -181,9 +212,8 @@ export async function resolveHeroArtwork(
               }
 
               // Artwork candidates: ALL fanart showbackgrounds + season art
-              const fanartCandidates: any[] = [];
+              const fanartCandidates: ArtworkCandidateEntry[] = [];
 
-              // All showbackgrounds (gallery alternatives)
               for (const sb of fanartData.backdropCandidates) {
                 fanartCandidates.push({
                   url_original: sb.url,
@@ -194,7 +224,6 @@ export async function resolveHeroArtwork(
                 });
               }
 
-              // Season-specific art (banners/posters/thumbs — gallery only)
               for (const sp of fanartData.seasonPosters) {
                 fanartCandidates.push({
                   url_original: sp.url,
@@ -224,10 +253,7 @@ export async function resolveHeroArtwork(
               }
 
               if (fanartCandidates.length > 0) {
-                artworkCandidates = [
-                  ...fanartCandidates,
-                  ...artworkCandidates,
-                ];
+                artworkCandidates = [...fanartCandidates, ...artworkCandidates];
               }
             }
           } else {
@@ -247,9 +273,6 @@ export async function resolveHeroArtwork(
       // ----------------------------------------------------------------
       // PASO 2: SECUELA — Solo override de logo desde temporada específica
       // ----------------------------------------------------------------
-      // El backdrop SIEMPRE es root; solo el logo puede ser específico
-      // de temporada (Paso 1 de cascada de logos).
-      // ----------------------------------------------------------------
       if (isSeasonSequel(searchTitle) && kind === "tv" && tmdbId) {
         const seasonNumber = await resolveTmdbSeasonNumber(
           tmdbId,
@@ -260,11 +283,16 @@ export async function resolveHeroArtwork(
         if (seasonNumber) {
           const seasonImages = await getTmdbSeasonImages(tmdbId, seasonNumber);
 
-          // Logo: Paso 1 — si existe logo de temporada, prevalece sobre el root
           if (seasonImages?.logos?.length) {
             const bestSeasonLogo = seasonImages.logos
-              .filter((l: any) => l.iso_639_1 === "en" || l.iso_639_1 === null)
-              .sort((a: any, b: any) => b.vote_average - a.vote_average)[0];
+              .filter(
+                (l: TmdbImageItem) =>
+                  l.iso_639_1 === "en" || l.iso_639_1 === null,
+              )
+              .sort(
+                (a: TmdbImageItem, b: TmdbImageItem) =>
+                  (b.vote_average ?? 0) - (a.vote_average ?? 0),
+              )[0];
             if (bestSeasonLogo) {
               logo = tmdbImageUrl(bestSeasonLogo.file_path, "original");
             }
@@ -273,12 +301,7 @@ export async function resolveHeroArtwork(
       }
 
       // ----------------------------------------------------------------
-      // PASO 3: BACKDROP DE TEMPORADA (hero + detail) — Siempre activo
-      // ----------------------------------------------------------------
-      // Busca backdrop específico de la temporada. PREMIUM quality gate:
-      // width >= 1920 (true 2k/4k), aspect >= 1.6 (cinematic widescreen).
-      // Si pasa, sobreescribe fanart.tv y TMDB root. Si no, se queda
-      // el backdrop existente (fanart.tv > TMDB root > AniList banner).
+      // PASO 3: BACKDROP DE TEMPORADA — Siempre activo
       // ----------------------------------------------------------------
       if (kind === "tv" && tmdbId) {
         const seasonNumber = await resolveTmdbSeasonNumber(
@@ -291,21 +314,22 @@ export async function resolveHeroArtwork(
           const seasonImages = await getTmdbSeasonImages(tmdbId, seasonNumber);
 
           if (seasonImages?.backdrops?.length) {
-            // PREMIUM quality gate: 2k resolución + cinematic widescreen
             const usableBackdrops = seasonImages.backdrops
-              .filter((img: any) => {
+              .filter((img: TmdbImageItem) => {
                 if (!img.width || img.width < 1920) return false;
                 const aspect = img.width / (img.height || 1);
                 return aspect >= 1.6;
               })
               .sort(
-                (a: any, b: any) =>
-                  ((b.vote_average || 0) * (b.vote_count || 0)) -
-                  ((a.vote_average || 0) * (a.vote_count || 0)),
+                (a: TmdbImageItem, b: TmdbImageItem) =>
+                  (b.vote_average ?? 0) * (b.vote_count ?? 0) -
+                  (a.vote_average ?? 0) * (a.vote_count ?? 0),
               );
 
             if (usableBackdrops.length > 0) {
-              backdrop = tmdbBackdropUrl(usableBackdrops[0].file_path, "original") ?? null;
+              backdrop =
+                tmdbBackdropUrl(usableBackdrops[0].file_path, "original") ??
+                null;
               logger.info(
                 `[artwork] PREMIUM season-specific backdrop (S${seasonNumber}) for "${searchTitle}"`,
               );

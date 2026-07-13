@@ -5,6 +5,21 @@
 // Also caches GraphQL responses by query+variables hash.
 
 import { hybridCache } from "./cache.js";
+
+type AniListDefaultResponse = {
+  data?: {
+    Page?: {
+      media?: unknown[];
+      airingSchedules?: unknown[];
+      pageInfo?: {
+        total?: number;
+        currentPage?: number;
+        lastPage?: number;
+      };
+    };
+    Media?: Record<string, unknown>;
+  };
+};
 import { logger } from "./logger.js";
 
 const MAX_REQUESTS_PER_MINUTE = 25;
@@ -18,9 +33,7 @@ function waitForRateLimit(): Promise<void> {
   return new Promise((resolve) => {
     const now = Date.now();
     // Remove timestamps older than 1 minute
-    requestTimestamps = requestTimestamps.filter(
-      (ts) => now - ts < WINDOW_MS,
-    );
+    requestTimestamps = requestTimestamps.filter((ts) => now - ts < WINDOW_MS);
 
     if (requestTimestamps.length < MAX_REQUESTS_PER_MINUTE) {
       requestTimestamps.push(now);
@@ -48,9 +61,9 @@ function hashQuery(query: string, variables: Record<string, unknown>): string {
   const payload = JSON.stringify({ query, variables });
   let hash = 0;
   for (let i = 0; i < payload.length; i++) {
-  const char = payload.charCodeAt(i);
-  hash = ((hash << 5) - hash) + char;
-  hash |= 0;
+    const char = payload.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
   }
   return `anilist:gql:${Math.abs(hash).toString(36)}`;
 }
@@ -64,7 +77,7 @@ function hashQuery(query: string, variables: Record<string, unknown>): string {
  * - On 429, reads Retry-After header and waits
  * - On failure, returns null (caller handles gracefully)
  */
-export async function anilistFetch<T = unknown>(
+export async function anilistFetch<T = AniListDefaultResponse>(
   query: string,
   variables: Record<string, unknown>,
   endpoint: string = "https://graphql.anilist.co",
@@ -123,7 +136,9 @@ export async function anilistFetch<T = unknown>(
 
     // 5. Handle other errors
     if (!res.ok) {
-      logger.error(`[anilist] HTTP ${res.status} for query: ${query.slice(0, 80)}...`);
+      logger.error(
+        `[anilist] HTTP ${res.status} for query: ${query.slice(0, 80)}...`,
+      );
       return null;
     }
 

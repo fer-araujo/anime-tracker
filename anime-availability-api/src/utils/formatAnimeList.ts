@@ -1,23 +1,26 @@
 // src/utils/formatAnimeList.ts
 import { logger } from "../utils/logger.js";
 import pLimit from "p-limit";
-import { getTitleVariations } from "./tmdb.enrich.js"; // NUEVO
+import type { AniMedia } from "../types/animeCore.js";
+import { getTitleVariations } from "./tmdb.enrich.js";
 import {
   tmdbSearch,
   isAnimeCandidate,
-  getTmdbSynopsis,
   getTmdbSpecificSynopsis,
 } from "../services/tmdb.service.js";
 import { resolveProvidersForAnimeDetailed } from "./resolveProviders.js";
 import { enrichFromMalAndKitsu } from "./enrich.js";
-import { shikiSearchAnime, shikiGetScreenshots } from "../services/shikimori.service.js";
+import {
+  shikiSearchAnime,
+  shikiGetScreenshots,
+} from "../services/shikimori.service.js";
 import { htmlToText, shorten } from "./sanitize.js";
 import { extractStudio } from "./extractStudio.js";
 
 const limit = pLimit(10);
 
 export async function formatAnimeList(
-  rawAnimeList: any[],
+  rawAnimeList: AniMedia[],
   country: string,
   baseSeason?: string,
   baseYear?: number,
@@ -50,24 +53,37 @@ export async function formatAnimeList(
             }
           }
         } catch (e) {
-          logger.warn({ err: e }, `[formatAnimeList] TMDB search fail for ${title}`);
+          logger.warn(
+            { err: e },
+            `[formatAnimeList] TMDB search fail for ${title}`,
+          );
         }
 
         // 2b. Fallback: Kitsu/MAL cuando TMDB no encontró match
-        let malKitsuFallback: Awaited<ReturnType<typeof enrichFromMalAndKitsu>> | null = null;
+        let malKitsuFallback: Awaited<
+          ReturnType<typeof enrichFromMalAndKitsu>
+        > | null = null;
         let shikiScreenshot: string | null = null;
         if (!tmdbId) {
-          malKitsuFallback = await enrichFromMalAndKitsu(title).catch(() => null);
+          malKitsuFallback = await enrichFromMalAndKitsu(title).catch(
+            () => null,
+          );
 
           // Shikimori screenshots como backdrop fallback
           try {
             const shikiResults = await shikiSearchAnime(title, 1);
             if (shikiResults?.[0]?.id) {
-              const screenshots = await shikiGetScreenshots(shikiResults[0].id, 1);
+              const screenshots = await shikiGetScreenshots(
+                shikiResults[0].id,
+                1,
+              );
               shikiScreenshot = screenshots?.[0]?.original ?? null;
             }
           } catch (e) {
-            logger.warn({ err: e }, `[formatAnimeList] Shikimori search fail for ${title}`);
+            logger.warn(
+              { err: e },
+              `[formatAnimeList] Shikimori search fail for ${title}`,
+            );
           }
         }
 
@@ -87,7 +103,14 @@ export async function formatAnimeList(
 
         // Sinopsis en español — season-aware (si hay tmdbId)
         const spanishSynopsis = tmdbId
-          ? await getTmdbSpecificSynopsis(tmdbId, kind, "es-MX", anime.seasonYear, anime.startDate?.month, anime.nextAiringEpisode?.airingAt)
+          ? await getTmdbSpecificSynopsis(
+              tmdbId,
+              kind,
+              "es-MX",
+              anime.seasonYear,
+              anime.startDate?.month,
+              anime.nextAiringEpisode?.airingAt,
+            )
           : null;
 
         // 4. Meta datos limpios
@@ -111,14 +134,11 @@ export async function formatAnimeList(
           title,
           images: {
             poster:
-              anime.coverImage?.extraLarge
-              ?? anime.coverImage?.large
-              ?? malKitsuFallback?.posterAlt
-              ?? null,
-            backdrop:
-              anime.bannerImage
-              ?? shikiScreenshot
-              ?? null,
+              anime.coverImage?.extraLarge ??
+              anime.coverImage?.large ??
+              malKitsuFallback?.posterAlt ??
+              null,
+            backdrop: anime.bannerImage ?? shikiScreenshot ?? null,
           },
           providers: providers.providers,
           meta: {
@@ -126,7 +146,7 @@ export async function formatAnimeList(
             rating:
               typeof anime.averageScore === "number"
                 ? anime.averageScore / 10
-                : malKitsuFallback?.rating ?? null,
+                : (malKitsuFallback?.rating ?? null),
             synopsis,
             synopsisShort,
             synopsisLang,

@@ -42,7 +42,7 @@ export const FavButton = ({
         "inline-flex items-center justify-center rounded-lg text-white border transition-colors focus:outline-none focus:ring-2 h-8 w-8 hover:cursor-pointer",
         active
           ? "border-pink-400/40 bg-pink-500/20 hover:bg-pink-500/25 focus:ring-pink-300/40"
-          : "border-white/15 bg-white/5 hover:bg-white/10 focus:ring-white/40"
+          : "border-white/15 bg-white/5 hover:bg-white/10 focus:ring-white/40",
       )}
       title={active ? "Favorito" : "Agregar a favoritos"}
     >

@@ -15,8 +15,7 @@ export const Pill = ({
     amber:
       "bg-gradient-to-r from-yellow-400/45 to-amber-500/45 text-yellow-100 border-yellow-400/35",
     rose: "bg-gradient-to-r from-rose-500/50 to-red-600/50 text-rose-50 border-rose-400/40",
-    emerald:
-      "bg-primary/20 text-primary border-primary/30",
+    emerald: "bg-primary/20 text-primary border-primary/30",
     sky: "bg-gradient-to-r from-sky-500/65 to-cyan-500/65 text-sky-50 border-sky-300/45",
     slate:
       "bg-gradient-to-r from-slate-500/50 to-zinc-600/50 text-slate-50 border-slate-300/40",
