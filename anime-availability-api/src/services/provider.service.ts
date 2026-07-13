@@ -1,6 +1,7 @@
 // src/services/provider.service.ts
 import { preferTitle } from "../utils/title.js";
 import { ENV } from "../config/env.js";
+import { anilistFetch } from "../utils/anilistRateLimit.js";
 import { tmdbSearch, tmdbWatchProviders, isAnimeCandidate } from "./tmdb.service.js";
 import type { ProviderInfo } from "../types/types.js";
 
@@ -8,7 +9,7 @@ type AniListTitleResp = {
   data?: {
     Media?: {
       id: number;
-      format?: string | null; // 👈 para decidir tv/movie
+      format?: string | null;
       title?: {
         romaji?: string | null;
         english?: string | null;
@@ -35,29 +36,16 @@ async function fetchAniListTitleAndKind(
     }
   `;
 
-  const body = { query, variables: { id: anilistId } };
+  const json = await anilistFetch<AniListTitleResp>(query, { id: anilistId });
 
-  const res = await fetch(ENV.ANILIST_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    throw new Error(`AniList title error ${res.status}`);
+  if (!json?.data?.Media) {
+    throw new Error(`AniList title lookup failed for ${anilistId}`);
   }
 
-  const json = (await res.json()) as AniListTitleResp;
-  const media = json.data?.Media;
-  if (!media) throw new Error("AniList: Media not found");
-
-  return {
-    title: preferTitle(media.title ?? { native: "Untitled" }),
-    kind: inferKind(media.format),
-  };
+  const m = json.data.Media;
+  const title = preferTitle(m.title);
+  const kind = inferKind(m.format);
+  return { title, kind };
 }
 
 async function resolveTmdbIdByTitle(

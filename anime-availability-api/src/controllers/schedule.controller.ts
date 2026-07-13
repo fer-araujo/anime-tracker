@@ -1,15 +1,13 @@
 // src/controllers/schedule.controller.ts
 import type { Request, Response, NextFunction } from "express";
 import { hybridCache, setCacheControl } from "../utils/cache.js";
+import { anilistFetch } from "../utils/anilistRateLimit.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
 import { getCurrentSeasonYearLocal } from "../utils/season.js";
 import {
   AIRING_SCHEDULE_GQL,
   UPCOMING_MEDIA_GQL,
 } from "../graphql/queries/schedule.gql.js";
-
-const ANILIST_ENDPOINT =
-  process.env.ANILIST_URL || "https://graphql.anilist.co";
 
 const DEFAULT_COUNTRY = process.env.DEFAULT_COUNTRY || "MX";
 
@@ -57,21 +55,12 @@ export async function getSchedule(
     if (type === "airing") {
       const { greater, lesser } = getCDMXDayBounds();
 
-      const aniRes = await fetch(ANILIST_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: AIRING_SCHEDULE_GQL,
-          variables: { greater, lesser },
-        }),
-      });
+      const aniJson = await anilistFetch(AIRING_SCHEDULE_GQL, { greater, lesser });
+      if (!aniJson)
+        return res.status(503).json({ error: "AniList unavailable" });
 
-      if (!aniRes.ok)
-        return res.status(aniRes.status).json({ error: "AniList Error" });
-
-      const json = await aniRes.json();
       const schedules =
-        (json.data?.Page?.airingSchedules as any[]) ?? [];
+        (aniJson.data?.Page?.airingSchedules as any[]) ?? [];
 
       let rawMedia = schedules.map((s: any) => s.media);
       rawMedia = rawMedia.filter((m: any) => !m.isAdult);
@@ -85,17 +74,11 @@ export async function getSchedule(
         return a.title.localeCompare(b.title);
       });
     } else if (type === "coming") {
-      const aniRes = await fetch(ANILIST_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: UPCOMING_MEDIA_GQL }),
-      });
+      const aniJson = await anilistFetch(UPCOMING_MEDIA_GQL, {});
+      if (!aniJson)
+        return res.status(503).json({ error: "AniList unavailable" });
 
-      if (!aniRes.ok)
-        return res.status(aniRes.status).json({ error: "AniList Error" });
-
-      const json = await aniRes.json();
-      const rawMedia = (json.data?.Page?.media as any[]) ?? [];
+      const rawMedia = (aniJson.data?.Page?.media as any[]) ?? [];
 
       items = await formatAnimeList(rawMedia, country, season, year);
 

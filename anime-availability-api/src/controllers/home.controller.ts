@@ -1,6 +1,7 @@
 // src/controllers/home.controller.ts
 import type { Request, Response, NextFunction } from "express";
 import { hybridCache, setCacheControl } from "../utils/cache.js";
+import { anilistFetch } from "../utils/anilistRateLimit.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
 import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
 import { preferTitle } from "../utils/title.js";
@@ -14,8 +15,6 @@ function stripHtml(input?: string | null) {
   return noTags.trim();
 }
 
-const ANILIST_ENDPOINT = process.env.ANILIST_URL || "https://graphql.anilist.co";
-
 export async function getHomeHero(
   req: Request,
   res: Response,
@@ -28,19 +27,11 @@ export async function getHomeHero(
 
     // Fetch top 5 of current season by score
     const { season, year } = getCurrentSeasonYearLocal();
-    const aniRes = await fetch(ANILIST_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: HOME_HERO_GQL,
-        variables: { season, seasonYear: year },
-      }),
-    });
+    const aniJson = await anilistFetch(HOME_HERO_GQL, { season, seasonYear: year });
 
-    if (!aniRes.ok)
-      return res.status(aniRes.status).json({ error: "AniList Error" });
-    const json = await aniRes.json();
-    let media = json.data?.Page?.media || [];
+    if (!aniJson)
+      return res.status(503).json({ error: "AniList unavailable" });
+    let media = aniJson.data?.Page?.media || [];
 
     // Fallback: if season returned fewer than 3 items, use trending/releasing
     if (media.length < 3) {
@@ -67,13 +58,8 @@ export async function getHomeHero(
           }
         }
       `;
-      const fallbackRes = await fetch(ANILIST_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: trendingQuery }),
-      });
-      if (fallbackRes.ok) {
-        const fallbackJson = await fallbackRes.json();
+      const fallbackJson = await anilistFetch(trendingQuery, {});
+      if (fallbackJson) {
         media = fallbackJson.data?.Page?.media || [];
       }
     }

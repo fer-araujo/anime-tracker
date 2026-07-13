@@ -1,13 +1,12 @@
 // src/services/anilist.service.ts
 import { logger } from "../utils/logger.js";
 import { memoryCache } from "../utils/cache.js";
+import { anilistFetch } from "../utils/anilistRateLimit.js";
 import type {
   AiringStatus,
   AniListMedia,
   BaseAnimeInfo,
 } from "../types/types.js";
-
-const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
 function normalizeStatus(status?: string): AiringStatus | undefined {
   if (!status) return undefined;
@@ -51,19 +50,9 @@ export async function fetchAniListBySearch(
     }
   `;
 
-  const res = await fetch(ANILIST_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables: { search: title } }),
-  });
+  const json = await anilistFetch(query, { search: title });
+  if (!json) return null;
 
-  if (!res.ok) {
-    const text = await res.text();
-    logger.warn({ status: res.status }, `[AniList] search error: ${text}`);
-    return null;
-  }
-
-  const json = await res.json();
   const m = json?.data?.Media as AniListMedia | undefined;
   if (!m) return null;
 
