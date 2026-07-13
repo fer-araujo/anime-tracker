@@ -126,7 +126,7 @@ describe("fanart.service", () => {
 });
 
 /** Minimal fetch mock that proxies to the real setup.ts mockFetch for TMDB/fanart.tv endpoints. */
-function mockFetch(url: string | URL | Request, init?: RequestInit) {
+function mockFetch(url: string | URL | Request, _init?: RequestInit) {
   const urlStr = typeof url === "string" ? url : url.toString();
 
   if (urlStr.includes("webservice.fanart.tv")) {

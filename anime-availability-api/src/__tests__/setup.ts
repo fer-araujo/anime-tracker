@@ -201,7 +201,7 @@ function mockTmdbResponse(url: string): unknown {
   return {};
 }
 
-function mockFanartTvResponse(url: string): unknown {
+function mockFanartTvResponse(_url: string): unknown {
   // Return full mock artwork for TV shows
   return {
     name: "Mushoku Tensei: Jobless Reincarnation",

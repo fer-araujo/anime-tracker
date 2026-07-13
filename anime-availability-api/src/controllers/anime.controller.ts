@@ -1,6 +1,5 @@
 // src/controllers/anime.controller.ts
 import type { Request, Response, NextFunction } from "express";
-import type pLimit from "p-limit";
 import type { AniMedia } from "../types/animeCore.js";
 
 import { logger } from "../utils/logger.js";

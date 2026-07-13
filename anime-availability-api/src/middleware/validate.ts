@@ -1,5 +1,5 @@
-import { NextFunction, Request, Response } from "express";
-import { ZodSchema } from "zod";
+import type { NextFunction, Request, Response } from "express";
+import type { ZodSchema } from "zod";
 
 export default function validate<T extends ZodSchema<unknown>>(schema: T) {
   return (req: Request, res: Response, next: NextFunction) => {

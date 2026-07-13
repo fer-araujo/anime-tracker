@@ -119,5 +119,9 @@ const CACHE_CONTROL_MAP: Record<CacheType, string> = {
 
 export function setCacheControl(res: { setHeader?: (name: string, value: string) => void; header?: (name: string, value: string) => void }, type: CacheType): void {
   const value = CACHE_CONTROL_MAP[type];
-  res.setHeader?.("Cache-Control", value) ?? res.header?.("Cache-Control", value);
+  if (res.setHeader) {
+    res.setHeader("Cache-Control", value);
+  } else {
+    res.header?.("Cache-Control", value);
+  }
 }

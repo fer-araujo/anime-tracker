@@ -102,7 +102,7 @@ export async function resolveHeroArtwork(
   kind: "tv" | "movie",
   media: { bannerImage?: string | null; coverImage?: { extraLarge?: string | null; large?: string | null } | null },
   aniStartDate?: { year?: number | null; month?: number | null } | null,
-  opts?: { allowSeasonBackdrop?: boolean },
+  _opts?: { allowSeasonBackdrop?: boolean },
 ): Promise<ResolveHeroResult> {
   let tmdbId: number | null = null;
   let backdrop: string | null = null;

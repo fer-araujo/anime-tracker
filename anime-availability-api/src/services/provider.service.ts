@@ -1,6 +1,5 @@
 // src/services/provider.service.ts
 import { preferTitle } from "../utils/title.js";
-import { ENV } from "../config/env.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
 import { tmdbSearch, tmdbWatchProviders, isAnimeCandidate } from "./tmdb.service.js";
 import type { ProviderInfo } from "../types/types.js";

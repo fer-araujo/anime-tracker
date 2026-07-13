@@ -1,5 +1,4 @@
 // src/services/anilist.service.ts
-import { logger } from "../utils/logger.js";
 import { memoryCache } from "../utils/cache.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
 import type {

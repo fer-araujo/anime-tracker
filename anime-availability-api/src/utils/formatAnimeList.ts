@@ -6,7 +6,6 @@ import { getTitleVariations } from "./tmdb.enrich.js";
 import {
   tmdbSearch,
   isAnimeCandidate,
-  getTmdbSynopsis,
   getTmdbSpecificSynopsis,
 } from "../services/tmdb.service.js";
 import { resolveProvidersForAnimeDetailed } from "./resolveProviders.js";

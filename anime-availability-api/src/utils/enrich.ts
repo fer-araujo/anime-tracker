@@ -2,18 +2,11 @@
 import pLimit from "p-limit";
 import { malSearchAnime } from "../services/mal.service.js";
 import { kitsuSearchAnime } from "../services/kitsu.service.js";
-import { BaseAnimeInfo, Enrichment } from "../types/types.js";
+import type { BaseAnimeInfo, Enrichment } from "../types/types.js";
 import { memoryCache } from "./cache.js";
 
 const limit = pLimit(5);
 const ENRICH_TTL = 1000 * 60 * 60 * 24; // 24h
-
-/** Normaliza numeric strings a number (ej. "82.5" -> 82.5) */
-function toNum(v?: string | number | null): number | null {
-  if (v == null) return null;
-  const n = typeof v === "number" ? v : Number(v);
-  return Number.isFinite(n) ? n : null;
-}
 
 /** Selección de rating: MAL primero, luego Kitsu (ambos 0..10 en nuestros services) */
 function pickRating(mal?: number | null, kitsu?: number | null): number | null {

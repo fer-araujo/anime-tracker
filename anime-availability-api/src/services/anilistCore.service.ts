@@ -1,8 +1,7 @@
 // src/services/anilistCore.service.ts
 import { preferTitle } from "../utils/title.js";
-import { ENV } from "../config/env.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
-import {
+import type {
   AnimeCore,
   AniMedia,
   ArtworkCandidate,

@@ -1,7 +1,7 @@
-import { Request, Response, NextFunction } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { ENV } from "../config/env.js";
 import { tmdbBackdropUrl } from "../services/tmdb.service.js";
-import { TmdbImageResp } from "../types/types.js";
+import type { TmdbImageResp } from "../types/types.js";
 
 const TMDB = "https://api.themoviedb.org/3";
 const TMDB_KEY = ENV.TMDB_KEY || process.env.TMDB_KEY || "";
