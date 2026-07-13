@@ -4,10 +4,9 @@ import { ENV } from "../config/env.js";
 import { SeasonQuery } from "../models/schema.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
 import { setCacheControl, hybridCache } from "../utils/cache.js";
+import { anilistFetch } from "../utils/anilistRateLimit.js";
 import { buildSeasonPageQuery } from "../graphql/queries/seasonPage.gql.js";
 import { getCurrentSeasonYearLocal } from "../utils/season.js";
-
-const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
 export async function getSeason(
   req: Request & { validated?: SeasonQuery },
@@ -64,20 +63,16 @@ export async function getSeason(
       gqlVariables.season = season;
     }
 
-    const aniRes = await fetch(ANILIST_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: gql,
-        variables: gqlVariables,
-      }),
-    });
+    const aniJson = await anilistFetch(
+      gql,
+      gqlVariables,
+    );
 
-    if (!aniRes.ok)
-      return res.status(aniRes.status).json({ error: "AniList Error" });
+    if (!aniJson) {
+      return res.status(503).json({ error: "AniList unavailable" });
+    }
 
-    const json = await aniRes.json();
-    const rawMedia = json?.data?.Page?.media;
+    const rawMedia = aniJson?.data?.Page?.media;
 
     if (!rawMedia || rawMedia.length === 0) {
       setCacheControl(res, 'season');

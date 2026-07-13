@@ -5,16 +5,14 @@ import pLimit from "p-limit";
 import { logger } from "../utils/logger.js";
 import { ENV } from "../config/env.js";
 import { ANIME_DETAILS_GQL } from "../graphql/queries/animeDetails.gql.js";
-// Ya no necesitamos normalizeTitle aquí
 import { htmlToText } from "../utils/sanitize.js";
 import { setCacheControl } from "../utils/cache.js";
+import { anilistFetch } from "../utils/anilistRateLimit.js";
 import { extractStudio } from "../utils/extractStudio.js";
 import { resolveProvidersForAnimeDetailed } from "../utils/resolveProviders.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
 import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
-
-const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
 export async function getAnimeDetails(
   req: Request,
@@ -30,24 +28,21 @@ export async function getAnimeDetails(
     ).toUpperCase();
 
     const gql = ANIME_DETAILS_GQL;
-    const aniRes = await fetch(ANILIST_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: gql, variables: { id: anilistId } }),
-    });
+    const aniJson = await anilistFetch(gql, { id: anilistId });
 
-    if (!aniRes.ok) {
-      const errorText = await aniRes.text();
-      logger.error({ status: aniRes.status }, `AniList error for ID ${anilistId}`);
-      return res.status(aniRes.status).json({
-        error: "Anime not found in AniList or GraphQL Error",
-        details: errorText,
+    if (!aniJson) {
+      return res.status(503).json({
+        error: "AniList unavailable",
       });
     }
-    const json = await aniRes.json();
-    const media = json.data?.Media;
 
-    if (!media) return res.status(404).json({ error: "Not found" });
+    const media = aniJson?.data?.Media;
+    if (!media) {
+      logger.error(`AniList returned no data for ID ${anilistId}`);
+      return res.status(404).json({
+        error: "Anime not found in AniList",
+      });
+    }
 
     // 2. Título crudo (Las funciones de abajo ya hacen la cascada)
     const title =

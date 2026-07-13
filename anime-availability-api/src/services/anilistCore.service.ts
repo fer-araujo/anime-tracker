@@ -1,6 +1,7 @@
 // src/services/anilistCore.service.ts
 import { preferTitle } from "../utils/title.js";
 import { ENV } from "../config/env.js";
+import { anilistFetch } from "../utils/anilistRateLimit.js";
 import {
   AnimeCore,
   AniMedia,
@@ -126,20 +127,9 @@ export async function searchAnimeFromAnilist(
     }
   `;
 
-  const body = { query: gql, variables: { search: query, perPage: fetchN } };
+  const json = await anilistFetch(gql, { search: query, perPage: fetchN });
+  if (!json) return [];
 
-  const res = await fetch(ENV.ANILIST_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`AniList search ${res.status} - ${text}`);
-  }
-
-  const json = await res.json();
   const media: AniMedia[] = json?.data?.Page?.media ?? [];
 
   // ✅ POST-FILTER (evita resultados que no contienen el query en ningún title)
