@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { fetchSeason } from "@/lib/api";
 import type { Anime } from "@/types/anime";
-import { AnimeCard } from "@/components/AnimeCard";
+import { WatchlistAnimeCard } from "@/components/season/WatchlistAnimeCard";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
 import Select, { type SelectOption } from "@/components/custom/Select";
 import { Pagination } from "@/components/custom/Pagination";
@@ -474,11 +474,9 @@ export default function SeasonPage({
               {/* Anime grid — paginated */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
                 {paginated.map((anime) => (
-                  <AnimeCard
+                  <WatchlistAnimeCard
                     key={anime.id.anilist}
                     anime={anime}
-                    variant="compact"
-                    showTitleBelow
                     onOpen={handleCardOpen}
                   />
                 ))}

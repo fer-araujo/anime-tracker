@@ -8,6 +8,7 @@ import { cn, formatNextAiring } from "@/lib/utils";
 import { GalleryLightbox } from "./common/Gallery";
 import { MinimalShelf } from "./Shelf";
 import { ImagePlaceholder } from "./common/ImagePlaceholder";
+import AnimeWatchlistSection from "./AnimeWatchlistSection";
 
 export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
   const ref = useRef(null);
@@ -198,6 +199,9 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                       </span>
                     </div>
                   </div>
+
+                  {/* Watchlist section */}
+                  <AnimeWatchlistSection animeId={anime.id.anilist} />
                 </div>
               </div>
 

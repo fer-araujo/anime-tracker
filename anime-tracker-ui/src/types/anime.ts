@@ -80,6 +80,8 @@ export type AnimeCardProps = {
   onOpen?: (anime: Anime) => void;
   onAddToList?: (anime: Anime) => void;
   onToggleFavorite?: (anime: Anime, next: boolean) => void;
+  watchlistEntry?: WatchlistEntry | null;
+  onStatusChange?: (anime: Anime, status: WatchlistStatus) => void;
   variant?: "default" | "compact";
   showTitleBelow?: boolean; // título fuera del card
   overlayTone?: "soft" | "strong"; // tono manual base
