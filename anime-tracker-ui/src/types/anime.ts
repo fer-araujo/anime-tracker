@@ -139,6 +139,27 @@ export type AnimeCardData = {
   meta?: AnimeCardMeta;
 };
 
+// --- Watchlist types ---
+export type WatchlistStatus =
+  | "plan_to_watch"
+  | "watching"
+  | "completed"
+  | "on_hold"
+  | "dropped";
+
+export type WatchlistEntry = {
+  id: string;
+  user_id: string;
+  anime_id: number;
+  status: WatchlistStatus;
+  favorite: boolean;
+  score: number | null;
+  progress: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ArtworkCandidate = {
   lang: string | null;
   source: "anilist-cover" | "anilist-banner" | "tmdb-poster" | "tmdb-backdrop";
