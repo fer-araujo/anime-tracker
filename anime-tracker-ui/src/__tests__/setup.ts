@@ -68,37 +68,6 @@ vi.mock("@/lib/supabase/client", () => ({
   }),
 }));
 
-// Mock watchlist actions
-vi.mock("@/actions/watchlist", () => ({
-  addToWatchlist: vi.fn().mockResolvedValue({ success: true }),
-  updateStatus: vi.fn().mockResolvedValue({ success: true }),
-  toggleFavorite: vi.fn().mockResolvedValue({ success: true }),
-  setScore: vi.fn().mockResolvedValue({ success: true }),
-  removeFromWatchlist: vi.fn().mockResolvedValue({ success: true }),
-}));
-
-// Mock server supabase client
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn().mockResolvedValue({
-    auth: {
-      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
-    },
-    from: vi.fn(() => ({
-      upsert: vi.fn().mockResolvedValue({ error: null }),
-      update: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          eq: vi.fn().mockResolvedValue({ error: null }),
-        })),
-      })),
-      delete: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          eq: vi.fn().mockResolvedValue({ error: null }),
-        })),
-      })),
-    })),
-  }),
-}));
-
 // Mock AuthProvider so components using useAuth work without wrapping
 vi.mock("@/providers/AuthProvider", () => ({
   useAuth: () => ({

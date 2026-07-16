@@ -86,17 +86,17 @@ export default function AuthForm() {
             "¡Cuenta creada! Revisa tu correo para confirmar el registro.",
           );
         } else {
-          const { error: signInError } =
-            await supabase.auth.signInWithPassword({
+          const { error: signInError } = await supabase.auth.signInWithPassword(
+            {
               email,
               password,
-            });
+            },
+          );
 
           if (signInError) {
             if (signInError.message.includes("Invalid login credentials")) {
               setError({
-                message:
-                  "Correo o contraseña incorrectos. Verifica tus datos.",
+                message: "Correo o contraseña incorrectos. Verifica tus datos.",
               });
             } else {
               setError({ message: signInError.message });
@@ -243,7 +243,9 @@ export default function AuthForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                autoComplete={
+                  mode === "signup" ? "new-password" : "current-password"
+                }
                 required
                 disabled={loading}
                 minLength={6}
@@ -282,11 +284,7 @@ export default function AuthForm() {
               className="h-11 w-full rounded-xl bg-primary text-primary-foreground font-semibold text-sm transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
             >
               {loading ? (
-                <Icon
-                  name="Loader2"
-                  size={16}
-                  className="animate-spin"
-                />
+                <Icon name="Loader2" size={16} className="animate-spin" />
               ) : null}
               {loading ? "Procesando…" : STATUS_LABELS[mode]}
             </button>

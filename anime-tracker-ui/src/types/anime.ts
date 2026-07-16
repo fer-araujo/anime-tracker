@@ -143,11 +143,7 @@ export type AnimeCardData = {
 
 // --- Watchlist types ---
 export type WatchlistStatus =
-  | "plan_to_watch"
-  | "watching"
-  | "completed"
-  | "on_hold"
-  | "dropped";
+  "plan_to_watch" | "watching" | "completed" | "on_hold" | "dropped";
 
 export type WatchlistEntry = {
   id: string;

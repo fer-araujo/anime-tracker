@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/providers/AuthProvider";
@@ -124,7 +124,11 @@ function WatchlistGridCard({
       {/* Favorite heart */}
       {favorite && (
         <div className="absolute top-2 right-2 z-10">
-          <Icon name="Heart" size={14} className="text-pink-300 fill-pink-300" />
+          <Icon
+            name="Heart"
+            size={14}
+            className="text-pink-300 fill-pink-300"
+          />
         </div>
       )}
 
@@ -174,9 +178,7 @@ export default function WatchlistPageClient() {
   useEffect(() => {
     if (items.length === 0) return;
 
-    const ids = items
-      .map((e) => e.anime_id)
-      .filter((id) => !animeData.has(id));
+    const ids = items.map((e) => e.anime_id).filter((id) => !animeData.has(id));
 
     if (ids.length === 0) return;
 
@@ -268,11 +270,7 @@ export default function WatchlistPageClient() {
         {/* Error state */}
         {!loading && error && (
           <div className="flex flex-col items-center justify-center min-h-[40vh] text-center">
-            <Icon
-              name="AlertCircle"
-              size={32}
-              className="text-red-400 mb-4"
-            />
+            <Icon name="AlertCircle" size={32} className="text-red-400 mb-4" />
             <p className="text-muted-foreground text-lg mb-2">
               Error al cargar la lista
             </p>
@@ -283,11 +281,7 @@ export default function WatchlistPageClient() {
         {/* Empty state */}
         {!loading && !error && filteredItems.length === 0 && (
           <div className="flex flex-col items-center justify-center min-h-[40vh] text-center">
-            <Icon
-              name="List"
-              size={40}
-              className="text-white/20 mb-4"
-            />
+            <Icon name="List" size={40} className="text-white/20 mb-4" />
             <p className="text-white/60 text-lg font-medium mb-1">
               {EMPTY_MESSAGES[activeTab].title}
             </p>

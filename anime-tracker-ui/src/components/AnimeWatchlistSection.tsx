@@ -168,9 +168,7 @@ export default function AnimeWatchlistSection({ animeId }: Props) {
             <button
               key={n}
               type="button"
-              disabled={
-                currentStatus !== "completed" && currentStatus !== null
-              }
+              disabled={currentStatus !== "completed" && currentStatus !== null}
               onClick={() => {
                 setScore(currentScore === n ? null : n);
               }}

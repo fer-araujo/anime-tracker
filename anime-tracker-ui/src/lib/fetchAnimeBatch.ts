@@ -1,4 +1,4 @@
-import { API_BASE, apiPath } from "./api";
+import { API_BASE } from "./api";
 import type { Anime } from "@/types/anime";
 
 /**
@@ -8,10 +8,7 @@ import type { Anime } from "@/types/anime";
 export async function fetchAnimeBatch(
   ids: number[],
 ): Promise<Map<number, { title: string; poster: string | null }>> {
-  const results = new Map<
-    number,
-    { title: string; poster: string | null }
-  >();
+  const results = new Map<number, { title: string; poster: string | null }>();
 
   if (ids.length === 0) return results;
 

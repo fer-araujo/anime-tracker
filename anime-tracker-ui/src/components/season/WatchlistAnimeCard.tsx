@@ -13,12 +13,8 @@ type Props = {
 export function WatchlistAnimeCard({ anime, onOpen }: Props) {
   const { user } = useAuth();
 
-  const {
-    entry,
-    loading: _loading,
-    updateStatus,
-    toggleFavorite,
-  } = useWatchlist(anime.id.anilist);
+  const { entry, updateStatus, toggleFavorite } =
+    useWatchlist(anime.id.anilist);
 
   const handleStatusChange = (a: Anime, status: WatchlistStatus) => {
     if (status === entry?.status) return;
