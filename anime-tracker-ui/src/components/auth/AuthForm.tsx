@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, type FormEvent } from "react";
+import { useState, useCallback, useEffect, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type Transition } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { checkEmailExists } from "@/actions/auth";
+import type { IconName } from "@/components/custom/Icon";
 import Icon from "@/components/custom/Icon";
 
 /* -------------------------------------------------------------------------- */
@@ -13,110 +14,29 @@ import Icon from "@/components/custom/Icon";
 
 type AuthStep = "email" | "signin" | "signup";
 type FormError = { message: string };
-type Locale = "es" | "en";
 
 /* -------------------------------------------------------------------------- */
-/*  Translations                                                               */
+/*  Immersive background — full-screen gradient with multiple orbs             */
 /* -------------------------------------------------------------------------- */
 
-const translations: Record<Locale, Record<string, string>> = {
-  es: {
-    headline1: "Tu anime,",
-    headline2: "elevado.",
-    subtitle: "Sigue lo que ves. Construye tu watchlist. Descubre tu próxima obsesión.",
-    beginJourney: "Comienza tu viaje",
-    emailLabel: "Correo electrónico",
-    emailPlaceholder: "nombre@ejemplo.com",
-    continue: "Continuar",
-    verifying: "Verificando…",
-    or: "o",
-    continueWithGoogle: "Continuar con Google",
-    otherEmail: "Otro correo",
-    welcomeBack: "Bienvenido de vuelta",
-    passwordLabel: "Contraseña",
-    passwordPlaceholder: "••••••••",
-    signIn: "Iniciar Sesión",
-    signingIn: "Iniciando sesión…",
-    createAccount: "Crea tu cuenta",
-    usernameLabel: "Nombre de usuario",
-    usernamePlaceholder: "tu_usuario",
-    createAccountBtn: "Crear cuenta",
-    creatingAccount: "Creando cuenta…",
-    accountCreated: "¡Cuenta creada! Revisa tu correo para confirmar.",
-    emailRequired: "El correo electrónico es obligatorio",
-    emailInvalid: "Correo electrónico inválido",
-    passwordRequired: "La contraseña es obligatoria",
-    usernameRequired: "El nombre de usuario es obligatorio",
-    passwordTooShort: "La contraseña debe tener al menos 6 caracteres",
-    oauthError: "No se pudo completar el inicio de sesión. Intenta de nuevo.",
-    verifyError: "Error al verificar el correo. Intenta de nuevo.",
-    unexpectedError: "Error inesperado. Intenta de nuevo.",
-    wrongCredentials: "Correo o contraseña incorrectos.",
-    alreadyRegistered: "Este correo ya está registrado.",
-    weakPassword: "La contraseña es muy débil. Usa al menos 6 caracteres con mayúsculas, minúsculas y números.",
-  },
-  en: {
-    headline1: "Your anime,",
-    headline2: "elevated.",
-    subtitle: "Track what you watch. Build your watchlist. Discover your next obsession.",
-    beginJourney: "Begin your journey",
-    emailLabel: "Email address",
-    emailPlaceholder: "name@example.com",
-    continue: "Continue",
-    verifying: "Verifying…",
-    or: "or",
-    continueWithGoogle: "Continue with Google",
-    otherEmail: "Different email",
-    welcomeBack: "Welcome back",
-    passwordLabel: "Password",
-    passwordPlaceholder: "••••••••",
-    signIn: "Sign In",
-    signingIn: "Signing in…",
-    createAccount: "Create your account",
-    usernameLabel: "Username",
-    usernamePlaceholder: "your_username",
-    createAccountBtn: "Create account",
-    creatingAccount: "Creating account…",
-    accountCreated: "Account created! Check your email to confirm.",
-    emailRequired: "Email is required",
-    emailInvalid: "Invalid email address",
-    passwordRequired: "Password is required",
-    usernameRequired: "Username is required",
-    passwordTooShort: "Password must be at least 6 characters",
-    oauthError: "Could not complete sign in. Try again.",
-    verifyError: "Error verifying email. Try again.",
-    unexpectedError: "Unexpected error. Try again.",
-    wrongCredentials: "Incorrect email or password.",
-    alreadyRegistered: "This email is already registered.",
-    weakPassword: "Password is too weak. Use at least 6 characters with uppercase, lowercase, and numbers.",
-  },
-};
-
-function useLocale(): Locale {
-  return useMemo(() => {
-    if (typeof navigator === "undefined") return "es";
-    const lang = navigator.language?.slice(0, 2)?.toLowerCase();
-    return lang === "es" ? "es" : "en";
-  }, []);
-}
-
-/* -------------------------------------------------------------------------- */
-/*  Glow orbs                                                                  */
-/* -------------------------------------------------------------------------- */
-
-function AmbientGlow() {
+function ImmersiveBackground() {
   return (
-    <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none" aria-hidden="true">
+    <div
+      className="fixed inset-0 -z-10 overflow-hidden pointer-events-none"
+      aria-hidden="true"
+    >
       <div className="absolute inset-0 bg-background" />
       <div className="absolute -top-[40%] -left-[30%] w-[80%] h-[80%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(142_72%_45%/0.08)_0%,transparent_60%)] blur-[120px]" />
       <div className="absolute -bottom-[30%] -right-[20%] w-[70%] h-[70%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(260_60%_50%/0.06)_0%,transparent_60%)] blur-[120px]" />
       <div className="absolute top-[10%] right-[5%] w-[50%] h-[50%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(200_70%_50%/0.05)_0%,transparent_60%)] blur-[100px]" />
+      <div className="absolute bottom-[20%] left-[10%] w-[40%] h-[40%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(320_50%_50%/0.04)_0%,transparent_60%)] blur-[80px]" />
+      <div className="absolute inset-0 origin-bottom animate-glow-pulse will-change-transform bg-[radial-gradient(ellipse_140%_40%_at_50%_100%,hsl(142_72%_45%/0.03)_0%,transparent_60%)] motion-reduce:animate-none motion-reduce:opacity-30" />
     </div>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Form input with inline icon                                                */
+/*  Premium input with inline icon                                             */
 /* -------------------------------------------------------------------------- */
 
 function FormInput({
@@ -142,11 +62,14 @@ function FormInput({
   disabled?: boolean;
   autoFocus?: boolean;
   minLength?: number;
-  icon?: string;
+  icon?: IconName;
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="text-xs font-medium text-white/70 ml-1">
+      <label
+        htmlFor={id}
+        className="block text-xs font-medium text-white/70 ml-1"
+      >
         {label}
       </label>
       <div className="relative">
@@ -154,7 +77,7 @@ function FormInput({
           <Icon
             name={icon}
             size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"
           />
         )}
         <input
@@ -182,11 +105,9 @@ function FormInput({
 function GoogleOAuthButton({
   onClick,
   disabled,
-  label,
 }: {
   onClick: () => void;
   disabled: boolean;
-  label: string;
 }) {
   return (
     <button
@@ -201,7 +122,7 @@ function GoogleOAuthButton({
         <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
         <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
       </svg>
-      {label}
+      <span>Continuar con Google</span>
     </button>
   );
 }
@@ -210,18 +131,18 @@ function GoogleOAuthButton({
 /*  Divider                                                                    */
 /* -------------------------------------------------------------------------- */
 
-function Divider({ label }: { label: string }) {
+function Divider() {
   return (
     <div className="flex items-center gap-3 my-6">
       <div className="h-px flex-1 bg-white/10" />
-      <span className="text-xs font-medium text-white/40 uppercase tracking-wider">{label}</span>
+      <span className="text-xs font-medium text-white/40 uppercase tracking-wider">o</span>
       <div className="h-px flex-1 bg-white/10" />
     </div>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Banners                                                                    */
+/*  Error / Success banners                                                    */
 /* -------------------------------------------------------------------------- */
 
 function ErrorBanner({ message }: { message: string }) {
@@ -242,9 +163,9 @@ function SuccessBanner({ message }: { message: string }) {
     <motion.div
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-start gap-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/[0.12] px-4 py-3 text-sm text-emerald-300/90"
+      className="flex items-start gap-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/[0.12] px-4 py-3 text-sm text-emerald-300/80"
     >
-      <Icon name="Check" size={16} className="mt-0.5 shrink-0 text-emerald-400/70" />
+      <Icon name="Check" size={16} className="mt-0.5 shrink-0 text-emerald-400/60" />
       <span>{message}</span>
     </motion.div>
   );
@@ -264,28 +185,20 @@ function EmailBadge({ email }: { email: string }) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Stagger animations                                                         */
+/*  Step transition                                                            */
 /* -------------------------------------------------------------------------- */
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.2 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 15 },
-  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } },
-};
-
-const stepTransition = {
+const stepTransition: {
+  initial: { opacity: number; y: number };
+  animate: { opacity: number; y: number };
+  exit: { opacity: number; y: number };
+  transition: Transition;
+} = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -16 },
-  transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
-} as const;
+  transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
+};
 
 /* ========================================================================== */
 /*  AuthForm                                                                   */
@@ -295,8 +208,6 @@ export default function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") ?? "/";
-  const locale = useLocale();
-  const t = (key: string) => translations[locale][key] ?? key;
 
   const [step, setStep] = useState<AuthStep>("email");
   const [email, setEmail] = useState("");
@@ -313,10 +224,11 @@ export default function AuthForm() {
   useEffect(() => {
     const oauthError = searchParams.get("error");
     if (oauthError) {
-      setError({ message: t("oauthError") });
+      setError({
+        message: "No se pudo completar el inicio de sesión. Intenta de nuevo.",
+      });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, locale]);
+  }, [searchParams]);
 
   /* ---- Step 1: Submit email ---- */
   const handleEmailSubmit = useCallback(
@@ -326,11 +238,11 @@ export default function AuthForm() {
 
       const trimmed = email.trim();
       if (!trimmed) {
-        setError({ message: t("emailRequired") });
+        setError({ message: "El correo electrónico es obligatorio" });
         return;
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-        setError({ message: t("emailInvalid") });
+        setError({ message: "Correo electrónico inválido" });
         return;
       }
 
@@ -343,13 +255,12 @@ export default function AuthForm() {
         }
         setStep(result.exists ? "signin" : "signup");
       } catch {
-        setError({ message: t("verifyError") });
+        setError({ message: "Error al verificar el correo. Intenta de nuevo." });
       } finally {
         setCheckingEmail(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [email, locale],
+    [email],
   );
 
   /* ---- Sign in ---- */
@@ -359,7 +270,7 @@ export default function AuthForm() {
       setError(null);
 
       if (!password) {
-        setError({ message: t("passwordRequired") });
+        setError({ message: "La contraseña es obligatoria" });
         return;
       }
 
@@ -372,7 +283,7 @@ export default function AuthForm() {
 
         if (signInError) {
           if (signInError.message.includes("Invalid login credentials")) {
-            setError({ message: t("wrongCredentials") });
+            setError({ message: "Correo o contraseña incorrectos." });
           } else {
             setError({ message: signInError.message });
           }
@@ -382,13 +293,12 @@ export default function AuthForm() {
         router.push(redirectTo);
         router.refresh();
       } catch {
-        setError({ message: t("unexpectedError") });
+        setError({ message: "Error inesperado. Intenta de nuevo." });
       } finally {
         setLoading(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [email, password, supabase, router, redirectTo, locale],
+    [email, password, supabase, router, redirectTo],
   );
 
   /* ---- Sign up ---- */
@@ -398,11 +308,13 @@ export default function AuthForm() {
       setError(null);
 
       if (!username.trim()) {
-        setError({ message: t("usernameRequired") });
+        setError({ message: "El nombre de usuario es obligatorio" });
         return;
       }
       if (password.length < 6) {
-        setError({ message: t("passwordTooShort") });
+        setError({
+          message: "La contraseña debe tener al menos 6 caracteres",
+        });
         return;
       }
 
@@ -419,24 +331,28 @@ export default function AuthForm() {
 
         if (signUpError) {
           if (signUpError.message.includes("already registered")) {
-            setError({ message: t("alreadyRegistered") });
-          } else if (signUpError.message.toLowerCase().includes("weak password")) {
-            setError({ message: t("weakPassword") });
+            setError({ message: "Este correo ya está registrado." });
+          } else if (
+            signUpError.message.toLowerCase().includes("weak password")
+          ) {
+            setError({
+              message:
+                "La contraseña es muy débil. Usa al menos 6 caracteres con mayúsculas, minúsculas y números.",
+            });
           } else {
             setError({ message: signUpError.message });
           }
           return;
         }
 
-        setSuccessMessage(t("accountCreated"));
+        setSuccessMessage("¡Cuenta creada! Revisa tu correo para confirmar.");
       } catch {
-        setError({ message: t("unexpectedError") });
+        setError({ message: "Error inesperado. Intenta de nuevo." });
       } finally {
         setLoading(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [email, password, username, supabase, locale],
+    [email, password, username, supabase],
   );
 
   /* ---- Google OAuth ---- */
@@ -456,12 +372,11 @@ export default function AuthForm() {
         setError({ message: oauthError.message });
       }
     } catch {
-      setError({ message: t("oauthError") });
+      setError({ message: "Error al iniciar sesión con Google." });
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, redirectTo, locale]);
+  }, [supabase, redirectTo]);
 
   /* ---- Navigation ---- */
   const goBackToEmail = () => {
@@ -471,52 +386,69 @@ export default function AuthForm() {
     setUsername("");
   };
 
+  const toggleAuthMode = () => {
+    setError(null);
+    setPassword("");
+    setUsername("");
+    setStep((prev) => (prev === "signin" ? "signup" : "signin"));
+  };
+
   /* ========================================================================= */
   /*  RENDER                                                                   */
   /* ========================================================================= */
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-6 py-20">
-      <AmbientGlow />
+      <ImmersiveBackground />
 
       <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="relative z-10 w-full max-w-md"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.2, ease: "easeOut" }}
+        className="relative z-10 w-full max-w-lg flex flex-col items-center"
       >
         {/* Hero typography */}
-        <motion.div variants={itemVariants} className="mb-10 text-center">
-          <h1 className="text-[40px] md:text-[56px] font-bold tracking-tight text-white leading-[1.1]">
-            {t("headline1")}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-14 text-center"
+        >
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white leading-[1.1]">
+            Your anime,
             <br />
-            {t("headline2")}
+            elevated.
           </h1>
-          <p className="mt-4 text-base text-white/55 max-w-xs mx-auto leading-relaxed">
-            {t("subtitle")}
+          <p className="mt-6 text-base text-white/30 max-w-sm mx-auto leading-relaxed">
+            Track what you watch. Build your watchlist. Discover your next obsession.
           </p>
         </motion.div>
 
         {/* Form */}
-        <motion.div variants={itemVariants}>
+        <motion.div
+          initial={{ opacity: 0, y: 36 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full"
+        >
           <AnimatePresence mode="wait">
             {/* ================================================================ */}
             {/*  STEP: EMAIL                                                     */}
             {/* ================================================================ */}
             {step === "email" && (
-              <motion.div key="email" {...stepTransition} className="space-y-5">
-                <p className="text-center text-[11px] text-white/45 uppercase tracking-[0.2em] font-medium">
-                  {t("beginJourney")}
+              <motion.div key="email" {...stepTransition} className="space-y-6">
+                <p className="text-center text-xs text-white/25 uppercase tracking-[0.2em] font-medium">
+                  Comienza tu viaje
                 </p>
 
                 <form onSubmit={handleEmailSubmit} className="space-y-5">
                   <FormInput
                     id="step-email"
-                    label={t("emailLabel")}
+                    label="Correo electrónico"
                     type="email"
                     value={email}
                     onChange={setEmail}
-                    placeholder={t("emailPlaceholder")}
+                    placeholder="tu@correo.com"
                     autoComplete="email"
                     disabled={checkingEmail}
                     autoFocus
@@ -525,30 +457,27 @@ export default function AuthForm() {
 
                   {error && <ErrorBanner message={error.message} />}
 
-                  <motion.button
+                  <button
                     type="submit"
                     disabled={checkingEmail}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
                     className="group relative flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
                   >
                     {checkingEmail ? (
-                      <Icon name="Loader2" className="animate-spin" size={18} />
+                      <Icon name="Loader2" size={18} className="animate-spin" />
                     ) : (
                       <>
-                        {t("continue")}
+                        Continuar
                         <Icon name="ArrowRight" size={18} className="transition-transform group-hover:translate-x-1" />
                       </>
                     )}
-                  </motion.button>
+                  </button>
                 </form>
 
-                <Divider label={t("or")} />
+                <Divider />
 
                 <GoogleOAuthButton
                   onClick={handleGoogleOAuth}
                   disabled={checkingEmail}
-                  label={t("continueWithGoogle")}
                 />
               </motion.div>
             )}
@@ -557,31 +486,31 @@ export default function AuthForm() {
             {/*  STEP: SIGN IN                                                   */}
             {/* ================================================================ */}
             {step === "signin" && (
-              <motion.div key="signin" {...stepTransition} className="space-y-5">
+              <motion.div key="signin" {...stepTransition} className="space-y-6">
                 <button
                   type="button"
                   onClick={goBackToEmail}
                   className="inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 transition-colors cursor-pointer"
                 >
                   <Icon name="ChevronLeft" size={14} />
-                  {t("otherEmail")}
+                  Otro correo
                 </button>
 
                 <div className="text-center space-y-3">
                   <EmailBadge email={email} />
                   <h2 className="text-2xl font-bold text-white tracking-tight">
-                    {t("welcomeBack")}
+                    Bienvenido de vuelta
                   </h2>
                 </div>
 
                 <form onSubmit={handleSignIn} className="space-y-5">
                   <FormInput
                     id="step-signin-password"
-                    label={t("passwordLabel")}
+                    label="Contraseña"
                     type="password"
                     value={password}
                     onChange={setPassword}
-                    placeholder={t("passwordPlaceholder")}
+                    placeholder="••••••••"
                     autoComplete="current-password"
                     disabled={loading}
                     autoFocus
@@ -590,31 +519,40 @@ export default function AuthForm() {
 
                   {error && <ErrorBanner message={error.message} />}
 
-                  <motion.button
+                  <button
                     type="submit"
                     disabled={loading}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
                     className="group relative flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
                   >
                     {loading ? (
-                      <Icon name="Loader2" className="animate-spin" size={18} />
+                      <Icon name="Loader2" size={18} className="animate-spin" />
                     ) : (
                       <>
-                        {t("signIn")}
+                        Iniciar sesión
                         <Icon name="ArrowRight" size={18} className="transition-transform group-hover:translate-x-1" />
                       </>
                     )}
-                  </motion.button>
+                  </button>
                 </form>
 
-                <Divider label={t("or")} />
+                <Divider />
 
                 <GoogleOAuthButton
                   onClick={handleGoogleOAuth}
                   disabled={loading}
-                  label={t("continueWithGoogle")}
                 />
+
+                {/* Toggle */}
+                <p className="text-center text-sm text-white/50">
+                  ¿No tienes una cuenta?{" "}
+                  <button
+                    type="button"
+                    onClick={toggleAuthMode}
+                    className="font-semibold text-primary hover:text-primary/80 transition-colors cursor-pointer"
+                  >
+                    Regístrate
+                  </button>
+                </p>
               </motion.div>
             )}
 
@@ -622,30 +560,30 @@ export default function AuthForm() {
             {/*  STEP: SIGN UP                                                   */}
             {/* ================================================================ */}
             {step === "signup" && (
-              <motion.div key="signup" {...stepTransition} className="space-y-5">
+              <motion.div key="signup" {...stepTransition} className="space-y-6">
                 <button
                   type="button"
                   onClick={goBackToEmail}
                   className="inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 transition-colors cursor-pointer"
                 >
                   <Icon name="ChevronLeft" size={14} />
-                  {t("otherEmail")}
+                  Otro correo
                 </button>
 
                 <div className="text-center space-y-3">
                   <EmailBadge email={email} />
                   <h2 className="text-2xl font-bold text-white tracking-tight">
-                    {t("createAccount")}
+                    Crea tu cuenta
                   </h2>
                 </div>
 
                 <form onSubmit={handleSignUp} className="space-y-5">
                   <FormInput
                     id="step-signup-username"
-                    label={t("usernameLabel")}
+                    label="Nombre de usuario"
                     value={username}
                     onChange={setUsername}
-                    placeholder={t("usernamePlaceholder")}
+                    placeholder="tu_usuario"
                     autoComplete="username"
                     disabled={loading}
                     autoFocus
@@ -654,11 +592,11 @@ export default function AuthForm() {
 
                   <FormInput
                     id="step-signup-password"
-                    label={t("passwordLabel")}
+                    label="Contraseña"
                     type="password"
                     value={password}
                     onChange={setPassword}
-                    placeholder={t("passwordPlaceholder")}
+                    placeholder="••••••••"
                     autoComplete="new-password"
                     disabled={loading}
                     minLength={6}
@@ -668,31 +606,40 @@ export default function AuthForm() {
                   {error && <ErrorBanner message={error.message} />}
                   {successMessage && <SuccessBanner message={successMessage} />}
 
-                  <motion.button
+                  <button
                     type="submit"
                     disabled={loading || !!successMessage}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
                     className="group relative flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
                   >
                     {loading ? (
-                      <Icon name="Loader2" className="animate-spin" size={18} />
+                      <Icon name="Loader2" size={18} className="animate-spin" />
                     ) : (
                       <>
-                        {t("createAccountBtn")}
+                        Crear cuenta
                         <Icon name="ArrowRight" size={18} className="transition-transform group-hover:translate-x-1" />
                       </>
                     )}
-                  </motion.button>
+                  </button>
                 </form>
 
-                <Divider label={t("or")} />
+                <Divider />
 
                 <GoogleOAuthButton
                   onClick={handleGoogleOAuth}
                   disabled={loading}
-                  label={t("continueWithGoogle")}
                 />
+
+                {/* Toggle */}
+                <p className="text-center text-sm text-white/50">
+                  ¿Ya tienes una cuenta?{" "}
+                  <button
+                    type="button"
+                    onClick={toggleAuthMode}
+                    className="font-semibold text-primary hover:text-primary/80 transition-colors cursor-pointer"
+                  >
+                    Inicia sesión
+                  </button>
+                </p>
               </motion.div>
             )}
           </AnimatePresence>

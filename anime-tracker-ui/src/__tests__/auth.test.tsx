@@ -51,8 +51,8 @@ describe("AuthForm — email step (default)", () => {
   it("renders the email input by default", () => {
     render(<AuthForm />);
     expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
-    expect(screen.getByText(/Tu anime/)).toBeTruthy();
-    expect(screen.getByText(/elevado/)).toBeTruthy();
+    expect(screen.getByText(/Your anime/)).toBeTruthy();
+    expect(screen.getByText(/elevated/)).toBeTruthy();
     expect(screen.getByText("Comienza tu viaje")).toBeTruthy();
     expect(screen.getByLabelText("Correo electrónico")).toBeTruthy();
   });

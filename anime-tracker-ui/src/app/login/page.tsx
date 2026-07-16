@@ -1,50 +1,26 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
 import Icon from "@/components/custom/Icon";
+import AuthForm from "@/components/auth/AuthForm";
 
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    // Simular carga
-    setTimeout(() => setLoading(false), 2000);
-  };
-
-  // Animaciones coreografiadas
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1, delayChildren: 0.2 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 15 },
-    show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } },
-  };
-
   return (
     <div className="relative flex min-h-screen w-full bg-background overflow-hidden selection:bg-primary/30">
-      
       {/* ================= LADO IZQUIERDO: ARTWORK CINEMÁTICO ================= */}
       <div className="relative hidden w-full items-center justify-center lg:flex lg:w-[55%]">
-        {/* Imagen de fondo (Reemplaza con un backdrop real de TMDB) */}
-        <div 
+        {/* Imagen de fondo */}
+        <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: "url('https://image.tmdb.org/t/p/original/bKxiLPlrEpZPAuwKXKwuEeeT3hb.jpg')" }}
         />
-        
-        {/* Overlay de gradiente para fusionarlo con el lado derecho */}
+
+        {/* Overlay de gradiente para fusionar con el lado derecho */}
         <div className="absolute inset-0 bg-gradient-to-r from-background/20 via-background/60 to-background" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-80" />
 
-        {/* Texto flotante en el arte */}
-        <motion.div 
+        {/* Texto flotante */}
+        <motion.div
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, delay: 0.5 }}
@@ -57,7 +33,7 @@ export default function LoginPage() {
             <span className="text-2xl font-bold tracking-tight text-white">Anime Tracker</span>
           </div>
           <h2 className="text-4xl font-bold tracking-tight text-white/95 leading-tight mb-4">
-            Descubre dónde ver <br />
+            Descubre dónde ver{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">
               tu próximo anime favorito.
             </span>
@@ -68,118 +44,9 @@ export default function LoginPage() {
         </motion.div>
       </div>
 
-      {/* ================= LADO DERECHO: FORMULARIO GLASSMORPHISM ================= */}
+      {/* ================= LADO DERECHO: AUTHFORM ================= */}
       <div className="relative flex w-full items-center justify-center lg:w-[45%] bg-background">
-        
-        {/* Efectos de Resplandor (Glow) detrás del formulario */}
-        <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[120px]" />
-        <div className="pointer-events-none absolute right-0 bottom-0 -z-10 h-[300px] w-[300px] rounded-full bg-purple-500/10 blur-[100px]" />
-
-        <motion.div 
-          variants={containerVariants}
-          initial="hidden"
-          animate="show"
-          className="w-full max-w-[420px] px-8 sm:px-12 lg:px-8 xl:px-12"
-        >
-          {/* Cabecera Móvil (Solo visible en pantallas pequeñas) */}
-          <motion.div variants={itemVariants} className="flex items-center gap-2 mb-10 lg:hidden">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Icon name="Play" className="text-white ml-0.5" size={16} />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-white">Anime Tracker</span>
-          </motion.div>
-
-          <motion.div variants={itemVariants} className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Bienvenido de vuelta</h1>
-            <p className="text-sm text-white/50">Ingresa tus credenciales para continuar.</p>
-          </motion.div>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <motion.div variants={itemVariants} className="space-y-4">
-              {/* Input Email */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-white/70 ml-1">Correo electrónico</label>
-                <div className="relative">
-                  <Icon name="Mail" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
-                  <input
-                    type="email"
-                    placeholder="nombre@ejemplo.com"
-                    required
-                    className="h-12 w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-4 text-sm text-white placeholder:text-white/30 backdrop-blur-md transition-all focus:bg-white/10 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary shadow-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Input Password */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between ml-1">
-                  <label className="text-xs font-medium text-white/70">Contraseña</label>
-                  <a href="#" className="text-xs font-medium text-primary hover:text-primary/80 transition-colors">
-                    ¿Olvidaste tu contraseña?
-                  </a>
-                </div>
-                <div className="relative">
-                  <Icon name="Lock" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    required
-                    className="h-12 w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-4 text-sm text-white placeholder:text-white/30 backdrop-blur-md transition-all focus:bg-white/10 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary shadow-sm"
-                  />
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Botón Principal */}
-            <motion.div variants={itemVariants} className="pt-2">
-              <button
-                type="submit"
-                disabled={loading}
-                className="group relative flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
-              >
-                {loading ? (
-                  <Icon name="Loader2" className="animate-spin" size={18} />
-                ) : (
-                  <>
-                    Iniciar Sesión
-                    <Icon name="ArrowRight" size={18} className="transition-transform group-hover:translate-x-1" />
-                  </>
-                )}
-              </button>
-            </motion.div>
-          </form>
-
-          {/* Separador */}
-          <motion.div variants={itemVariants} className="my-8 flex items-center gap-3">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="text-xs font-medium text-white/40 uppercase tracking-wider">O continuar con</span>
-            <div className="h-px flex-1 bg-white/10" />
-          </motion.div>
-
-          {/* Boton Social Google */}
-          <motion.div variants={itemVariants}>
-            <button
-              type="button"
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-white/20"
-            >
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-              </svg>
-              Google
-            </button>
-          </motion.div>
-
-          {/* Footer */}
-          <motion.div variants={itemVariants} className="mt-10 text-center text-sm text-white/50">
-            ¿No tienes una cuenta?{" "}
-            <a href="#" className="font-semibold text-primary hover:text-primary/80 transition-colors">
-              Regístrate
-            </a>
-          </motion.div>
-        </motion.div>
+        <AuthForm />
       </div>
     </div>
   );
