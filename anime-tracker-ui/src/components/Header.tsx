@@ -137,7 +137,7 @@ export default function Header() {
             ) : (
               <Link
                 href="/auth"
-                className="relative inline-flex items-center gap-1.5 px-5 py-2 rounded-full border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl text-[13px] font-medium text-white/70 hover:text-white hover:border-white/[0.15] hover:bg-white/[0.06] transition-all duration-300 active:scale-[0.97]"
+                className="relative inline-flex items-center gap-1.5 px-5 py-2 rounded-full border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl text-[13px] font-medium text-white/70 hover:text-white hover:border-primary/30 hover:bg-primary/[0.06] hover:shadow-[0_0_20px_rgba(74,222,128,0.15)] transition-all duration-300 active:scale-[0.97]"
               >
                 <Icon name="User" size={13} />
                 Iniciar sesión

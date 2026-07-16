@@ -37,10 +37,10 @@ describe("AuthForm — email step (default)", () => {
 
   it("renders the email input by default", () => {
     render(<AuthForm />);
-    expect(screen.getByText("Anime Tracker")).toBeTruthy();
-    expect(
-      screen.getByText("Ingresa tu correo para continuar"),
-    ).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
+    expect(screen.getByText(/Your anime/)).toBeTruthy();
+    expect(screen.getByText(/elevated/)).toBeTruthy();
+    expect(screen.getByText("Comienza tu viaje")).toBeTruthy();
     expect(screen.getByLabelText("Correo electrónico")).toBeTruthy();
   });
 
@@ -51,7 +51,7 @@ describe("AuthForm — email step (default)", () => {
 
   it("renders Google OAuth button on email step", () => {
     render(<AuthForm />);
-    expect(screen.getByText("Google")).toBeTruthy();
+    expect(screen.getByText("Continuar con Google")).toBeTruthy();
   });
 
   it("does NOT render GitHub button", () => {
