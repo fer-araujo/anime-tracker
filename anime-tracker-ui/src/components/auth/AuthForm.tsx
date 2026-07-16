@@ -4,15 +4,14 @@ import { useState, useCallback, useEffect, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, type Transition } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { checkEmailExists } from "@/actions/auth";
-import type { IconName } from "@/components/custom/Icon";
 import Icon from "@/components/custom/Icon";
+import type { IconName } from "@/components/custom/Icon";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
-type AuthStep = "email" | "signin" | "signup";
+type AuthStep = "signin" | "signup";
 type FormError = { message: string };
 
 /* -------------------------------------------------------------------------- */
@@ -29,8 +28,6 @@ function ImmersiveBackground() {
       <div className="absolute -top-[40%] -left-[30%] w-[80%] h-[80%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(142_72%_45%/0.08)_0%,transparent_60%)] blur-[120px]" />
       <div className="absolute -bottom-[30%] -right-[20%] w-[70%] h-[70%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(260_60%_50%/0.06)_0%,transparent_60%)] blur-[120px]" />
       <div className="absolute top-[10%] right-[5%] w-[50%] h-[50%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(200_70%_50%/0.05)_0%,transparent_60%)] blur-[100px]" />
-      <div className="absolute bottom-[20%] left-[10%] w-[40%] h-[40%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(320_50%_50%/0.04)_0%,transparent_60%)] blur-[80px]" />
-      <div className="absolute inset-0 origin-bottom animate-glow-pulse will-change-transform bg-[radial-gradient(ellipse_140%_40%_at_50%_100%,hsl(142_72%_45%/0.03)_0%,transparent_60%)] motion-reduce:animate-none motion-reduce:opacity-30" />
     </div>
   );
 }
@@ -172,19 +169,6 @@ function SuccessBanner({ message }: { message: string }) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Email badge                                                                */
-/* -------------------------------------------------------------------------- */
-
-function EmailBadge({ email }: { email: string }) {
-  return (
-    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-sm text-white/50">
-      <Icon name="Mail" size={13} className="text-white/30" />
-      {email}
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
 /*  Step transition                                                            */
 /* -------------------------------------------------------------------------- */
 
@@ -197,7 +181,7 @@ const stepTransition: {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -16 },
-  transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
+  transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
 };
 
 /* ========================================================================== */
@@ -209,13 +193,12 @@ export default function AuthForm() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") ?? "/";
 
-  const [step, setStep] = useState<AuthStep>("email");
+  const [step, setStep] = useState<AuthStep>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [error, setError] = useState<FormError | null>(null);
   const [loading, setLoading] = useState(false);
-  const [checkingEmail, setCheckingEmail] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const supabase = createClient();
@@ -230,45 +213,17 @@ export default function AuthForm() {
     }
   }, [searchParams]);
 
-  /* ---- Step 1: Submit email ---- */
-  const handleEmailSubmit = useCallback(
-    async (e: FormEvent) => {
-      e.preventDefault();
-      setError(null);
-
-      const trimmed = email.trim();
-      if (!trimmed) {
-        setError({ message: "El correo electrónico es obligatorio" });
-        return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-        setError({ message: "Correo electrónico inválido" });
-        return;
-      }
-
-      setCheckingEmail(true);
-      try {
-        const result = await checkEmailExists(trimmed);
-        if (result.error) {
-          setError({ message: result.error });
-          return;
-        }
-        setStep(result.exists ? "signin" : "signup");
-      } catch {
-        setError({ message: "Error al verificar el correo. Intenta de nuevo." });
-      } finally {
-        setCheckingEmail(false);
-      }
-    },
-    [email],
-  );
-
   /* ---- Sign in ---- */
   const handleSignIn = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
       setError(null);
 
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail) {
+        setError({ message: "El correo electrónico es obligatorio" });
+        return;
+      }
       if (!password) {
         setError({ message: "La contraseña es obligatoria" });
         return;
@@ -277,7 +232,7 @@ export default function AuthForm() {
       setLoading(true);
       try {
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+          email: trimmedEmail,
           password,
         });
 
@@ -307,6 +262,11 @@ export default function AuthForm() {
       e.preventDefault();
       setError(null);
 
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail) {
+        setError({ message: "El correo electrónico es obligatorio" });
+        return;
+      }
       if (!username.trim()) {
         setError({ message: "El nombre de usuario es obligatorio" });
         return;
@@ -321,7 +281,7 @@ export default function AuthForm() {
       setLoading(true);
       try {
         const { error: signUpError } = await supabase.auth.signUp({
-          email: email.trim(),
+          email: trimmedEmail,
           password,
           options: {
             data: { username: username.trim() },
@@ -378,19 +338,13 @@ export default function AuthForm() {
     }
   }, [supabase, redirectTo]);
 
-  /* ---- Navigation ---- */
-  const goBackToEmail = () => {
-    setStep("email");
-    setError(null);
-    setPassword("");
-    setUsername("");
-  };
-
-  const toggleAuthMode = () => {
-    setError(null);
-    setPassword("");
-    setUsername("");
+  /* ---- Toggle signin / signup ---- */
+  const toggleStep = () => {
     setStep((prev) => (prev === "signin" ? "signup" : "signin"));
+    setError(null);
+    setPassword("");
+    setUsername("");
+    setSuccessMessage(null);
   };
 
   /* ========================================================================= */
@@ -405,22 +359,20 @@ export default function AuthForm() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1.2, ease: "easeOut" }}
-        className="relative z-10 w-full max-w-lg flex flex-col items-center"
+        className="relative z-10 w-full max-w-md flex flex-col items-center"
       >
-        {/* Hero typography */}
+        {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-14 text-center"
+          className="mb-10 text-center"
         >
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white leading-[1.1]">
-            Your anime,
-            <br />
-            elevated.
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white leading-[1.15]">
+            Tu anime, elevado.
           </h1>
-          <p className="mt-6 text-base text-white/30 max-w-sm mx-auto leading-relaxed">
-            Track what you watch. Build your watchlist. Discover your next obsession.
+          <p className="mt-3 text-sm text-white/40 max-w-xs mx-auto leading-relaxed">
+            Sigue lo que ves. Construye tu watchlist. Descubre tu próxima obsesión.
           </p>
         </motion.div>
 
@@ -433,79 +385,26 @@ export default function AuthForm() {
         >
           <AnimatePresence mode="wait">
             {/* ================================================================ */}
-            {/*  STEP: EMAIL                                                     */}
+            {/*  SIGN IN                                                         */}
             {/* ================================================================ */}
-            {step === "email" && (
-              <motion.div key="email" {...stepTransition} className="space-y-6">
-                <p className="text-center text-xs text-white/25 uppercase tracking-[0.2em] font-medium">
-                  Comienza tu viaje
-                </p>
-
-                <form onSubmit={handleEmailSubmit} className="space-y-5">
+            {step === "signin" && (
+              <motion.div key="signin" {...stepTransition} className="space-y-5">
+                <form onSubmit={handleSignIn} className="space-y-5">
                   <FormInput
-                    id="step-email"
+                    id="signin-email"
                     label="Correo electrónico"
                     type="email"
                     value={email}
                     onChange={setEmail}
-                    placeholder="tu@correo.com"
+                    placeholder="nombre@ejemplo.com"
                     autoComplete="email"
-                    disabled={checkingEmail}
+                    disabled={loading}
                     autoFocus
                     icon="Mail"
                   />
 
-                  {error && <ErrorBanner message={error.message} />}
-
-                  <button
-                    type="submit"
-                    disabled={checkingEmail}
-                    className="group relative flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
-                  >
-                    {checkingEmail ? (
-                      <Icon name="Loader2" size={18} className="animate-spin" />
-                    ) : (
-                      <>
-                        Continuar
-                        <Icon name="ArrowRight" size={18} className="transition-transform group-hover:translate-x-1" />
-                      </>
-                    )}
-                  </button>
-                </form>
-
-                <Divider />
-
-                <GoogleOAuthButton
-                  onClick={handleGoogleOAuth}
-                  disabled={checkingEmail}
-                />
-              </motion.div>
-            )}
-
-            {/* ================================================================ */}
-            {/*  STEP: SIGN IN                                                   */}
-            {/* ================================================================ */}
-            {step === "signin" && (
-              <motion.div key="signin" {...stepTransition} className="space-y-6">
-                <button
-                  type="button"
-                  onClick={goBackToEmail}
-                  className="inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 transition-colors cursor-pointer"
-                >
-                  <Icon name="ChevronLeft" size={14} />
-                  Otro correo
-                </button>
-
-                <div className="text-center space-y-3">
-                  <EmailBadge email={email} />
-                  <h2 className="text-2xl font-bold text-white tracking-tight">
-                    Bienvenido de vuelta
-                  </h2>
-                </div>
-
-                <form onSubmit={handleSignIn} className="space-y-5">
                   <FormInput
-                    id="step-signin-password"
+                    id="signin-password"
                     label="Contraseña"
                     type="password"
                     value={password}
@@ -513,7 +412,6 @@ export default function AuthForm() {
                     placeholder="••••••••"
                     autoComplete="current-password"
                     disabled={loading}
-                    autoFocus
                     icon="Lock"
                   />
 
@@ -542,12 +440,11 @@ export default function AuthForm() {
                   disabled={loading}
                 />
 
-                {/* Toggle */}
                 <p className="text-center text-sm text-white/50">
                   ¿No tienes una cuenta?{" "}
                   <button
                     type="button"
-                    onClick={toggleAuthMode}
+                    onClick={toggleStep}
                     className="font-semibold text-primary hover:text-primary/80 transition-colors cursor-pointer"
                   >
                     Regístrate
@@ -557,29 +454,13 @@ export default function AuthForm() {
             )}
 
             {/* ================================================================ */}
-            {/*  STEP: SIGN UP                                                   */}
+            {/*  SIGN UP                                                         */}
             {/* ================================================================ */}
             {step === "signup" && (
-              <motion.div key="signup" {...stepTransition} className="space-y-6">
-                <button
-                  type="button"
-                  onClick={goBackToEmail}
-                  className="inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 transition-colors cursor-pointer"
-                >
-                  <Icon name="ChevronLeft" size={14} />
-                  Otro correo
-                </button>
-
-                <div className="text-center space-y-3">
-                  <EmailBadge email={email} />
-                  <h2 className="text-2xl font-bold text-white tracking-tight">
-                    Crea tu cuenta
-                  </h2>
-                </div>
-
+              <motion.div key="signup" {...stepTransition} className="space-y-5">
                 <form onSubmit={handleSignUp} className="space-y-5">
                   <FormInput
-                    id="step-signup-username"
+                    id="signup-username"
                     label="Nombre de usuario"
                     value={username}
                     onChange={setUsername}
@@ -591,7 +472,19 @@ export default function AuthForm() {
                   />
 
                   <FormInput
-                    id="step-signup-password"
+                    id="signup-email"
+                    label="Correo electrónico"
+                    type="email"
+                    value={email}
+                    onChange={setEmail}
+                    placeholder="nombre@ejemplo.com"
+                    autoComplete="email"
+                    disabled={loading}
+                    icon="Mail"
+                  />
+
+                  <FormInput
+                    id="signup-password"
                     label="Contraseña"
                     type="password"
                     value={password}
@@ -629,12 +522,11 @@ export default function AuthForm() {
                   disabled={loading}
                 />
 
-                {/* Toggle */}
                 <p className="text-center text-sm text-white/50">
                   ¿Ya tienes una cuenta?{" "}
                   <button
                     type="button"
-                    onClick={toggleAuthMode}
+                    onClick={toggleStep}
                     className="font-semibold text-primary hover:text-primary/80 transition-colors cursor-pointer"
                   >
                     Inicia sesión

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import AuthForm from "@/components/auth/AuthForm";
 
 // Mock navigator.language to Spanish for consistent test assertions
@@ -43,26 +43,21 @@ vi.mock("framer-motion", () => ({
   },
 }));
 
-describe("AuthForm — email step (default)", () => {
+describe("AuthForm — signin step (default)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("renders the email input by default", () => {
+  it("renders the signin form by default", () => {
     render(<AuthForm />);
     expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
-    expect(screen.getByText(/Your anime/)).toBeTruthy();
-    expect(screen.getByText(/elevated/)).toBeTruthy();
-    expect(screen.getByText("Comienza tu viaje")).toBeTruthy();
+    expect(screen.getByText("Tu anime, elevado.")).toBeTruthy();
     expect(screen.getByLabelText("Correo electrónico")).toBeTruthy();
+    expect(screen.getByLabelText("Contraseña")).toBeTruthy();
+    expect(screen.getByText("Iniciar sesión")).toBeTruthy();
   });
 
-  it("renders Continue button instead of Iniciar sesión", () => {
-    render(<AuthForm />);
-    expect(screen.getByText("Continuar")).toBeTruthy();
-  });
-
-  it("renders Google OAuth button on email step", () => {
+  it("renders Google OAuth button", () => {
     render(<AuthForm />);
     expect(screen.getByText("Continuar con Google")).toBeTruthy();
   });
@@ -72,9 +67,25 @@ describe("AuthForm — email step (default)", () => {
     expect(screen.queryByText("GitHub")).toBeNull();
   });
 
-  it("shows email input as the only auth field initially", () => {
+  it("shows register toggle on signin step", () => {
     render(<AuthForm />);
-    // On the email step there should be no password field visible
-    expect(screen.queryByLabelText("Contraseña")).toBeNull();
+    expect(screen.getByText("¿No tienes una cuenta?")).toBeTruthy();
+    expect(screen.getByText("Regístrate")).toBeTruthy();
+  });
+});
+
+describe("AuthForm — signup toggle", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("switches to signup form when clicking Regístrate", () => {
+    render(<AuthForm />);
+    fireEvent.click(screen.getByText("Regístrate"));
+
+    expect(screen.getByLabelText("Nombre de usuario")).toBeTruthy();
+    expect(screen.getByText("Crear cuenta")).toBeTruthy();
+    expect(screen.getByText("¿Ya tienes una cuenta?")).toBeTruthy();
+    expect(screen.getByText("Inicia sesión")).toBeTruthy();
   });
 });
