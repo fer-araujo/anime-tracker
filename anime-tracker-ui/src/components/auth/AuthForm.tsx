@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect, type FormEvent } from "react";
+import { useState, useCallback, useEffect, useMemo, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AnimatePresence, motion, type Transition } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { checkEmailExists } from "@/actions/auth";
 import Icon from "@/components/custom/Icon";
@@ -13,34 +13,110 @@ import Icon from "@/components/custom/Icon";
 
 type AuthStep = "email" | "signin" | "signup";
 type FormError = { message: string };
+type Locale = "es" | "en";
 
 /* -------------------------------------------------------------------------- */
-/*  Immersive background — full-screen gradient with multiple orbs             */
+/*  Translations                                                               */
 /* -------------------------------------------------------------------------- */
 
-function ImmersiveBackground() {
+const translations: Record<Locale, Record<string, string>> = {
+  es: {
+    headline1: "Tu anime,",
+    headline2: "elevado.",
+    subtitle: "Sigue lo que ves. Construye tu watchlist. Descubre tu próxima obsesión.",
+    beginJourney: "Comienza tu viaje",
+    emailLabel: "Correo electrónico",
+    emailPlaceholder: "nombre@ejemplo.com",
+    continue: "Continuar",
+    verifying: "Verificando…",
+    or: "o",
+    continueWithGoogle: "Continuar con Google",
+    otherEmail: "Otro correo",
+    welcomeBack: "Bienvenido de vuelta",
+    passwordLabel: "Contraseña",
+    passwordPlaceholder: "••••••••",
+    signIn: "Iniciar Sesión",
+    signingIn: "Iniciando sesión…",
+    createAccount: "Crea tu cuenta",
+    usernameLabel: "Nombre de usuario",
+    usernamePlaceholder: "tu_usuario",
+    createAccountBtn: "Crear cuenta",
+    creatingAccount: "Creando cuenta…",
+    accountCreated: "¡Cuenta creada! Revisa tu correo para confirmar.",
+    emailRequired: "El correo electrónico es obligatorio",
+    emailInvalid: "Correo electrónico inválido",
+    passwordRequired: "La contraseña es obligatoria",
+    usernameRequired: "El nombre de usuario es obligatorio",
+    passwordTooShort: "La contraseña debe tener al menos 6 caracteres",
+    oauthError: "No se pudo completar el inicio de sesión. Intenta de nuevo.",
+    verifyError: "Error al verificar el correo. Intenta de nuevo.",
+    unexpectedError: "Error inesperado. Intenta de nuevo.",
+    wrongCredentials: "Correo o contraseña incorrectos.",
+    alreadyRegistered: "Este correo ya está registrado.",
+    weakPassword: "La contraseña es muy débil. Usa al menos 6 caracteres con mayúsculas, minúsculas y números.",
+  },
+  en: {
+    headline1: "Your anime,",
+    headline2: "elevated.",
+    subtitle: "Track what you watch. Build your watchlist. Discover your next obsession.",
+    beginJourney: "Begin your journey",
+    emailLabel: "Email address",
+    emailPlaceholder: "name@example.com",
+    continue: "Continue",
+    verifying: "Verifying…",
+    or: "or",
+    continueWithGoogle: "Continue with Google",
+    otherEmail: "Different email",
+    welcomeBack: "Welcome back",
+    passwordLabel: "Password",
+    passwordPlaceholder: "••••••••",
+    signIn: "Sign In",
+    signingIn: "Signing in…",
+    createAccount: "Create your account",
+    usernameLabel: "Username",
+    usernamePlaceholder: "your_username",
+    createAccountBtn: "Create account",
+    creatingAccount: "Creating account…",
+    accountCreated: "Account created! Check your email to confirm.",
+    emailRequired: "Email is required",
+    emailInvalid: "Invalid email address",
+    passwordRequired: "Password is required",
+    usernameRequired: "Username is required",
+    passwordTooShort: "Password must be at least 6 characters",
+    oauthError: "Could not complete sign in. Try again.",
+    verifyError: "Error verifying email. Try again.",
+    unexpectedError: "Unexpected error. Try again.",
+    wrongCredentials: "Incorrect email or password.",
+    alreadyRegistered: "This email is already registered.",
+    weakPassword: "Password is too weak. Use at least 6 characters with uppercase, lowercase, and numbers.",
+  },
+};
+
+function useLocale(): Locale {
+  return useMemo(() => {
+    if (typeof navigator === "undefined") return "es";
+    const lang = navigator.language?.slice(0, 2)?.toLowerCase();
+    return lang === "es" ? "es" : "en";
+  }, []);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Glow orbs                                                                  */
+/* -------------------------------------------------------------------------- */
+
+function AmbientGlow() {
   return (
-    <div
-      className="fixed inset-0 -z-10 overflow-hidden pointer-events-none"
-      aria-hidden="true"
-    >
-      {/* Base */}
+    <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none" aria-hidden="true">
       <div className="absolute inset-0 bg-background" />
-
-      {/* Dramatic gradient orbs — layered for depth */}
       <div className="absolute -top-[40%] -left-[30%] w-[80%] h-[80%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(142_72%_45%/0.08)_0%,transparent_60%)] blur-[120px]" />
       <div className="absolute -bottom-[30%] -right-[20%] w-[70%] h-[70%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(260_60%_50%/0.06)_0%,transparent_60%)] blur-[120px]" />
       <div className="absolute top-[10%] right-[5%] w-[50%] h-[50%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(200_70%_50%/0.05)_0%,transparent_60%)] blur-[100px]" />
-      <div className="absolute bottom-[20%] left-[10%] w-[40%] h-[40%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(320_50%_50%/0.04)_0%,transparent_60%)] blur-[80px]" />
-
-      {/* Breathing glow */}
-      <div className="absolute inset-0 origin-bottom animate-glow-pulse will-change-transform bg-[radial-gradient(ellipse_140%_40%_at_50%_100%,hsl(142_72%_45%/0.03)_0%,transparent_60%)] motion-reduce:animate-none motion-reduce:opacity-30" />
     </div>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Premium input — larger, more breathing room                                */
+/*  Form input with inline icon                                                */
 /* -------------------------------------------------------------------------- */
 
 function FormInput({
@@ -54,6 +130,7 @@ function FormInput({
   disabled,
   autoFocus,
   minLength,
+  icon,
 }: {
   id: string;
   label: string;
@@ -65,69 +142,66 @@ function FormInput({
   disabled?: boolean;
   autoFocus?: boolean;
   minLength?: number;
+  icon?: string;
 }) {
   return (
-    <div className="space-y-3">
-      <label
-        htmlFor={id}
-        className="block text-xs font-medium text-white/50 uppercase tracking-[0.15em]"
-      >
+    <div className="space-y-1.5">
+      <label htmlFor={id} className="text-xs font-medium text-white/70 ml-1">
         {label}
       </label>
-      <input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        required
-        disabled={disabled}
-        autoFocus={autoFocus}
-        minLength={minLength}
-        className="h-14 w-full rounded-xl bg-white/[0.03] border border-white/[0.08] px-5 text-base text-white placeholder:text-white/20 transition-all duration-300 focus:outline-none focus:border-primary/50 focus:bg-white/[0.05] focus:shadow-[0_0_0_4px_rgba(74,222,128,0.1),0_0_40px_-10px_rgba(74,222,128,0.15)] disabled:opacity-50"
-      />
+      <div className="relative">
+        {icon && (
+          <Icon
+            name={icon}
+            size={18}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40"
+          />
+        )}
+        <input
+          id={id}
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          required
+          disabled={disabled}
+          autoFocus={autoFocus}
+          minLength={minLength}
+          className={`h-12 w-full rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-white/30 backdrop-blur-md transition-all focus:bg-white/10 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 ${icon ? "pl-11" : "px-4"} pr-4`}
+        />
+      </div>
     </div>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Google OAuth button — premium                                              */
+/*  Google OAuth button                                                        */
 /* -------------------------------------------------------------------------- */
 
 function GoogleOAuthButton({
   onClick,
   disabled,
+  label,
 }: {
   onClick: () => void;
   disabled: boolean;
+  label: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="h-14 w-full rounded-xl border border-white/[0.08] bg-white/[0.02] text-white/80 text-base font-medium transition-all duration-300 hover:bg-white/[0.05] hover:border-white/[0.12] hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.1)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-3"
+      className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
     >
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-        <path
-          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-          fill="#4285F4"
-        />
-        <path
-          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-          fill="#34A853"
-        />
-        <path
-          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-          fill="#FBBC05"
-        />
-        <path
-          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-          fill="#EA4335"
-        />
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
       </svg>
-      <span>Continuar con Google</span>
+      {label}
     </button>
   );
 }
@@ -136,20 +210,18 @@ function GoogleOAuthButton({
 /*  Divider                                                                    */
 /* -------------------------------------------------------------------------- */
 
-function Divider() {
+function Divider({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-5 my-8">
-      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
-      <span className="text-xs text-white/20 uppercase tracking-[0.25em] font-medium">
-        o
-      </span>
-      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+    <div className="flex items-center gap-3 my-6">
+      <div className="h-px flex-1 bg-white/10" />
+      <span className="text-xs font-medium text-white/40 uppercase tracking-wider">{label}</span>
+      <div className="h-px flex-1 bg-white/10" />
     </div>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Error / Success banners                                                    */
+/*  Banners                                                                    */
 /* -------------------------------------------------------------------------- */
 
 function ErrorBanner({ message }: { message: string }) {
@@ -157,13 +229,9 @@ function ErrorBanner({ message }: { message: string }) {
     <motion.div
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-start gap-3 rounded-xl bg-red-500/[0.06] border border-red-500/[0.12] px-5 py-4 text-sm text-red-300/80"
+      className="flex items-start gap-3 rounded-xl bg-red-500/[0.06] border border-red-500/[0.12] px-4 py-3 text-sm text-red-300/80"
     >
-      <Icon
-        name="AlertCircle"
-        size={18}
-        className="mt-0.5 shrink-0 text-red-400/60"
-      />
+      <Icon name="AlertCircle" size={16} className="mt-0.5 shrink-0 text-red-400/60" />
       <span>{message}</span>
     </motion.div>
   );
@@ -174,13 +242,9 @@ function SuccessBanner({ message }: { message: string }) {
     <motion.div
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-start gap-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/[0.12] px-5 py-4 text-sm text-emerald-300/80"
+      className="flex items-start gap-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/[0.12] px-4 py-3 text-sm text-emerald-300/90"
     >
-      <Icon
-        name="Check"
-        size={18}
-        className="mt-0.5 shrink-0 text-emerald-400/60"
-      />
+      <Icon name="Check" size={16} className="mt-0.5 shrink-0 text-emerald-400/70" />
       <span>{message}</span>
     </motion.div>
   );
@@ -192,28 +256,36 @@ function SuccessBanner({ message }: { message: string }) {
 
 function EmailBadge({ email }: { email: string }) {
   return (
-    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] text-sm text-white/50">
-      <Icon name="Mail" size={14} className="text-white/30" />
+    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-sm text-white/50">
+      <Icon name="Mail" size={13} className="text-white/30" />
       {email}
     </div>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Step transition                                                            */
+/*  Stagger animations                                                         */
 /* -------------------------------------------------------------------------- */
 
-const stepTransition: {
-  initial: { opacity: number; y: number };
-  animate: { opacity: number; y: number };
-  exit: { opacity: number; y: number };
-  transition: Transition;
-} = {
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.2 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 15 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } },
+};
+
+const stepTransition = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -16 },
-  transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
-};
+  transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
+} as const;
 
 /* ========================================================================== */
 /*  AuthForm                                                                   */
@@ -223,6 +295,8 @@ export default function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") ?? "/";
+  const locale = useLocale();
+  const t = (key: string) => translations[locale][key] ?? key;
 
   const [step, setStep] = useState<AuthStep>("email");
   const [email, setEmail] = useState("");
@@ -239,11 +313,10 @@ export default function AuthForm() {
   useEffect(() => {
     const oauthError = searchParams.get("error");
     if (oauthError) {
-      setError({
-        message: "No se pudo completar el inicio de sesión. Intenta de nuevo.",
-      });
+      setError({ message: t("oauthError") });
     }
-  }, [searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, locale]);
 
   /* ---- Step 1: Submit email ---- */
   const handleEmailSubmit = useCallback(
@@ -253,11 +326,11 @@ export default function AuthForm() {
 
       const trimmed = email.trim();
       if (!trimmed) {
-        setError({ message: "El correo electrónico es obligatorio" });
+        setError({ message: t("emailRequired") });
         return;
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-        setError({ message: "Correo electrónico inválido" });
+        setError({ message: t("emailInvalid") });
         return;
       }
 
@@ -270,12 +343,13 @@ export default function AuthForm() {
         }
         setStep(result.exists ? "signin" : "signup");
       } catch {
-        setError({ message: "Error al verificar el correo. Intenta de nuevo." });
+        setError({ message: t("verifyError") });
       } finally {
         setCheckingEmail(false);
       }
     },
-    [email],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [email, locale],
   );
 
   /* ---- Sign in ---- */
@@ -285,7 +359,7 @@ export default function AuthForm() {
       setError(null);
 
       if (!password) {
-        setError({ message: "La contraseña es obligatoria" });
+        setError({ message: t("passwordRequired") });
         return;
       }
 
@@ -298,7 +372,7 @@ export default function AuthForm() {
 
         if (signInError) {
           if (signInError.message.includes("Invalid login credentials")) {
-            setError({ message: "Correo o contraseña incorrectos." });
+            setError({ message: t("wrongCredentials") });
           } else {
             setError({ message: signInError.message });
           }
@@ -308,12 +382,13 @@ export default function AuthForm() {
         router.push(redirectTo);
         router.refresh();
       } catch {
-        setError({ message: "Error inesperado. Intenta de nuevo." });
+        setError({ message: t("unexpectedError") });
       } finally {
         setLoading(false);
       }
     },
-    [email, password, supabase, router, redirectTo],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [email, password, supabase, router, redirectTo, locale],
   );
 
   /* ---- Sign up ---- */
@@ -323,13 +398,11 @@ export default function AuthForm() {
       setError(null);
 
       if (!username.trim()) {
-        setError({ message: "El nombre de usuario es obligatorio" });
+        setError({ message: t("usernameRequired") });
         return;
       }
       if (password.length < 6) {
-        setError({
-          message: "La contraseña debe tener al menos 6 caracteres",
-        });
+        setError({ message: t("passwordTooShort") });
         return;
       }
 
@@ -346,28 +419,24 @@ export default function AuthForm() {
 
         if (signUpError) {
           if (signUpError.message.includes("already registered")) {
-            setError({ message: "Este correo ya está registrado." });
-          } else if (
-            signUpError.message.toLowerCase().includes("weak password")
-          ) {
-            setError({
-              message:
-                "La contraseña es muy débil. Usa al menos 6 caracteres con mayúsculas, minúsculas y números.",
-            });
+            setError({ message: t("alreadyRegistered") });
+          } else if (signUpError.message.toLowerCase().includes("weak password")) {
+            setError({ message: t("weakPassword") });
           } else {
             setError({ message: signUpError.message });
           }
           return;
         }
 
-        setSuccessMessage("¡Cuenta creada! Revisa tu correo para confirmar.");
+        setSuccessMessage(t("accountCreated"));
       } catch {
-        setError({ message: "Error inesperado. Intenta de nuevo." });
+        setError({ message: t("unexpectedError") });
       } finally {
         setLoading(false);
       }
     },
-    [email, password, username, supabase],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [email, password, username, supabase, locale],
   );
 
   /* ---- Google OAuth ---- */
@@ -387,11 +456,12 @@ export default function AuthForm() {
         setError({ message: oauthError.message });
       }
     } catch {
-      setError({ message: "Error al iniciar sesión con Google." });
+      setError({ message: t("oauthError") });
     } finally {
       setLoading(false);
     }
-  }, [supabase, redirectTo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase, redirectTo, locale]);
 
   /* ---- Navigation ---- */
   const goBackToEmail = () => {
@@ -402,87 +472,83 @@ export default function AuthForm() {
   };
 
   /* ========================================================================= */
-  /*  RENDER — Full-screen immersive, NO card                                  */
+  /*  RENDER                                                                   */
   /* ========================================================================= */
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-6 py-20">
-      {/* Immersive background */}
-      <ImmersiveBackground />
+      <AmbientGlow />
 
-      {/* Content */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1.2, ease: "easeOut" }}
-        className="relative z-10 w-full max-w-lg flex flex-col items-center"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="relative z-10 w-full max-w-md"
       >
-        {/* Hero typography — HUGE, dominant */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-16 text-center"
-        >
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white leading-[1.1]">
-            Your anime,
+        {/* Hero typography */}
+        <motion.div variants={itemVariants} className="mb-10 text-center">
+          <h1 className="text-[40px] md:text-[56px] font-bold tracking-tight text-white leading-[1.1]">
+            {t("headline1")}
             <br />
-            elevated.
+            {t("headline2")}
           </h1>
-          <p className="mt-6 text-lg text-white/30 max-w-sm mx-auto leading-relaxed">
-            Track what you watch. Build your watchlist. Discover your next obsession.
+          <p className="mt-4 text-base text-white/55 max-w-xs mx-auto leading-relaxed">
+            {t("subtitle")}
           </p>
         </motion.div>
 
-        {/* Form — directly on background, no card */}
-        <motion.div
-          initial={{ opacity: 0, y: 36 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full"
-        >
+        {/* Form */}
+        <motion.div variants={itemVariants}>
           <AnimatePresence mode="wait">
             {/* ================================================================ */}
             {/*  STEP: EMAIL                                                     */}
             {/* ================================================================ */}
             {step === "email" && (
-              <motion.div key="email" {...stepTransition} className="space-y-6">
-                <p className="text-center text-xs text-white/25 uppercase tracking-[0.2em] font-medium">
-                  Comienza tu viaje
+              <motion.div key="email" {...stepTransition} className="space-y-5">
+                <p className="text-center text-[11px] text-white/45 uppercase tracking-[0.2em] font-medium">
+                  {t("beginJourney")}
                 </p>
 
-                <form onSubmit={handleEmailSubmit} className="space-y-6">
+                <form onSubmit={handleEmailSubmit} className="space-y-5">
                   <FormInput
                     id="step-email"
-                    label="Correo electrónico"
+                    label={t("emailLabel")}
                     type="email"
                     value={email}
                     onChange={setEmail}
-                    placeholder="tu@correo.com"
+                    placeholder={t("emailPlaceholder")}
                     autoComplete="email"
                     disabled={checkingEmail}
                     autoFocus
+                    icon="Mail"
                   />
 
                   {error && <ErrorBanner message={error.message} />}
 
-                  <button
+                  <motion.button
                     type="submit"
                     disabled={checkingEmail}
-                    className="h-14 w-full rounded-xl bg-primary text-primary-foreground font-semibold text-base transition-all duration-300 hover:brightness-110 hover:shadow-[0_0_40px_-5px_rgba(74,222,128,0.4)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="group relative flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
                   >
                     {checkingEmail ? (
-                      <Icon name="Loader2" size={18} className="animate-spin" />
-                    ) : null}
-                    {checkingEmail ? "Verificando…" : "Continuar"}
-                  </button>
+                      <Icon name="Loader2" className="animate-spin" size={18} />
+                    ) : (
+                      <>
+                        {t("continue")}
+                        <Icon name="ArrowRight" size={18} className="transition-transform group-hover:translate-x-1" />
+                      </>
+                    )}
+                  </motion.button>
                 </form>
 
-                <Divider />
+                <Divider label={t("or")} />
 
                 <GoogleOAuthButton
                   onClick={handleGoogleOAuth}
                   disabled={checkingEmail}
+                  label={t("continueWithGoogle")}
                 />
               </motion.div>
             )}
@@ -491,55 +557,63 @@ export default function AuthForm() {
             {/*  STEP: SIGN IN                                                   */}
             {/* ================================================================ */}
             {step === "signin" && (
-              <motion.div key="signin" {...stepTransition} className="space-y-6">
+              <motion.div key="signin" {...stepTransition} className="space-y-5">
                 <button
                   type="button"
                   onClick={goBackToEmail}
-                  className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/50 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 transition-colors cursor-pointer"
                 >
                   <Icon name="ChevronLeft" size={14} />
-                  Otro correo
+                  {t("otherEmail")}
                 </button>
 
-                <div className="text-center space-y-4">
+                <div className="text-center space-y-3">
                   <EmailBadge email={email} />
-                  <h2 className="text-3xl font-bold text-white tracking-tight">
-                    Bienvenido de vuelta
+                  <h2 className="text-2xl font-bold text-white tracking-tight">
+                    {t("welcomeBack")}
                   </h2>
                 </div>
 
-                <form onSubmit={handleSignIn} className="space-y-6">
+                <form onSubmit={handleSignIn} className="space-y-5">
                   <FormInput
                     id="step-signin-password"
-                    label="Contraseña"
+                    label={t("passwordLabel")}
                     type="password"
                     value={password}
                     onChange={setPassword}
-                    placeholder="••••••••"
+                    placeholder={t("passwordPlaceholder")}
                     autoComplete="current-password"
                     disabled={loading}
                     autoFocus
+                    icon="Lock"
                   />
 
                   {error && <ErrorBanner message={error.message} />}
 
-                  <button
+                  <motion.button
                     type="submit"
                     disabled={loading}
-                    className="h-14 w-full rounded-xl bg-primary text-primary-foreground font-semibold text-base transition-all duration-300 hover:brightness-110 hover:shadow-[0_0_40px_-5px_rgba(74,222,128,0.4)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="group relative flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
                   >
                     {loading ? (
-                      <Icon name="Loader2" size={18} className="animate-spin" />
-                    ) : null}
-                    {loading ? "Iniciando sesión…" : "Iniciar sesión"}
-                  </button>
+                      <Icon name="Loader2" className="animate-spin" size={18} />
+                    ) : (
+                      <>
+                        {t("signIn")}
+                        <Icon name="ArrowRight" size={18} className="transition-transform group-hover:translate-x-1" />
+                      </>
+                    )}
+                  </motion.button>
                 </form>
 
-                <Divider />
+                <Divider label={t("or")} />
 
                 <GoogleOAuthButton
                   onClick={handleGoogleOAuth}
                   disabled={loading}
+                  label={t("continueWithGoogle")}
                 />
               </motion.div>
             )}
@@ -548,67 +622,76 @@ export default function AuthForm() {
             {/*  STEP: SIGN UP                                                   */}
             {/* ================================================================ */}
             {step === "signup" && (
-              <motion.div key="signup" {...stepTransition} className="space-y-6">
+              <motion.div key="signup" {...stepTransition} className="space-y-5">
                 <button
                   type="button"
                   onClick={goBackToEmail}
-                  className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/50 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 transition-colors cursor-pointer"
                 >
                   <Icon name="ChevronLeft" size={14} />
-                  Otro correo
+                  {t("otherEmail")}
                 </button>
 
-                <div className="text-center space-y-4">
+                <div className="text-center space-y-3">
                   <EmailBadge email={email} />
-                  <h2 className="text-3xl font-bold text-white tracking-tight">
-                    Crea tu cuenta
+                  <h2 className="text-2xl font-bold text-white tracking-tight">
+                    {t("createAccount")}
                   </h2>
                 </div>
 
-                <form onSubmit={handleSignUp} className="space-y-6">
+                <form onSubmit={handleSignUp} className="space-y-5">
                   <FormInput
                     id="step-signup-username"
-                    label="Nombre de usuario"
+                    label={t("usernameLabel")}
                     value={username}
                     onChange={setUsername}
-                    placeholder="tu_usuario"
+                    placeholder={t("usernamePlaceholder")}
                     autoComplete="username"
                     disabled={loading}
                     autoFocus
+                    icon="User"
                   />
 
                   <FormInput
                     id="step-signup-password"
-                    label="Contraseña"
+                    label={t("passwordLabel")}
                     type="password"
                     value={password}
                     onChange={setPassword}
-                    placeholder="••••••••"
+                    placeholder={t("passwordPlaceholder")}
                     autoComplete="new-password"
                     disabled={loading}
                     minLength={6}
+                    icon="Lock"
                   />
 
                   {error && <ErrorBanner message={error.message} />}
                   {successMessage && <SuccessBanner message={successMessage} />}
 
-                  <button
+                  <motion.button
                     type="submit"
                     disabled={loading || !!successMessage}
-                    className="h-14 w-full rounded-xl bg-primary text-primary-foreground font-semibold text-base transition-all duration-300 hover:brightness-110 hover:shadow-[0_0_40px_-5px_rgba(74,222,128,0.4)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="group relative flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
                   >
                     {loading ? (
-                      <Icon name="Loader2" size={18} className="animate-spin" />
-                    ) : null}
-                    {loading ? "Creando cuenta…" : "Crear cuenta"}
-                  </button>
+                      <Icon name="Loader2" className="animate-spin" size={18} />
+                    ) : (
+                      <>
+                        {t("createAccountBtn")}
+                        <Icon name="ArrowRight" size={18} className="transition-transform group-hover:translate-x-1" />
+                      </>
+                    )}
+                  </motion.button>
                 </form>
 
-                <Divider />
+                <Divider label={t("or")} />
 
                 <GoogleOAuthButton
                   onClick={handleGoogleOAuth}
                   disabled={loading}
+                  label={t("continueWithGoogle")}
                 />
               </motion.div>
             )}
