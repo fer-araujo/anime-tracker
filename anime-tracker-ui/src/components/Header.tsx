@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Icon from "@/components/custom/Icon";
 import SearchBar from "@/components/Search/SearchBar";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ import { AnimeTrackerLogo } from "./Logo";
 import { useAuth } from "@/providers/AuthProvider";
 
 export default function Header() {
+  const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -51,6 +52,9 @@ export default function Header() {
     setIsUserMenuOpen(false);
     router.refresh();
   };
+
+  // Hide on auth page — standalone layout
+  if (pathname.startsWith("/auth")) return null;
 
   return (
     <header
@@ -133,9 +137,9 @@ export default function Header() {
             ) : (
               <Link
                 href="/auth"
-                className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:brightness-110 transition-all cursor-pointer flex items-center gap-1.5"
+                className="relative inline-flex items-center gap-1.5 px-5 py-2 rounded-full border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl text-[13px] font-medium text-white/70 hover:text-white hover:border-white/[0.15] hover:bg-white/[0.06] transition-all duration-300 active:scale-[0.97]"
               >
-                <Icon name="User" size={14} />
+                <Icon name="User" size={13} />
                 Iniciar sesión
               </Link>
             )}

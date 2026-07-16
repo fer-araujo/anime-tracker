@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import AuthForm from "@/components/auth/AuthForm";
 
-// Mock next/navigation for AuthForm
+// Mock next/navigation
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
@@ -11,45 +11,57 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-describe("AuthForm", () => {
-  it("renders the sign-in form by default", () => {
+// Mock server action
+vi.mock("@/actions/auth", () => ({
+  checkEmailExists: vi.fn(),
+}));
+
+// Mock framer-motion to render children directly (no animations in tests)
+vi.mock("framer-motion", () => ({
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  motion: {
+    div: ({ children, ...props }: any) => {
+      // filter out framer-motion specific props
+      const { initial, animate, exit, transition, ...rest } = props;
+      return <div {...rest}>{children}</div>;
+    },
+  },
+}));
+
+describe("AuthForm — email step (default)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders the email input by default", () => {
     render(<AuthForm />);
     expect(screen.getByText("Anime Tracker")).toBeTruthy();
-    // Description text is unique; "Iniciar sesión" appears twice (tab + submit)
     expect(
-      screen.getByText("Inicia sesión para gestionar tu lista"),
+      screen.getByText("Ingresa tu correo para continuar"),
     ).toBeTruthy();
-    expect(screen.getByText("Crear cuenta")).toBeTruthy();
-  });
-
-  it("renders email and password inputs", () => {
-    render(<AuthForm />);
     expect(screen.getByLabelText("Correo electrónico")).toBeTruthy();
-    expect(screen.getByLabelText("Contraseña")).toBeTruthy();
   });
 
-  it("renders Google and GitHub OAuth buttons", () => {
+  it("renders Continue button instead of Iniciar sesión", () => {
+    render(<AuthForm />);
+    expect(screen.getByText("Continuar")).toBeTruthy();
+  });
+
+  it("renders Google OAuth button on email step", () => {
     render(<AuthForm />);
     expect(screen.getByText("Google")).toBeTruthy();
-    expect(screen.getByText("GitHub")).toBeTruthy();
   });
 
-  it("renders the submit button with sign-in text", () => {
+  it("does NOT render GitHub button", () => {
     render(<AuthForm />);
-    // Multiple elements contain "Iniciar sesión" — at least the submit button
-    const matches = screen.getAllByText("Iniciar sesión");
-    expect(matches.length).toBeGreaterThanOrEqual(1);
-    // The submit button is type="submit"
-    const submitBtn = matches.find(
-      (el) => el.getAttribute("type") === "submit",
-    );
-    expect(submitBtn).toBeTruthy();
+    expect(screen.queryByText("GitHub")).toBeNull();
   });
 
-  it("switches to sign-up mode when clicking Crear cuenta tab", () => {
+  it("shows email input as the only auth field initially", () => {
     render(<AuthForm />);
-    const signUpTab = screen.getByText("Crear cuenta");
-    signUpTab.click();
-    expect(screen.getByText("Crear cuenta")).toBeTruthy();
+    // On the email step there should be no password field visible
+    expect(screen.queryByLabelText("Contraseña")).toBeNull();
   });
 });
