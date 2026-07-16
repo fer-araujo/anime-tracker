@@ -1,15 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Icon from "@/components/custom/Icon";
 import SearchBar from "@/components/Search/SearchBar";
 import { cn } from "@/lib/utils";
 import { AnimeTrackerLogo } from "./Logo";
+import { useAuth } from "@/providers/AuthProvider";
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  const { user, loading, signOut } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 40);
@@ -24,6 +31,26 @@ export default function Header() {
     window.addEventListener("scroll", handleScrollClose);
     return () => window.removeEventListener("scroll", handleScrollClose);
   }, []);
+
+  // Close user menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(e.target as Node)
+      ) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSignOut = async () => {
+    await signOut();
+    setIsUserMenuOpen(false);
+    router.refresh();
+  };
 
   return (
     <header
@@ -58,11 +85,60 @@ export default function Header() {
 
         {/* ICONOS EXTRA (Solo Desktop) */}
         <div className="hidden md:flex items-center gap-3 lg:gap-4 shrink-0">
-          <button className="text-white/70 hover:text-white transition-colors">
-            <Icon name="Bell" size={20} />
-          </button>
-          <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/70 hover:border-primary transition-colors cursor-pointer">
-            <Icon name="User" size={16} />
+          {/* User section */}
+          <div className="relative" ref={userMenuRef}>
+            {loading ? null : user ? (
+              <>
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary text-xs font-bold hover:bg-primary/30 transition-colors cursor-pointer uppercase"
+                  aria-label="Menú de usuario"
+                >
+                  {user.user_metadata?.avatar_url ? (
+                    <img
+                      src={user.user_metadata.avatar_url}
+                      alt="Avatar"
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    (user.email?.charAt(0) ?? "?")
+                  )}
+                </button>
+
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-white/10 bg-neutral-950/95 backdrop-blur-2xl shadow-xl shadow-black/30 py-2 z-50">
+                    <div className="px-4 py-2 border-b border-white/10">
+                      <p className="text-sm text-white/90 truncate">
+                        {user.email}
+                      </p>
+                    </div>
+                    <Link
+                      href="/watchlist"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      <Icon name="List" size={16} />
+                      Watchlist
+                    </Link>
+                    <button
+                      onClick={handleSignOut}
+                      className="flex items-center gap-2 w-full text-left px-4 py-2.5 text-sm text-white/50 hover:text-red-400 hover:bg-white/5 transition-colors cursor-pointer"
+                    >
+                      <Icon name="LogOut" size={16} />
+                      Cerrar sesión
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <Link
+                href="/auth"
+                className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:brightness-110 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Icon name="User" size={14} />
+                Iniciar sesión
+              </Link>
+            )}
           </div>
         </div>
 
@@ -115,14 +191,38 @@ export default function Header() {
           <div className="w-full h-[1px] bg-white/10 my-2" />
 
           <div className="flex items-center gap-6 pt-2 pb-2">
-            <button className="flex items-center gap-2 text-white/70 hover:text-white transition-colors">
-              <Icon name="Bell" size={20} />
-              <span>Notificaciones</span>
-            </button>
-            <button className="flex items-center gap-2 text-white/70 hover:text-white transition-colors">
-              <Icon name="User" size={20} />
-              <span>Mi Perfil</span>
-            </button>
+            {user ? (
+              <>
+                <Link
+                  href="/watchlist"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
+                >
+                  <Icon name="List" size={20} />
+                  <span>Watchlist</span>
+                </Link>
+                <button
+                  onClick={() => {
+                    signOut();
+                    setIsMobileMenuOpen(false);
+                    router.refresh();
+                  }}
+                  className="flex items-center gap-2 text-white/50 hover:text-red-400 transition-colors cursor-pointer"
+                >
+                  <Icon name="LogOut" size={20} />
+                  <span>Cerrar sesión</span>
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/auth"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
+              >
+                <Icon name="User" size={20} />
+                <span>Iniciar sesión</span>
+              </Link>
+            )}
           </div>
         </nav>
       </div>
