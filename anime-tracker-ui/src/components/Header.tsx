@@ -53,8 +53,8 @@ export default function Header() {
     router.refresh();
   };
 
-  // Hide on auth page — standalone layout
-  if (pathname.startsWith("/auth")) return null;
+  // Hide on auth pages — standalone layout
+  if (pathname.startsWith("/auth") || pathname.startsWith("/login")) return null;
 
   return (
     <header
