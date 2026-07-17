@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AnimatePresence, motion, type Transition } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import Icon from "@/components/custom/Icon";
 import type { IconName } from "@/components/custom/Icon";
@@ -13,6 +13,77 @@ import type { IconName } from "@/components/custom/Icon";
 
 type AuthStep = "signin" | "signup";
 type FormError = { message: string };
+
+/* -------------------------------------------------------------------------- */
+/*  Validation helpers                                                         */
+/* -------------------------------------------------------------------------- */
+
+export type ValidationResult =
+  | { valid: true }
+  | { valid: false; message: string };
+
+export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
+
+export function validateSignIn(email: string, password: string): ValidationResult {
+  if (!email.trim() || !EMAIL_REGEX.test(email.trim())) {
+    return { valid: false, message: "El correo electrónico no es válido" };
+  }
+  if (!password) {
+    return { valid: false, message: "La contraseña es obligatoria" };
+  }
+  return { valid: true };
+}
+
+export function validateSignUp(
+  email: string,
+  username: string,
+  password: string,
+): ValidationResult {
+  if (!email.trim() || !EMAIL_REGEX.test(email.trim())) {
+    return { valid: false, message: "El correo electrónico no es válido" };
+  }
+  if (!username.trim()) {
+    return { valid: false, message: "El nombre de usuario es obligatorio" };
+  }
+  if (!USERNAME_REGEX.test(username.trim())) {
+    return {
+      valid: false,
+      message:
+        "El nombre de usuario solo puede contener letras, números y guion bajo",
+    };
+  }
+  if (username.trim().length < 3) {
+    return {
+      valid: false,
+      message: "El nombre de usuario debe tener al menos 3 caracteres",
+    };
+  }
+  if (username.trim().length > 30) {
+    return {
+      valid: false,
+      message: "El nombre de usuario debe tener máximo 30 caracteres",
+    };
+  }
+  if (password.length < 6) {
+    return {
+      valid: false,
+      message: "La contraseña debe tener al menos 6 caracteres",
+    };
+  }
+  return { valid: true };
+}
+
+export function validateRedirectTo(redirect: string | null): string {
+  if (!redirect) return "/";
+  const startsWithSlash = redirect.startsWith("/");
+  const hasProtocol = redirect.includes("://");
+  const hasAtSign = redirect.includes("@");
+  const startsWithDoubleSlash = redirect.startsWith("//");
+  if (!startsWithSlash || hasProtocol || hasAtSign || startsWithDoubleSlash)
+    return "/";
+  return redirect;
+}
 
 /* -------------------------------------------------------------------------- */
 /*  Immersive background — full-screen gradient with multiple orbs             */
@@ -74,7 +145,7 @@ function FormInput({
           <Icon
             name={icon}
             size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 pointer-events-none"
           />
         )}
         <input
@@ -88,7 +159,7 @@ function FormInput({
           disabled={disabled}
           autoFocus={autoFocus}
           minLength={minLength}
-          className={`h-12 w-full rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-white/30 backdrop-blur-md transition-all focus:bg-white/10 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 ${icon ? "pl-11" : "px-4"} pr-4`}
+          className={`h-12 w-full rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-white/30 backdrop-blur-md transition-all focus:bg-white/10 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 ${icon ? "pl-12" : "px-4"} pr-4`}
         />
       </div>
     </div>
@@ -172,17 +243,12 @@ function SuccessBanner({ message }: { message: string }) {
 /*  Step transition                                                            */
 /* -------------------------------------------------------------------------- */
 
-const stepTransition: {
-  initial: { opacity: number; y: number };
-  animate: { opacity: number; y: number };
-  exit: { opacity: number; y: number };
-  transition: Transition;
-} = {
-  initial: { opacity: 0, y: 20 },
+const stepTransition = {
+  initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -16 },
-  transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
-};
+  exit: { opacity: 0, y: 8 },
+  transition: { duration: 0.2, ease: "easeInOut" },
+} as const;
 
 /* ========================================================================== */
 /*  AuthForm                                                                   */
@@ -219,20 +285,18 @@ export default function AuthForm() {
       e.preventDefault();
       setError(null);
 
-      const trimmedEmail = email.trim();
-      if (!trimmedEmail) {
-        setError({ message: "El correo electrónico es obligatorio" });
+      const validation = validateSignIn(email, password);
+      if (!validation.valid) {
+        setError({ message: validation.message });
         return;
       }
-      if (!password) {
-        setError({ message: "La contraseña es obligatoria" });
-        return;
-      }
+
+      const safeRedirect = validateRedirectTo(redirectTo);
 
       setLoading(true);
       try {
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: trimmedEmail,
+          email: email.trim(),
           password,
         });
 
@@ -245,7 +309,7 @@ export default function AuthForm() {
           return;
         }
 
-        router.push(redirectTo);
+        router.push(safeRedirect);
         router.refresh();
       } catch {
         setError({ message: "Error inesperado. Intenta de nuevo." });
@@ -262,26 +326,16 @@ export default function AuthForm() {
       e.preventDefault();
       setError(null);
 
-      const trimmedEmail = email.trim();
-      if (!trimmedEmail) {
-        setError({ message: "El correo electrónico es obligatorio" });
-        return;
-      }
-      if (!username.trim()) {
-        setError({ message: "El nombre de usuario es obligatorio" });
-        return;
-      }
-      if (password.length < 6) {
-        setError({
-          message: "La contraseña debe tener al menos 6 caracteres",
-        });
+      const validation = validateSignUp(email, username, password);
+      if (!validation.valid) {
+        setError({ message: validation.message });
         return;
       }
 
       setLoading(true);
       try {
         const { error: signUpError } = await supabase.auth.signUp({
-          email: trimmedEmail,
+          email: email.trim(),
           password,
           options: {
             data: { username: username.trim() },
@@ -320,11 +374,13 @@ export default function AuthForm() {
     setError(null);
     setLoading(true);
 
+    const safeRedirect = validateRedirectTo(redirectTo);
+
     try {
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?redirect_to=${encodeURIComponent(redirectTo)}`,
+          redirectTo: `${window.location.origin}/auth/callback?redirect_to=${encodeURIComponent(safeRedirect)}`,
         },
       });
 
@@ -396,7 +452,7 @@ export default function AuthForm() {
                     type="email"
                     value={email}
                     onChange={setEmail}
-                    placeholder="nombre@ejemplo.com"
+                    placeholder="you@example.com"
                     autoComplete="email"
                     disabled={loading}
                     autoFocus
@@ -409,7 +465,7 @@ export default function AuthForm() {
                     type="password"
                     value={password}
                     onChange={setPassword}
-                    placeholder="••••••••"
+                    placeholder="Enter your password"
                     autoComplete="current-password"
                     disabled={loading}
                     icon="Lock"
@@ -464,7 +520,7 @@ export default function AuthForm() {
                     label="Nombre de usuario"
                     value={username}
                     onChange={setUsername}
-                    placeholder="tu_usuario"
+                    placeholder="your_username"
                     autoComplete="username"
                     disabled={loading}
                     autoFocus
@@ -477,7 +533,7 @@ export default function AuthForm() {
                     type="email"
                     value={email}
                     onChange={setEmail}
-                    placeholder="nombre@ejemplo.com"
+                    placeholder="you@example.com"
                     autoComplete="email"
                     disabled={loading}
                     icon="Mail"
@@ -489,7 +545,7 @@ export default function AuthForm() {
                     type="password"
                     value={password}
                     onChange={setPassword}
-                    placeholder="••••••••"
+                    placeholder="Enter your password"
                     autoComplete="new-password"
                     disabled={loading}
                     minLength={6}
