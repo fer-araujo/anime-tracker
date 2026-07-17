@@ -170,7 +170,7 @@ export default function WatchlistPageClient() {
   // Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push("/auth?redirect=/watchlist");
+      router.push("/login?redirect=/watchlist");
     }
   }, [user, authLoading, router]);
 

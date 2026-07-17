@@ -58,7 +58,7 @@ export default function AnimeWatchlistSection({ animeId }: Props) {
     return (
       <div className="p-5 rounded-xl border border-white/5 bg-white/[0.02] backdrop-blur-md text-center">
         <p className="text-xs text-white/40">
-          <a href="/auth" className="text-primary hover:underline">
+          <a href="/login" className="text-primary hover:underline">
             Inicia sesión
           </a>{" "}
           para añadir a tu lista

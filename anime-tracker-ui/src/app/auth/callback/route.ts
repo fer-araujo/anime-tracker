@@ -40,5 +40,5 @@ export async function GET(request: NextRequest) {
     console.error("[auth/callback] No authorization code in callback URL");
   }
 
-  return NextResponse.redirect(`${origin}/auth?error=auth_callback_error`);
+  return NextResponse.redirect(`${origin}/login?error=auth_callback_error`);
 }
