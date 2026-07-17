@@ -5,12 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { fetchSeason } from "@/lib/api";
 import type { Anime } from "@/types/anime";
-import { AnimeCard } from "@/components/AnimeCard";
+import { WatchlistAnimeCard } from "@/components/season/WatchlistAnimeCard";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
 import Select, { type SelectOption } from "@/components/custom/Select";
 import { Pagination } from "@/components/custom/Pagination";
 import { cn } from "@/lib/utils";
-import "./season-ambience.css";
 
 /* -------------------------------------------------------------------------- */
 /*  Filter/sort helpers (extracted for testing)                                */
@@ -249,11 +248,13 @@ export default function SeasonPage({
       className="fixed inset-0 -z-10 overflow-hidden pointer-events-none"
       aria-hidden="true"
     >
-      {/* Depth gradient — pure dark top, whisper of lighter gray at bottom */}
-      <div className="absolute inset-0 ambience-base" />
+      {/* Depth gradient — pure dark base */}
+      <div className="absolute inset-0 bg-background" />
 
       {/* Cinematic ambient glow from bottom — pulsing, visible, warm light */}
-      <div className="absolute inset-0 ambience-glow" />
+      <div
+        className="absolute inset-0 origin-bottom animate-glow-pulse will-change-transform bg-[radial-gradient(ellipse_130%_30%_at_50%_100%,hsl(222_10%_35%/0.04)_0%,hsl(222_10%_25%/0.02)_40%,transparent_70%)] motion-reduce:animate-none motion-reduce:opacity-30"
+      />
     </div>
   );
 
@@ -264,7 +265,7 @@ export default function SeasonPage({
         {backdropLayer}
         <main className={containerClasses}>
           <div className="max-w-7xl mx-auto">
-            <div className="h-8 w-48 bg-white/5 rounded-lg animate-shimmer mb-8" />
+            <div className="h-8 w-48 bg-white/5 rounded-lg animate-shimmer bg-[length:200%_100%] mb-8" />
             <GridSkeleton variant="grid" count={20} />
           </div>
         </main>
@@ -474,11 +475,9 @@ export default function SeasonPage({
               {/* Anime grid — paginated */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
                 {paginated.map((anime) => (
-                  <AnimeCard
+                  <WatchlistAnimeCard
                     key={anime.id.anilist}
                     anime={anime}
-                    variant="compact"
-                    showTitleBelow
                     onOpen={handleCardOpen}
                   />
                 ))}
