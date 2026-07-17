@@ -16,6 +16,8 @@ export interface FloatingLabelInputProps {
   type?: string;
   value: string;
   onChange: (value: string) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
   autoComplete?: string;
   disabled?: boolean;
   autoFocus?: boolean;
@@ -35,6 +37,8 @@ export function FloatingLabelInput({
   type = "text",
   value,
   onChange,
+  onFocus,
+  onBlur,
   autoComplete,
   disabled,
   autoFocus,
@@ -67,8 +71,14 @@ export function FloatingLabelInput({
         autoFocus={autoFocus}
         minLength={minLength}
         aria-invalid={error ? true : undefined}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        onFocus={() => {
+          setFocused(true);
+          onFocus?.();
+        }}
+        onBlur={() => {
+          setFocused(false);
+          onBlur?.();
+        }}
         className={cn(
           "h-14 w-full rounded-xl bg-white/5 text-sm text-white transition-all duration-200 focus:outline-none disabled:opacity-50 pr-4 pt-5",
           icon ? "pl-12" : "px-4",

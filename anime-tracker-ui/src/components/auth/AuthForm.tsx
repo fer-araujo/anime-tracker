@@ -4,12 +4,12 @@ import { useState, useCallback, useEffect, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import Icon from "@/components/custom/Icon";
 import { FloatingLabelInput } from "@/components/custom/FloatingLabelInput";
 import { FormBanner } from "@/components/common/FormBanner";
 import { Divider } from "@/components/common/Divider";
 import { GoogleOAuthButton } from "@/components/common/GoogleOAuthButton";
 import { AuthBackground } from "@/components/common/AuthBackground";
+import { SubmitButton } from "@/components/common/SubmitButton";
 import { sanitizeInput } from "@/lib/sanitize";
 import {
   validateSignIn,
@@ -34,41 +34,6 @@ const stepTransition = {
   exit: { opacity: 0, y: 8 },
   transition: { duration: 0.2, ease: "easeInOut" },
 } as const;
-
-/* -------------------------------------------------------------------------- */
-/*  Submit button — local render helper                                        */
-/* -------------------------------------------------------------------------- */
-
-function SubmitButton({
-  label,
-  loading,
-  disabled,
-}: {
-  label: string;
-  loading: boolean;
-  disabled: boolean;
-}) {
-  return (
-    <button
-      type="submit"
-      disabled={disabled}
-      className="group relative flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:bg-primary-hover active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
-    >
-      {loading ? (
-        <Icon name="Loader2" size={18} className="animate-spin" />
-      ) : (
-        <>
-          {label}
-          <Icon
-            name="ArrowRight"
-            size={18}
-            className="transition-transform group-hover:translate-x-1"
-          />
-        </>
-      )}
-    </button>
-  );
-}
 
 /* ========================================================================== */
 /*  AuthForm                                                                   */
