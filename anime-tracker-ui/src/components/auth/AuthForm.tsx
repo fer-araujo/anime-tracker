@@ -124,7 +124,7 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
           password,
           options: {
             data: { username: username.trim() },
-            emailRedirectTo: `${window.location.origin}/auth`,
+            emailRedirectTo: `${window.location.origin}/login`,
           },
         });
 
