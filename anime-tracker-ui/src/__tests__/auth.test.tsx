@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import AuthForm, {
+import AuthForm from "@/components/auth/AuthForm";
+import {
   validateSignIn,
   validateSignUp,
   validateRedirectTo,
   EMAIL_REGEX,
   USERNAME_REGEX,
-} from "@/components/auth/AuthForm";
+} from "@/lib/validations/auth";
 
 // Mock navigator.language to Spanish for consistent test assertions
 Object.defineProperty(window, "navigator", {
