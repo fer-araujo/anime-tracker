@@ -52,7 +52,7 @@ function SubmitButton({
     <button
       type="submit"
       disabled={disabled}
-      className="group relative flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:bg-[hsl(142,55%,40%)] active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
+      className="group relative flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:bg-primary-hover active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
     >
       {loading ? (
         <Icon name="Loader2" size={18} className="animate-spin" />
@@ -242,16 +242,6 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
         transition={{ duration: 1.2, ease: "easeOut" }}
         className="relative z-10 w-full max-w-[460px] flex flex-col items-center"
       >
-        {/* PUNTO 1 — PROPUESTA Micro-branding animado:
-            Agregar antes del h1:
-            <motion.div
-              animate={{ y: [0, -4, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="mb-5 flex justify-center"
-            >
-              <AnimeTrackerLogo />
-            </motion.div>
-        */}
         {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -287,7 +277,6 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
                     type="email"
                     value={email}
                     onChange={(v) => setEmail(sanitizeInput(v, 254))}
-                    placeholder="nombre@correo.com"
                     autoComplete="email"
                     disabled={loading}
                     autoFocus
@@ -300,7 +289,6 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
                     type="password"
                     value={password}
                     onChange={(v) => setPassword(sanitizeInput(v, 128))}
-                    placeholder="tu contraseña"
                     autoComplete="current-password"
                     disabled={loading}
                     icon="Lock"
@@ -346,7 +334,6 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
                     label="Nombre de usuario"
                     value={username}
                     onChange={(v) => setUsername(sanitizeInput(v, 30))}
-                    placeholder="tu_nombre_de_usuario"
                     autoComplete="username"
                     disabled={loading}
                     autoFocus
@@ -359,7 +346,6 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
                     type="email"
                     value={email}
                     onChange={(v) => setEmail(sanitizeInput(v, 254))}
-                    placeholder="nombre@correo.com"
                     autoComplete="email"
                     disabled={loading}
                     icon="Mail"
@@ -371,7 +357,6 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
                     type="password"
                     value={password}
                     onChange={(v) => setPassword(sanitizeInput(v, 128))}
-                    placeholder="tu contraseña"
                     autoComplete="new-password"
                     disabled={loading}
                     minLength={6}

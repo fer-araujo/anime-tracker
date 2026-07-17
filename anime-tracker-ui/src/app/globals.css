@@ -12,6 +12,7 @@
 
   /* Acento verde */
   --color-primary: hsl(142 72% 45%);
+  --color-primary-hover: hsl(142 55% 40%);
   --color-primary-foreground: hsl(144 100% 6%);
 
   /* Colores de marca (providers) */

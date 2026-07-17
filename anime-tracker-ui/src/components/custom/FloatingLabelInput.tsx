@@ -16,7 +16,6 @@ export interface FloatingLabelInputProps {
   type?: string;
   value: string;
   onChange: (value: string) => void;
-  placeholder?: string;
   autoComplete?: string;
   disabled?: boolean;
   autoFocus?: boolean;
@@ -36,7 +35,6 @@ export function FloatingLabelInput({
   type = "text",
   value,
   onChange,
-  placeholder = " ",
   autoComplete,
   disabled,
   autoFocus,
@@ -62,7 +60,7 @@ export function FloatingLabelInput({
         type={type}
         value={value}
         onChange={(e) => onChange(sanitizeInput(e.target.value, maxLength))}
-        placeholder={placeholder}
+        placeholder=" "
         autoComplete={autoComplete}
         required
         disabled={disabled}
