@@ -1,9 +1,14 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { AnimeCard } from "@/components/AnimeCard";
-import type { Anime, WatchlistStatus } from "@/types/anime";
+import { Modal } from "@/components/custom/Modal";
+import { AuthPrompt } from "@/components/common/AuthPrompt";
+import { AddToListModal } from "@/components/common/AddToListModal";
+import type { Anime } from "@/types/anime";
 
 type Props = {
   anime: Anime;
@@ -12,39 +17,87 @@ type Props = {
 
 export function WatchlistAnimeCard({ anime, onOpen }: Props) {
   const { user } = useAuth();
+  const router = useRouter();
+  const { entry, toggleFavorite } = useWatchlist(anime.id.anilist);
+  const [showModal, setShowModal] = useState(false);
+  const [variant, setVariant] = useState<"center" | "bottom-sheet">("center");
 
-  const { entry, updateStatus, toggleFavorite } =
-    useWatchlist(anime.id.anilist);
+  // Responsive variant
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    setVariant(mq.matches ? "bottom-sheet" : "center");
+    const handler = (e: MediaQueryListEvent) =>
+      setVariant(e.matches ? "bottom-sheet" : "center");
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
-  const handleStatusChange = (a: Anime, status: WatchlistStatus) => {
-    if (status === entry?.status) return;
-    updateStatus(status);
-  };
+  const handleAddToList = useCallback(() => {
+    if (!user) {
+      try {
+        if (sessionStorage.getItem("auth_prompt_seen")) return;
+      } catch {
+        // noop
+      }
+    }
+    setShowModal(true);
+  }, [user]);
 
-  const handleToggleFavorite = (a: Anime, next: boolean) => {
-    toggleFavorite(next);
-  };
+  const handleToggleFavorite = useCallback(
+    (a: Anime, next: boolean) => {
+      if (!user) {
+        try {
+          if (sessionStorage.getItem("auth_prompt_seen")) return;
+        } catch {
+          // noop
+        }
+        setShowModal(true);
+        return;
+      }
+      toggleFavorite(next);
+    },
+    [user, toggleFavorite],
+  );
 
-  if (!user) {
-    return (
+  const handleClose = useCallback(() => {
+    setShowModal(false);
+  }, []);
+
+  const handleLoginNavigate = useCallback(() => {
+    router.push("/login");
+  }, [router]);
+
+  return (
+    <>
       <AnimeCard
         anime={anime}
         variant="compact"
         showTitleBelow
         onOpen={onOpen}
+        watchlistEntry={entry}
+        onAddToList={handleAddToList}
+        onToggleFavorite={handleToggleFavorite}
       />
-    );
-  }
 
-  return (
-    <AnimeCard
-      anime={anime}
-      variant="compact"
-      showTitleBelow
-      onOpen={onOpen}
-      watchlistEntry={entry}
-      onStatusChange={handleStatusChange}
-      onToggleFavorite={handleToggleFavorite}
-    />
+      <Modal
+        isOpen={showModal}
+        onClose={handleClose}
+        variant={variant}
+        aria-labelledby="watchlist-modal-title"
+      >
+        {!user ? (
+          <AuthPrompt
+            onClose={handleClose}
+            onLoginNavigate={handleLoginNavigate}
+          />
+        ) : (
+          <AddToListModal
+            animeId={anime.id.anilist}
+            currentEntry={entry}
+            onClose={handleClose}
+          />
+        )}
+      </Modal>
+    </>
   );
 }
