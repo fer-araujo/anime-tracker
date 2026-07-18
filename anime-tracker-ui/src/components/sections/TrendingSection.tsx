@@ -1,8 +1,8 @@
 import { fetchSeason } from "@/lib/api";
-import { MinimalShelf } from "@/components/Shelf";
+import { WatchlistShelf } from "@/components/common/WatchlistShelf";
 
 export default async function TrendingSection() {
   const resp = await fetchSeason({ rank: "trending" });
   const items = resp.data ?? [];
-  return <MinimalShelf title="Trending esta temporada" items={items} />;
+  return <WatchlistShelf title="Trending esta temporada" items={items} />;
 }

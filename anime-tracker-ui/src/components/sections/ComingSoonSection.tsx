@@ -1,7 +1,7 @@
 import { fetchComingSoon } from "@/lib/api";
-import { MinimalShelf } from "@/components/Shelf";
+import { WatchlistShelf } from "@/components/common/WatchlistShelf";
 
 export default async function ComingSoonSection() {
   const items = await fetchComingSoon();
-  return <MinimalShelf title="Próximamente" items={items} />;
+  return <WatchlistShelf title="Próximamente" items={items} />;
 }

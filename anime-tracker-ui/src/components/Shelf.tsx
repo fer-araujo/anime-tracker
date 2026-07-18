@@ -1,24 +1,26 @@
 "use client";
-import { useRef, useId } from "react"; // <-- Agregamos useId para accesibilidad
+import { useRef, useId, type ReactNode } from "react";
 import type { Anime } from "@/types/anime";
 import { cn } from "@/lib/utils";
 import { AnimeCard } from "./AnimeCard";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
+interface MinimalShelfProps {
+  title: string;
+  items: Anime[];
+  className?: string;
+  renderCard?: (anime: Anime) => ReactNode;
+}
+
 export function MinimalShelf({
   title,
   items,
   className,
-}: {
-  title: string;
-  items: Anime[];
-  className?: string;
-}) {
-  const ref = useRef<HTMLUListElement | null>(null); // <-- Cambiamos a HTMLUListElement
+  renderCard,
+}: MinimalShelfProps) {
+  const ref = useRef<HTMLUListElement | null>(null);
   const router = useRouter();
-
-  // A11Y: Generamos un ID único por cada shelf para vincular el título con la sección
   const titleId = useId();
 
   const scroll = (dir: 1 | -1) => {
@@ -35,7 +37,6 @@ export function MinimalShelf({
   return (
     <>
       <motion.section
-        // A11Y: Le decimos al lector que esta sección se llama como el título
         aria-labelledby={titleId}
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -49,7 +50,6 @@ export function MinimalShelf({
       >
         {/* --- FLECHAS --- */}
         <button
-          // A11Y: Etiquetas claras y ring para cuando se enfoquen con el teclado
           aria-label="Desplazar a la izquierda"
           onClick={() => scroll(-1)}
           className="hidden md:grid absolute inset-y-0 -left-16 z-10 w-[18vw] max-w-24 place-items-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -87,7 +87,6 @@ export function MinimalShelf({
         {/* --- CARDS CARRUSEL --- */}
         <ul
           ref={ref}
-          // A11Y: Convertimos el contenedor en una lista
           role="list"
           aria-label={`Carrusel de ${title}`}
           className="flex gap-3 md:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory px-1 md:px-4
@@ -96,16 +95,19 @@ export function MinimalShelf({
           {items.map((a) => (
             <li
               key={`${a.id.anilist}-${a.id.tmdb ?? "x"}`}
-              // A11Y: Cada elemento es un listitem
               role="listitem"
               className="snap-start shrink-0 w-[140px] sm:w-48 md:w-60"
             >
-              <AnimeCard
-                anime={a}
-                showTitleBelow
-                onOpen={() => handleOpen(a)}
-                variant="default"
-              />
+              {renderCard ? (
+                renderCard(a)
+              ) : (
+                <AnimeCard
+                  anime={a}
+                  showTitleBelow
+                  onOpen={() => handleOpen(a)}
+                  variant="default"
+                />
+              )}
             </li>
           ))}
         </ul>
