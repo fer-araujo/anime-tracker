@@ -34,103 +34,6 @@ const STATUS_COLORS: Record<WatchlistStatus, string> = {
 };
 
 /* -------------------------------------------------------------------------- */
-/*  StatusDropdown — compact inline picker                                     */
-/* -------------------------------------------------------------------------- */
-
-function StatusDropdown({
-  current,
-  onSelect,
-  onRemove,
-}: {
-  current: WatchlistStatus | null;
-  onSelect: (status: WatchlistStatus) => void;
-  onRemove?: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const statuses: WatchlistStatus[] = [
-    "plan_to_watch",
-    "watching",
-    "completed",
-    "on_hold",
-    "dropped",
-  ];
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen(!open);
-        }}
-        className={cn(
-          "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border transition-colors cursor-pointer",
-          current
-            ? STATUS_COLORS[current]
-            : "border-white/15 text-white/60 bg-white/5 hover:bg-white/10",
-        )}
-        aria-label="Cambiar estado"
-      >
-        {current ? STATUS_LABELS[current] : "Añadir"}
-        <Icon name="ChevronDown" size={10} />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-full mt-1 w-[140px] rounded-lg border border-white/10 bg-neutral-900/95 backdrop-blur-2xl shadow-xl shadow-black/40 py-1 z-50">
-          {statuses.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect(s);
-                setOpen(false);
-              }}
-              className={cn(
-                "w-full text-left px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer",
-                s === current
-                  ? "text-primary bg-primary/10"
-                  : "text-white/70 hover:text-white hover:bg-white/5",
-              )}
-            >
-              {STATUS_LABELS[s]}
-            </button>
-          ))}
-          {current && onRemove && (
-            <>
-              <div className="my-1 h-px bg-white/10" />
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRemove();
-                  setOpen(false);
-                }}
-                className="w-full text-left px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-              >
-                Quitar de lista
-              </button>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
 /*  AnimeCard                                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -169,10 +72,6 @@ export function AnimeCard({
     }
   };
 
-  const handleStatusChange = (newStatus: WatchlistStatus) => {
-    onStatusChange?.(anime, newStatus);
-  };
-
   return (
     <div className="group relative w-full select-none">
       <div
@@ -181,7 +80,7 @@ export function AnimeCard({
         aria-label={`Ver detalles de ${anime.title}`}
         onKeyDown={handleKeyDown}
         className={cn(
-          "relative w-full overflow-hidden p-0 isolate rounded-md cursor-pointer",
+          "relative w-full p-0 isolate rounded-md cursor-pointer",
           variant === "compact" ? "aspect-[3/4]" : "aspect-[2/3]",
           "border border-white/10 bg-neutral-950 transition-all duration-300 ease-out md:hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.5)]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
@@ -191,7 +90,7 @@ export function AnimeCard({
         }}
       >
         {/* Poster */}
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 overflow-hidden rounded-md">
           {anime.images.poster ? (
             <Image
               src={anime.images.poster}
@@ -207,7 +106,52 @@ export function AnimeCard({
           )}
         </div>
 
-        {/* OVERLAY */}
+        {/* Mobile persistent action bar */}
+        <div className="absolute bottom-0 left-0 right-0 z-[3] flex md:hidden items-center justify-between px-2 pb-2 gap-1">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToList?.(anime);
+            }}
+            className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/10 backdrop-blur-sm border border-white/15 cursor-pointer hover:bg-white/20 transition-colors"
+            aria-label="Añadir a lista"
+          >
+            <Icon name="Plus" size={16} className="text-white/80" />
+          </button>
+
+          {/* Status pill */}
+          {watchlistEntry?.status && (
+            <span
+              className={cn(
+                "px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border",
+                STATUS_COLORS[watchlistEntry.status],
+              )}
+            >
+              {STATUS_LABELS[watchlistEntry.status]}
+            </span>
+          )}
+
+          {/* Score badge when completed */}
+          {watchlistEntry?.status === "completed" &&
+            watchlistEntry.score != null && (
+              <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                {watchlistEntry.score}/10
+              </span>
+            )}
+
+          <FavButton
+            active={isFav}
+            onClick={(e) => {
+              e.stopPropagation();
+              const next = !isFav;
+              setFav(next);
+              onToggleFavorite?.(anime, next);
+            }}
+          />
+        </div>
+
+        {/* Desktop overlay */}
         <div
           className={cn(
             "absolute inset-0 z-[2]",
@@ -300,24 +244,17 @@ export function AnimeCard({
                   Detalles
                 </ActionButton>
 
-                {/* Status dropdown or Add button */}
-                {onStatusChange ? (
-                  <StatusDropdown
-                    current={watchlistEntry?.status ?? null}
-                    onSelect={handleStatusChange}
-                  />
-                ) : (
-                  <ActionButton
-                    variant="soft"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAddToList?.(anime);
-                    }}
-                    icon={<Icon name="Plus" size={14} />}
-                  >
-                    Añadir
-                  </ActionButton>
-                )}
+                {/* Add button — always calls onAddToList */}
+                <ActionButton
+                  variant="soft"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddToList?.(anime);
+                  }}
+                  icon={<Icon name="Plus" size={14} />}
+                >
+                  Añadir
+                </ActionButton>
 
                 {/* Score badge when completed */}
                 {watchlistEntry?.status === "completed" &&
