@@ -34,6 +34,39 @@ describe("API smoke tests", () => {
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("POST /v1/anime/batch returns 200 with data for valid IDs", async () => {
+    const res = await request(app)
+      .post("/v1/anime/batch")
+      .send({ ids: [21, 22, 23] })
+      .set("Content-Type", "application/json");
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty("data");
+    expect(Object.keys(res.body.data)).toHaveLength(3);
+  });
+
+  it("POST /v1/anime/batch returns 400 for empty ids", async () => {
+    const res = await request(app)
+      .post("/v1/anime/batch")
+      .send({ ids: [] })
+      .set("Content-Type", "application/json");
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /v1/anime/batch returns 400 for missing ids", async () => {
+    const res = await request(app)
+      .post("/v1/anime/batch")
+      .send({})
+      .set("Content-Type", "application/json");
+    expect(res.status).toBe(400);
+  });
+
+  it("GET /v1/season?season=ALL&year=2025 returns 200 with no season filter", async () => {
+    const res = await request(app).get("/v1/season?season=ALL&year=2025");
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty("data");
+    expect(res.body.meta.season).toBe("ALL");
+  });
+
   it("GET /v1/nonexistent returns 404", async () => {
     const res = await request(app).get("/v1/nonexistent");
     expect(res.status).toBe(404);

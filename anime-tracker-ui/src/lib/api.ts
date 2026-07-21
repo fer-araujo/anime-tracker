@@ -49,6 +49,16 @@ export async function fetchSeason(opts?: {
   const json = await res.json();
   const parsed = SeasonRespSchema.safeParse(json);
   if (!parsed.success) {
+    console.error(
+      "[fetchSeason] Zod parse failed for",
+      u.toString(),
+      "\nZod error:",
+      parsed.error.issues,
+      "\nRaw response type:",
+      typeof json,
+      "\nRaw keys:",
+      json ? Object.keys(json) : "null/undefined",
+    );
     return {
       meta: { country: "", season: "", year: 0, total: 0, source: "" },
       data: [],

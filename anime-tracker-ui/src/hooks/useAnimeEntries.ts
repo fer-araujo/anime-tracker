@@ -3,13 +3,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
-import type { WatchlistEntry } from "@/types/anime";
+import type { AnimeEntry } from "@/types/anime";
 
-type WatchlistItem = WatchlistEntry;
+type AnimeItem = AnimeEntry;
 
-export function useWatchlistList() {
+export function useAnimeEntries() {
   const { user } = useAuth();
-  const [items, setItems] = useState<WatchlistItem[]>([]);
+  const [items, setItems] = useState<AnimeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +26,7 @@ export function useWatchlistList() {
     try {
       const supabase = createClient();
       const { data, error: fetchError } = await supabase
-        .from("watchlist")
+        .from("user_anime")
         .select("*")
         .eq("user_id", user.id)
         .order("updated_at", { ascending: false });
@@ -36,9 +36,9 @@ export function useWatchlistList() {
         return;
       }
 
-      setItems((data ?? []) as WatchlistItem[]);
+      setItems((data ?? []) as AnimeItem[]);
     } catch {
-      setError("Failed to fetch watchlist");
+      setError("Failed to fetch tracking entries");
     } finally {
       setLoading(false);
     }

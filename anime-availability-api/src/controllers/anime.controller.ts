@@ -242,3 +242,91 @@ export async function getAnimeDetails(
     next(err);
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Batch anime details — GraphQL aliases                                     */
+/* -------------------------------------------------------------------------- */
+
+const BATCH_MAX_IDS = 50;
+
+export async function getAnimeBatch(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const { ids } = req.body as { ids?: number[] };
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "ids must be a non-empty array" });
+    }
+
+    const uniqueIds = [...new Set(ids)].slice(0, BATCH_MAX_IDS);
+    const country = (
+      (req.query.country as string) ||
+      ENV.DEFAULT_COUNTRY ||
+      "MX"
+    ).toUpperCase();
+
+    // Build GraphQL query with aliases: a1: Media(id: 1) { ... }, a2: Media(id: 2) { ... }
+    const aliases = uniqueIds
+      .map((id) => `a${id}: Media(id: ${id}, type: ANIME) { id title { romaji english native } coverImage { extraLarge large } bannerImage description episodes duration status season seasonYear format genres averageScore isAdult studios(isMain: true) { edges { isMain node { name } } } startDate { year month day } nextAiringEpisode { episode airingAt } trailer { id site } }`)
+      .join("\n");
+
+    const gql = `query { ${aliases} }`;
+    const aniJson = await anilistFetch(gql, {});
+
+    if (!aniJson?.data) {
+      return res.status(503).json({ error: "AniList unavailable" });
+    }
+
+    // Map results back
+    const results: Record<number, Record<string, unknown>> = {};
+    for (const id of uniqueIds) {
+      const media = aniJson.data[`a${id}`] as AniMediaDetail | null;
+      if (!media) continue;
+
+      const title =
+        media.title?.english ??
+        media.title?.romaji ??
+        media.title?.native ??
+        "Untitled";
+
+      results[id] = {
+        id: { anilist: media.id, tmdb: null },
+        title,
+        providers: [],
+        images: {
+          poster: media.coverImage?.extraLarge ?? media.coverImage?.large ?? null,
+          backdrop: media.bannerImage ?? null,
+          banner: media.bannerImage ?? null,
+          logo: null,
+        },
+        meta: {
+          genres: media.genres ?? [],
+          rating: media.averageScore ? media.averageScore / 10 : null,
+          year: media.seasonYear ?? null,
+          status: media.status ?? "UNKNOWN",
+          episodes: media.episodes ?? null,
+          duration: media.duration ?? null,
+          isAdult: media.isAdult ?? false,
+          studio: extractStudio(media.studios as Parameters<typeof extractStudio>[0]),
+          type: media.format ?? "TV",
+          nextAiring: media.nextAiringEpisode
+            ? `Ep ${media.nextAiringEpisode.episode}`
+            : null,
+          nextEpisodeAt: media.nextAiringEpisode?.airingAt ?? null,
+          trailer: media.trailer?.site === "youtube"
+            ? `https://www.youtube.com/watch?v=${media.trailer.id}`
+            : null,
+        },
+      };
+    }
+
+    setCacheControl(res, "anime");
+    return res.json({ data: results });
+  } catch (err) {
+    logger.error({ err }, "Error en getAnimeBatch");
+    next(err);
+  }
+}

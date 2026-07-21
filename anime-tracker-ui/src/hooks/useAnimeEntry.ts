@@ -3,18 +3,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
-import type { WatchlistEntry, WatchlistStatus } from "@/types/anime";
+import type { AnimeEntry, TrackingStatus } from "@/types/anime";
 import {
-  addToWatchlist as addAction,
+  addToTracking as addAction,
   updateStatus as updateAction,
   toggleFavorite as favAction,
   setScore as scoreAction,
-  removeFromWatchlist as removeAction,
-} from "@/actions/watchlist";
+  removeFromTracking as removeAction,
+} from "@/actions/tracking";
 
-export function useWatchlist(animeId: number | null) {
+export function useAnimeEntry(animeId: number | null) {
   const { user } = useAuth();
-  const [entry, setEntry] = useState<WatchlistEntry | null>(null);
+  const [entry, setEntry] = useState<AnimeEntry | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +30,7 @@ export function useWatchlist(animeId: number | null) {
     try {
       const supabase = createClient();
       const { data, error: fetchError } = await supabase
-        .from("watchlist")
+        .from("user_anime")
         .select("*")
         .eq("user_id", user.id)
         .eq("anime_id", animeId)
@@ -41,9 +41,9 @@ export function useWatchlist(animeId: number | null) {
         return;
       }
 
-      setEntry(data as WatchlistEntry | null);
+      setEntry(data as AnimeEntry | null);
     } catch {
-      setError("Failed to fetch watchlist entry");
+      setError("Failed to fetch tracking entry");
     } finally {
       setLoading(false);
     }
@@ -54,7 +54,7 @@ export function useWatchlist(animeId: number | null) {
   }, [fetchEntry]);
 
   const addToList = useCallback(
-    async (status: WatchlistStatus) => {
+    async (status: TrackingStatus) => {
       if (!animeId) return { success: false, error: "No anime ID" } as const;
       const result = await addAction(animeId, status);
       if (result.success) {
@@ -66,7 +66,7 @@ export function useWatchlist(animeId: number | null) {
   );
 
   const updateEntryStatus = useCallback(
-    async (status: WatchlistStatus) => {
+    async (status: TrackingStatus) => {
       if (!animeId) return { success: false, error: "No anime ID" } as const;
       const result = await updateAction(animeId, status);
       if (result.success) {

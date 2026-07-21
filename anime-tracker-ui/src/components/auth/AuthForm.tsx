@@ -218,7 +218,7 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
             Tu anime, elevado.
           </h1>
           <p className="mt-3 text-sm text-white/40 max-w-xs mx-auto leading-relaxed">
-            Sigue lo que ves. Construye tu watchlist. Descubre tu próxima obsesión.
+            Sigue lo que ves. Construye tu tracking. Descubre tu próxima obsesión.
           </p>
         </motion.div>
 

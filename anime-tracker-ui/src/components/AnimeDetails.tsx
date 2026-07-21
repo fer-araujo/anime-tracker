@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useState, useMemo } from "react";
+import React, { useRef, useState, useMemo, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Icon from "@/components/custom/Icon";
@@ -8,13 +8,46 @@ import { cn, formatNextAiring } from "@/lib/utils";
 import { GalleryLightbox } from "./common/Gallery";
 import { MinimalShelf } from "./Shelf";
 import { ImagePlaceholder } from "./common/ImagePlaceholder";
-import AnimeWatchlistSection from "./AnimeWatchlistSection";
+import AnimeTrackingSection from "./AnimeTrackingSection";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/providers/AuthProvider";
+import { useAnimeEntry } from "@/hooks/useAnimeEntry";
+import { Modal } from "@/components/custom/Modal";
+import { AuthPrompt } from "@/components/common/AuthPrompt";
+import { AddToListModal } from "@/components/common/AddToListModal";
 
 export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
   const ref = useRef(null);
   const [activeTab, setActiveTab] = useState<string>("Detalles");
   const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // Tracking modal
+  const router = useRouter();
+  const { user } = useAuth();
+  const {
+    entry,
+    loading,
+    addToList,
+    updateStatus,
+    toggleFavorite,
+    setScore,
+    remove,
+  } = useAnimeEntry(anime.id.anilist);
+  const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [modalVariant, setModalVariant] = useState<"center" | "bottom-sheet">("center");
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    setModalVariant(mq.matches ? "bottom-sheet" : "center");
+    const handler = (e: MediaQueryListEvent) =>
+      setModalVariant(e.matches ? "bottom-sheet" : "center");
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  const handleTrackingClose = useCallback(() => setShowTrackingModal(false), []);
+  const handleLoginNavigate = useCallback(() => router.push("/login"), [router]);
 
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -200,8 +233,16 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     </div>
                   </div>
 
-                  {/* Watchlist section */}
-                  <AnimeWatchlistSection animeId={anime.id.anilist} />
+                  {/* Tracking section */}
+                  <AnimeTrackingSection
+                    entry={entry}
+                    loading={loading}
+                    onAddToList={addToList}
+                    onUpdateStatus={updateStatus}
+                    onToggleFavorite={toggleFavorite}
+                    onSetScore={setScore}
+                    onRemove={remove}
+                  />
                 </div>
               </div>
 
@@ -220,8 +261,17 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     </a>
                   )}
 
-                  <button className="flex items-center gap-3 bg-transparent border border-white/10 text-white/70 px-7 py-3 rounded-lg text-sm font-semibold hover:text-white hover:bg-white/10 transition-all cursor-pointer">
-                    <Icon name="Plus" size={16} /> Añadir a lista
+                  <button
+                    onClick={() => setShowTrackingModal(true)}
+                    className={cn(
+                      "flex items-center gap-3 px-7 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer",
+                      entry
+                        ? "bg-white/5 border border-white/15 text-white/80 hover:bg-white/10"
+                        : "bg-transparent border border-white/10 text-white/70 hover:text-white hover:bg-white/10",
+                    )}
+                  >
+                    <Icon name={entry ? "List" : "Plus"} size={16} />
+                    {entry ? "Editar lista" : "Añadir a lista"}
                   </button>
                 </div>
                 <section className="space-y-4 text-left">
@@ -595,6 +645,26 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
             </div>
           </div>
         </main>
+
+        <Modal
+          isOpen={showTrackingModal}
+          onClose={handleTrackingClose}
+          variant={modalVariant}
+          aria-labelledby="tracking-modal-title"
+        >
+          {!user ? (
+            <AuthPrompt
+              onClose={handleTrackingClose}
+              onLoginNavigate={handleLoginNavigate}
+            />
+          ) : (
+            <AddToListModal
+              animeId={anime.id.anilist}
+              currentEntry={entry}
+              onClose={handleTrackingClose}
+            />
+          )}
+        </Modal>
       </div>
     </div>
   );

@@ -21,7 +21,9 @@ export async function getSeason(
     };
 
     const year = query.year || defaultSeason.year;
-    const season = (query.season || defaultSeason.season).toUpperCase();
+    const rawSeason = (query.season || defaultSeason.season).toUpperCase();
+    const season = rawSeason === "ALL" ? undefined : rawSeason;
+    const isAllSeasons = rawSeason === "ALL";
     const resolvedCountry = (
       query.country ||
       ENV.DEFAULT_COUNTRY ||
@@ -53,16 +55,16 @@ export async function getSeason(
         ? "TRENDING_DESC"
         : "POPULARITY_DESC";
 
-    // Cuando rank=popular, omitimos el filtro `season` para abarcar el año completo.
-    // Así "Animes populares" y "Trending esta temporada" no duplican contenido.
-    const gql = buildSeasonPageQuery(isPopularYearQuery);
+    // Cuando rank=popular o season=ALL, omitimos el filtro `season` para abarcar el año completo.
+    const skipSeasonFilter = isPopularYearQuery || isAllSeasons;
+    const gql = buildSeasonPageQuery(skipSeasonFilter);
 
     const gqlVariables: Record<string, unknown> = {
       seasonYear: year,
       page: 1,
       sort: [sortParam],
     };
-    if (!isPopularYearQuery) {
+    if (!skipSeasonFilter) {
       gqlVariables.season = season;
     }
 
@@ -76,7 +78,7 @@ export async function getSeason(
 
     if (!rawMedia || rawMedia.length === 0) {
       setCacheControl(res, "season");
-      return res.json({ meta: { season, year, count: 0 }, data: [] });
+      return res.json({ meta: { country: resolvedCountry, season: rawSeason, year, total: 0, source: "AniList + TMDB" }, data: [] });
     }
 
     // --- MAGIA AQUÍ: Usamos la utilidad ---
@@ -100,7 +102,7 @@ export async function getSeason(
     const responseBody = {
       meta: {
         country: resolvedCountry,
-        season,
+        season: rawSeason,
         year,
         total: uniqueItems.length,
         source: "AniList + TMDB",

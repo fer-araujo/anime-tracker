@@ -1,12 +1,11 @@
 "use client";
 
 import { useAuth } from "@/providers/AuthProvider";
-import { useWatchlist } from "@/hooks/useWatchlist";
 import Icon from "@/components/custom/Icon";
 import { cn } from "@/lib/utils";
-import type { WatchlistStatus } from "@/types/anime";
+import type { AnimeEntry, TrackingStatus } from "@/types/anime";
 
-const STATUS_LABELS: Record<WatchlistStatus, string> = {
+const STATUS_LABELS: Record<TrackingStatus, string> = {
   plan_to_watch: "Plan to Watch",
   watching: "Watching",
   completed: "Completed",
@@ -14,7 +13,7 @@ const STATUS_LABELS: Record<WatchlistStatus, string> = {
   dropped: "Dropped",
 };
 
-const STATUS_ACTIVE_COLORS: Record<WatchlistStatus, string> = {
+const STATUS_ACTIVE_COLORS: Record<TrackingStatus, string> = {
   plan_to_watch: "border-white/20 text-white/60 bg-white/5",
   watching: "border-sky-500/40 text-sky-300 bg-sky-500/10",
   completed: "border-emerald-500/40 text-emerald-300 bg-emerald-500/10",
@@ -22,7 +21,7 @@ const STATUS_ACTIVE_COLORS: Record<WatchlistStatus, string> = {
   dropped: "border-red-500/40 text-red-300 bg-red-500/10",
 };
 
-const STATUS_BUTTON_COLORS: Record<WatchlistStatus, string> = {
+const STATUS_BUTTON_COLORS: Record<TrackingStatus, string> = {
   plan_to_watch:
     "border-white/10 text-white/60 hover:text-white hover:bg-white/5",
   watching:
@@ -36,21 +35,25 @@ const STATUS_BUTTON_COLORS: Record<WatchlistStatus, string> = {
 };
 
 type Props = {
-  animeId: number;
+  entry: AnimeEntry | null;
+  loading: boolean;
+  onAddToList: (status: TrackingStatus) => Promise<{ success: boolean; error?: string }>;
+  onUpdateStatus: (status: TrackingStatus) => Promise<{ success: boolean; error?: string }>;
+  onToggleFavorite: (next: boolean) => Promise<{ success: boolean; error?: string }>;
+  onSetScore: (score: number | null) => Promise<{ success: boolean; error?: string }>;
+  onRemove: () => Promise<{ success: boolean; error?: string }>;
 };
 
-export default function AnimeWatchlistSection({ animeId }: Props) {
+export default function AnimeTrackingSection({
+  entry,
+  loading,
+  onAddToList,
+  onUpdateStatus,
+  onToggleFavorite,
+  onSetScore,
+  onRemove,
+}: Props) {
   const { user, loading: authLoading } = useAuth();
-
-  const {
-    entry,
-    loading,
-    addToList,
-    updateStatus,
-    toggleFavorite,
-    setScore,
-    remove,
-  } = useWatchlist(animeId);
 
   if (authLoading) return null;
 
@@ -95,16 +98,16 @@ export default function AnimeWatchlistSection({ animeId }: Props) {
           Estado
         </label>
         <div className="flex flex-wrap gap-1.5">
-          {(Object.keys(STATUS_LABELS) as WatchlistStatus[]).map((s) => (
+          {(Object.keys(STATUS_LABELS) as TrackingStatus[]).map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => {
                 if (currentStatus === s) return;
                 if (currentStatus) {
-                  updateStatus(s);
+                  onUpdateStatus(s);
                 } else {
-                  addToList(s);
+                  onAddToList(s);
                 }
               }}
               className={cn(
@@ -124,7 +127,7 @@ export default function AnimeWatchlistSection({ animeId }: Props) {
       {entry && (
         <button
           type="button"
-          onClick={() => remove()}
+          onClick={() => onRemove()}
           className="flex items-center gap-1.5 text-[10px] font-semibold text-red-400 hover:text-red-300 uppercase tracking-wider transition-colors cursor-pointer"
         >
           <Icon name="Trash2" size={12} />
@@ -141,7 +144,7 @@ export default function AnimeWatchlistSection({ animeId }: Props) {
         </span>
         <button
           type="button"
-          onClick={() => toggleFavorite(!isFavorite)}
+          onClick={() => onToggleFavorite(!isFavorite)}
           className={cn(
             "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all duration-150 cursor-pointer",
             isFavorite
@@ -170,7 +173,7 @@ export default function AnimeWatchlistSection({ animeId }: Props) {
               type="button"
               disabled={currentStatus !== "completed" && currentStatus !== null}
               onClick={() => {
-                setScore(currentScore === n ? null : n);
+                onSetScore(currentScore === n ? null : n);
               }}
               className={cn(
                 "w-7 h-7 rounded-md text-[10px] font-bold border transition-all duration-150 cursor-pointer",

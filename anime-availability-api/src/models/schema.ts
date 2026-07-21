@@ -14,15 +14,23 @@ export const seasonQuerySchema = z.object({
       "SPRING",
       "SUMMER",
       "FALL",
+      "ALL",
       "winter",
       "spring",
       "summer",
       "fall",
+      "all",
     ])
     .optional()
     .transform(
       (v) =>
-        v?.toUpperCase() as "WINTER" | "SPRING" | "SUMMER" | "FALL" | undefined,
+        v?.toUpperCase() as
+          | "WINTER"
+          | "SPRING"
+          | "SUMMER"
+          | "FALL"
+          | "ALL"
+          | undefined,
     ),
 
   year: z.coerce.number().int().positive().optional(),

@@ -54,11 +54,11 @@ export type HeroResponse = z.infer<typeof HeroResponseSchema>;
 
 export const SeasonRespSchema = z.object({
   meta: z.object({
-    country: z.string(),
-    season: z.string(),
-    year: z.number(),
-    total: z.number(),
-    source: z.string(),
+    country: z.string().optional().default(""),
+    season: z.string().optional().default(""),
+    year: z.number().optional().default(0),
+    total: z.number().optional().default(0),
+    source: z.string().optional().default(""),
   }),
   data: z.array(z.any()),
 });

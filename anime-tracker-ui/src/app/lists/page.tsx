@@ -1,12 +1,12 @@
 import { Suspense } from "react";
-import WatchlistPageClient from "@/components/watchlist/WatchlistPage";
+import MyAnimePage from "@/components/lists/MyAnimePage";
 
 export const metadata = {
-  title: "Mi Watchlist — Anime Tracker",
+  title: "Mis listas — Anime Tracker",
   description: "Gestiona tu lista de animes",
 };
 
-export default function WatchlistPage() {
+export default function MyAnimeRoute() {
   return (
     <Suspense
       fallback={
@@ -15,7 +15,7 @@ export default function WatchlistPage() {
         </div>
       }
     >
-      <WatchlistPageClient />
+      <MyAnimePage />
     </Suspense>
   );
 }

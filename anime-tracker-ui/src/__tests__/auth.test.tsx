@@ -82,7 +82,9 @@ describe("AuthForm — signin step (default)", () => {
 
   it("shows register toggle on signin step", () => {
     render(<AuthForm />);
-    expect(screen.getByText("¿No tienes una cuenta?")).toBeTruthy();
+    expect(
+      screen.getByText((content) => content.includes("Baka... ¿aún sin cuenta?")),
+    ).toBeTruthy();
     expect(screen.getByText("Regístrate")).toBeTruthy();
   });
 });
@@ -99,7 +101,9 @@ describe("AuthForm — signup toggle", () => {
 
     expect(screen.getByLabelText("Nombre de usuario")).toBeTruthy();
     expect(screen.getByText("Crear cuenta")).toBeTruthy();
-    expect(screen.getByText("¿Ya tienes una cuenta?")).toBeTruthy();
+    expect(
+      screen.getByText((content) => content.includes("¿Ya viste suficiente?")),
+    ).toBeTruthy();
     expect(screen.getByText("Inicia sesión")).toBeTruthy();
   });
 });

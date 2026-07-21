@@ -80,8 +80,7 @@ export type AnimeCardProps = {
   onOpen?: (anime: Anime) => void;
   onAddToList?: (anime: Anime) => void;
   onToggleFavorite?: (anime: Anime, next: boolean) => void;
-  watchlistEntry?: WatchlistEntry | null;
-  onStatusChange?: (anime: Anime, status: WatchlistStatus) => void;
+  animeEntry?: AnimeEntry | null;
   variant?: "default" | "compact";
   showTitleBelow?: boolean; // título fuera del card
   overlayTone?: "soft" | "strong"; // tono manual base
@@ -141,15 +140,15 @@ export type AnimeCardData = {
   meta?: AnimeCardMeta;
 };
 
-// --- Watchlist types ---
-export type WatchlistStatus =
+// --- Tracking types ---
+export type TrackingStatus =
   "plan_to_watch" | "watching" | "completed" | "on_hold" | "dropped";
 
-export type WatchlistEntry = {
+export type AnimeEntry = {
   id: string;
   user_id: string;
   anime_id: number;
-  status: WatchlistStatus;
+  status: TrackingStatus;
   favorite: boolean;
   score: number | null;
   progress: number;
