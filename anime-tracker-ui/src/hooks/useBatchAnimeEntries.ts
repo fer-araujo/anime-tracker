@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
-import type { WatchlistEntry } from "@/types/anime";
+import type { AnimeEntry } from "@/types/anime";
 
-export function useBatchWatchlist(animeIds: number[]) {
+export function useBatchAnimeEntries(animeIds: number[]) {
   const { user } = useAuth();
-  const [entriesMap, setEntriesMap] = useState<Map<number, WatchlistEntry>>(
+  const [entriesMap, setEntriesMap] = useState<Map<number, AnimeEntry>>(
     new Map(),
   );
   const [loading, setLoading] = useState(false);
@@ -24,7 +24,7 @@ export function useBatchWatchlist(animeIds: number[]) {
     const fetchBatch = async () => {
       const supabase = createClient();
       const { data, error } = await supabase
-        .from("watchlist")
+        .from("user_anime")
         .select("*")
         .eq("user_id", user.id)
         .in("anime_id", animeIds);
@@ -32,11 +32,11 @@ export function useBatchWatchlist(animeIds: number[]) {
       if (cancelled) return;
 
       if (error) {
-        console.error("Batch watchlist fetch error:", error.message);
+        console.error("Batch anime entries fetch error:", error.message);
         setEntriesMap(new Map());
       } else {
-        const map = new Map<number, WatchlistEntry>();
-        (data ?? []).forEach((entry: WatchlistEntry) => {
+        const map = new Map<number, AnimeEntry>();
+        (data ?? []).forEach((entry: AnimeEntry) => {
           map.set(entry.anime_id, entry);
         });
         setEntriesMap(map);
