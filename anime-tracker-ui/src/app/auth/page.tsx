@@ -4,11 +4,11 @@ import AuthForm from "@/components/auth/AuthForm";
 export const metadata = {
   title: "Sign In — Anime Tracker",
   description:
-    "Track your favorites. Build your watchlist. Discover your next obsession.",
+    "Track your favorites. Track your anime. Discover your next obsession.",
   openGraph: {
     title: "Sign In — Anime Tracker",
     description:
-      "Track your favorites. Build your watchlist. Discover your next obsession.",
+      "Track your favorites. Track your anime. Discover your next obsession.",
   },
 };
 

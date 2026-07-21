@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { ProviderBadge } from "./ProviderBadge";
 import { uniqueNormalizedProviders } from "@/lib/providers";
 import { cn, handleImageLoad } from "@/lib/utils";
-import type { AnimeCardProps, WatchlistStatus } from "@/types/anime";
+import type { AnimeCardProps, TrackingStatus } from "@/types/anime";
 import { Pill } from "./common/Pills";
 import { ScoreBadge } from "./common/ScoreBadge";
 import { ActionButton, FavButton } from "./common/Buttons";
@@ -17,7 +17,7 @@ import Icon from "@/components/custom/Icon";
 /*  Status helpers                                                             */
 /* -------------------------------------------------------------------------- */
 
-const STATUS_LABELS: Record<WatchlistStatus, string> = {
+const STATUS_LABELS: Record<TrackingStatus, string> = {
   plan_to_watch: "Plan to Watch",
   watching: "Watching",
   completed: "Completed",
@@ -25,7 +25,7 @@ const STATUS_LABELS: Record<WatchlistStatus, string> = {
   dropped: "Dropped",
 };
 
-const STATUS_COLORS: Record<WatchlistStatus, string> = {
+const STATUS_COLORS: Record<TrackingStatus, string> = {
   plan_to_watch: "border-white/20 text-white/60 bg-white/5",
   watching: "border-sky-500/40 text-sky-300 bg-sky-500/10",
   completed: "border-emerald-500/40 text-emerald-300 bg-emerald-500/10",
@@ -42,21 +42,20 @@ export function AnimeCard({
   onOpen,
   onAddToList,
   onToggleFavorite,
-  watchlistEntry,
-  onStatusChange,
+  animeEntry,
   variant = "default",
   showTitleBelow = true,
   overlayTone = "soft",
   autoContrast = true,
 }: AnimeCardProps) {
   const normalized = uniqueNormalizedProviders(anime.providers);
-  const [isFav, setFav] = useState(watchlistEntry?.favorite ?? false);
+  const [isFav, setFav] = useState(animeEntry?.favorite ?? false);
   const [overlayMode, setOverlayMode] = useState<"base" | "ultra">("base");
 
-  // Sync favorite state when watchlistEntry changes
+  // Sync favorite state when animeEntry changes
   useEffect(() => {
-    setFav(watchlistEntry?.favorite ?? false);
-  }, [watchlistEntry?.favorite]);
+    setFav(animeEntry?.favorite ?? false);
+  }, [animeEntry?.favorite]);
 
   const genres = anime.meta?.genres ?? [];
   const ADULT_GENRES = new Set(["Hentai", "Ecchi"]);
@@ -107,7 +106,7 @@ export function AnimeCard({
         </div>
 
         {/* Mobile persistent action bar */}
-        <div className="absolute bottom-0 left-0 right-0 z-[3] flex md:hidden items-center justify-between px-2 pb-2 gap-1">
+        <div className="absolute bottom-0 left-0 right-0 z-[3] flex md:hidden items-center justify-between flex-wrap px-2 pb-2 gap-1">
           <button
             type="button"
             onClick={(e) => {
@@ -121,22 +120,22 @@ export function AnimeCard({
           </button>
 
           {/* Status pill */}
-          {watchlistEntry?.status && (
+          {animeEntry?.status && (
             <span
               className={cn(
                 "px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border",
-                STATUS_COLORS[watchlistEntry.status],
+                STATUS_COLORS[animeEntry.status],
               )}
             >
-              {STATUS_LABELS[watchlistEntry.status]}
+              {STATUS_LABELS[animeEntry.status]}
             </span>
           )}
 
           {/* Score badge when completed */}
-          {watchlistEntry?.status === "completed" &&
-            watchlistEntry.score != null && (
+          {animeEntry?.status === "completed" &&
+            animeEntry.score != null && (
               <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
-                {watchlistEntry.score}/10
+                {animeEntry.score}/10
               </span>
             )}
 
@@ -155,7 +154,7 @@ export function AnimeCard({
         <div
           className={cn(
             "absolute inset-0 z-[2]",
-            "opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity duration-300 ease-out",
+            "opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 ease-out",
             "backdrop-blur-[6px] backdrop-saturate-[125%]",
             overlayMode === "ultra" || overlayTone === "strong"
               ? "bg-[linear-gradient(to_top,rgba(0,0,0,0.90)_20%,rgba(0,0,0,0.66)_65%,rgba(0,0,0,0.52)_100%)]"
@@ -257,10 +256,10 @@ export function AnimeCard({
                 </ActionButton>
 
                 {/* Score badge when completed */}
-                {watchlistEntry?.status === "completed" &&
-                  watchlistEntry.score != null && (
+                {animeEntry?.status === "completed" &&
+                  animeEntry.score != null && (
                     <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
-                      {watchlistEntry.score}/10
+                      {animeEntry.score}/10
                     </span>
                   )}
 
@@ -283,7 +282,7 @@ export function AnimeCard({
         <div className="mt-2 px-1">
           <h4
             aria-hidden="true"
-            className="text-[0.9rem] font-normal leading-tight text-white/95 line-clamp-2"
+            className="text-[0.9rem] font-normal leading-tight text-white/95 line-clamp-2 select-text"
             title={anime.title}
           >
             {anime.title}

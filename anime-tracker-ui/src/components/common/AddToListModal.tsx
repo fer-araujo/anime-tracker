@@ -1,62 +1,72 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { motion } from "framer-motion";
-import Icon from "@/components/custom/Icon";
+import { motion, AnimatePresence } from "framer-motion";
+import Icon, { type IconName } from "@/components/custom/Icon";
 import { cn } from "@/lib/utils";
-import type { WatchlistEntry, WatchlistStatus } from "@/types/anime";
+import type { AnimeEntry, TrackingStatus } from "@/types/anime";
 import {
-  addToWatchlist,
+  addToTracking,
   updateStatus,
   toggleFavorite,
-  removeFromWatchlist,
-} from "@/actions/watchlist";
+  removeFromTracking,
+} from "@/actions/tracking";
+import { addToList, removeFromList } from "@/actions/lists";
+import { useUserLists } from "@/hooks/useUserLists";
 
 /* -------------------------------------------------------------------------- */
-/*  Status constants                                                           */
+/* Constants & Config                                                        */
 /* -------------------------------------------------------------------------- */
 
-const STATUS_LABELS: Record<WatchlistStatus, string> = {
-  plan_to_watch: "Plan to Watch",
-  watching: "Watching",
-  completed: "Completed",
-  on_hold: "On Hold",
-  dropped: "Dropped",
+const STATUS_CONFIG: Record<
+  TrackingStatus,
+  { label: string; icon: IconName }
+> = {
+  watching: { label: "Viendo", icon: "Play" },
+  completed: { label: "Completado", icon: "Check" },
+  on_hold: { label: "En Pausa", icon: "Clock" },
+  dropped: { label: "Abandonado", icon: "X" },
+  plan_to_watch: { label: "Plan para ver", icon: "List" },
 };
 
-const STATUS_ACTIVE_COLORS: Record<WatchlistStatus, string> = {
-  watching: "border-sky-500/40 text-sky-300 bg-sky-500/10",
-  completed: "border-emerald-500/40 text-emerald-300 bg-emerald-500/10",
-  on_hold: "border-amber-500/40 text-amber-300 bg-amber-500/10",
-  dropped: "border-red-500/40 text-red-300 bg-red-500/10",
-  plan_to_watch: "border-white/20 text-white/60 bg-white/5",
-};
-
-const STATUS_BUTTON_COLORS: Record<WatchlistStatus, string> = {
-  plan_to_watch:
-    "border-white/10 text-white/60 hover:text-white hover:bg-white/5",
+const STATUS_ACTIVE_COLORS: Record<TrackingStatus, string> = {
   watching:
-    "border-sky-500/30 text-sky-400 hover:bg-sky-500/10 hover:border-sky-500/50",
+    "border-sky-500/50 text-sky-300 bg-sky-500/10 shadow-[0_0_15px_rgba(14,165,233,0.15)]",
   completed:
-    "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/50",
+    "border-emerald-500/50 text-emerald-300 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.15)]",
   on_hold:
-    "border-amber-500/30 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50",
+    "border-amber-500/50 text-amber-300 bg-amber-500/10 shadow-[0_0_15px_rgba(245,158,11,0.15)]",
   dropped:
-    "border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50",
+    "border-red-500/50 text-red-300 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.15)]",
+  plan_to_watch:
+    "border-white/30 text-white bg-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]",
+};
+
+const STATUS_BUTTON_COLORS: Record<TrackingStatus, string> = {
+  watching:
+    "border-white/10 text-white/50 hover:border-sky-500/30 hover:text-sky-400 hover:bg-sky-500/5",
+  completed:
+    "border-white/10 text-white/50 hover:border-emerald-500/30 hover:text-emerald-400 hover:bg-emerald-500/5",
+  on_hold:
+    "border-white/10 text-white/50 hover:border-amber-500/30 hover:text-amber-400 hover:bg-amber-500/5",
+  dropped:
+    "border-white/10 text-white/50 hover:border-red-500/30 hover:text-red-400 hover:bg-red-500/5",
+  plan_to_watch:
+    "border-white/10 text-white/50 hover:border-white/30 hover:text-white hover:bg-white/5",
 };
 
 /* -------------------------------------------------------------------------- */
-/*  Types                                                                      */
+/* Types                                                                     */
 /* -------------------------------------------------------------------------- */
 
 interface AddToListModalProps {
   animeId: number;
-  currentEntry: WatchlistEntry | null;
+  currentEntry: AnimeEntry | null;
   onClose: () => void;
 }
 
 /* -------------------------------------------------------------------------- */
-/*  AddToListModal                                                             */
+/* AddToListModal                                                            */
 /* -------------------------------------------------------------------------- */
 
 export function AddToListModal({
@@ -64,18 +74,22 @@ export function AddToListModal({
   currentEntry,
   onClose,
 }: AddToListModalProps) {
-  const [selectedStatus, setSelectedStatus] = useState<WatchlistStatus | null>(
+  const [selectedStatus, setSelectedStatus] = useState<TrackingStatus | null>(
     currentEntry?.status ?? null,
   );
   const [isFav, setIsFav] = useState(currentEntry?.favorite ?? false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Collections integration
+  const { lists, refetch: refetchLists } = useUserLists();
+  const [selectedLists, setSelectedLists] = useState<Set<string>>(new Set());
+  const [togglingLists, setTogglingLists] = useState<Set<string>>(new Set());
+
   const handleConfirm = useCallback(async () => {
     if (isSubmitting) return;
 
-    const statusChanged =
-      selectedStatus !== (currentEntry?.status ?? null);
+    const statusChanged = selectedStatus !== (currentEntry?.status ?? null);
     const favChanged = isFav !== (currentEntry?.favorite ?? false);
 
     // No changes — close immediately
@@ -88,14 +102,13 @@ export function AddToListModal({
     setError(null);
 
     try {
-      // Parallel status + favorite calls
       const promises: Promise<{ success: boolean; error?: string }>[] = [];
 
-      if (statusChanged) {
+      if (statusChanged && selectedStatus) {
         if (currentEntry) {
-          promises.push(updateStatus(animeId, selectedStatus!));
+          promises.push(updateStatus(animeId, selectedStatus));
         } else {
-          promises.push(addToWatchlist(animeId, selectedStatus!));
+          promises.push(addToTracking(animeId, selectedStatus));
         }
       }
 
@@ -116,21 +129,14 @@ export function AddToListModal({
       setError("No se pudo guardar. Intenta de nuevo.");
       setIsSubmitting(false);
     }
-  }, [
-    animeId,
-    currentEntry,
-    selectedStatus,
-    isFav,
-    isSubmitting,
-    onClose,
-  ]);
+  }, [animeId, currentEntry, selectedStatus, isFav, isSubmitting, onClose]);
 
   const handleRemove = useCallback(async () => {
     setIsSubmitting(true);
     setError(null);
 
     try {
-      const result = await removeFromWatchlist(animeId);
+      const result = await removeFromTracking(animeId);
       if (result.success) {
         onClose();
       } else {
@@ -143,38 +149,63 @@ export function AddToListModal({
     }
   }, [animeId, onClose]);
 
-  const allStatuses: WatchlistStatus[] = [
+  const topStatuses: TrackingStatus[] = [
     "watching",
     "completed",
     "on_hold",
     "dropped",
-    "plan_to_watch",
   ];
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.15, ease: "easeOut" }}
-      className="px-5 pb-5 pt-2 space-y-5"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className="p-6 space-y-6"
     >
-      {/* Title */}
-      <div className="flex items-center justify-between">
+      {/* ===== HEADER ===== */}
+      <div className="flex items-center gap-3 pb-2 border-b border-white/5">
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary">
+          <Icon name="Plus" size={16} />
+        </div>
         <h2
-          id="watchlist-modal-title"
-          className="text-base font-semibold text-white/90"
+          id="tracking-modal-title"
+          className="text-lg font-bold text-white tracking-tight"
         >
-          Añadir a lista
+          Añadir a mi lista
         </h2>
       </div>
 
-      {/* Status group */}
-      <div role="radiogroup" aria-label="Estado de visualización" className="space-y-3">
-        <label className="text-[10px] font-medium text-white/30 uppercase tracking-wider block">
-          Estado
+      {/* ===== STATUS SELECTION ===== */}
+      <div
+        role="radiogroup"
+        aria-label="Estado de visualización"
+        className="space-y-3"
+      >
+        <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block ml-1">
+          Estado actual
         </label>
-        <div className="grid grid-cols-2 gap-2">
-          {allStatuses.slice(0, 4).map((s) => (
+
+        {/* Plan to Watch (Destacado) */}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={selectedStatus === "plan_to_watch"}
+          onClick={() => setSelectedStatus("plan_to_watch")}
+          className={cn(
+            "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold border transition-all duration-200 cursor-pointer",
+            selectedStatus === "plan_to_watch"
+              ? STATUS_ACTIVE_COLORS["plan_to_watch"]
+              : STATUS_BUTTON_COLORS["plan_to_watch"],
+          )}
+        >
+          <Icon name={STATUS_CONFIG["plan_to_watch"].icon} size={18} />
+          {STATUS_CONFIG["plan_to_watch"].label}
+        </button>
+
+        {/* Grid de 4 estados secundarios */}
+        <div className="grid grid-cols-2 gap-2.5">
+          {topStatuses.map((s) => (
             <button
               key={s}
               type="button"
@@ -182,125 +213,229 @@ export function AddToListModal({
               aria-checked={selectedStatus === s}
               onClick={() => setSelectedStatus(s)}
               className={cn(
-                "px-3 py-2.5 rounded-lg text-xs font-semibold border transition-all duration-150 cursor-pointer text-left min-h-[44px]",
+                "flex items-center gap-2 px-3 py-3 rounded-xl text-xs font-semibold border transition-all duration-200 cursor-pointer",
                 s === selectedStatus
                   ? STATUS_ACTIVE_COLORS[s]
                   : STATUS_BUTTON_COLORS[s],
               )}
             >
-              {STATUS_LABELS[s]}
+              <Icon name={STATUS_CONFIG[s].icon} size={16} />
+              {STATUS_CONFIG[s].label}
             </button>
           ))}
         </div>
-        {/* Plan to Watch — full width */}
-        <button
-          type="button"
-          role="radio"
-          aria-checked={selectedStatus === "plan_to_watch"}
-          onClick={() => setSelectedStatus("plan_to_watch")}
-          className={cn(
-            "w-full px-3 py-2.5 rounded-lg text-xs font-semibold border transition-all duration-150 cursor-pointer text-left min-h-[44px]",
-            selectedStatus === "plan_to_watch"
-              ? STATUS_ACTIVE_COLORS["plan_to_watch"]
-              : STATUS_BUTTON_COLORS["plan_to_watch"],
-          )}
-        >
-          {STATUS_LABELS["plan_to_watch"]}
-        </button>
       </div>
 
-      <div className="h-px bg-white/5" />
+      {/* ===== FAVORITE TOGGLE CARD ===== */}
+      <div className="space-y-3">
+        <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider block ml-1">
+          Colección
+        </label>
 
-      {/* Favorite toggle */}
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
-          Favorito
-        </span>
         <button
           type="button"
           role="switch"
           aria-checked={isFav}
-          aria-label="Favorito"
           onClick={() => setIsFav(!isFav)}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all duration-150 cursor-pointer min-h-[44px]",
+            "flex items-center justify-between w-full p-4 rounded-xl border transition-all duration-200 cursor-pointer group",
             isFav
-              ? "border-pink-400/40 bg-pink-500/20 text-pink-300"
-              : "border-white/10 text-white/50 hover:text-white hover:bg-white/5",
+              ? "border-pink-500/50 bg-pink-500/10 shadow-[0_0_20px_rgba(236,72,153,0.1)]"
+              : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20",
           )}
         >
-          <Icon
-            name="Heart"
-            size={14}
-            className={isFav ? "fill-pink-300 text-pink-300" : ""}
-          />
-          {isFav ? "Favorito" : "Añadir a favoritos"}
+          <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                "flex items-center justify-center w-10 h-10 rounded-full transition-colors",
+                isFav
+                  ? "bg-pink-500/20"
+                  : "bg-white/10 group-hover:bg-white/20",
+              )}
+            >
+              <Icon
+                name="Heart"
+                size={18}
+                className={cn(
+                  "transition-all",
+                  isFav
+                    ? "fill-pink-400 text-pink-400 scale-110"
+                    : "text-white/50",
+                )}
+              />
+            </div>
+            <div className="text-left">
+              <p
+                className={cn(
+                  "text-sm font-semibold transition-colors",
+                  isFav ? "text-pink-300" : "text-white/80",
+                )}
+              >
+                Favoritos
+              </p>
+              <p className="text-[11px] font-medium text-white/40">
+                Añade esta serie a tus preferidas
+              </p>
+            </div>
+          </div>
+
+          {/* iOS Style Switch/Check indicator */}
+          <div
+            className={cn(
+              "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
+              isFav ? "border-pink-500 bg-pink-500" : "border-white/20",
+            )}
+          >
+            <AnimatePresence>
+              {isFav && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                >
+                  <Icon name="Check" size={12} className="text-white" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </button>
+
+        {/* Collections — real list toggles */}
+        {lists.length > 0 && (
+          <div className="space-y-2">
+            {lists.map((list) => {
+              const isSelected = selectedLists.has(list.id);
+              const isToggling = togglingLists.has(list.id);
+              return (
+                <button
+                  key={list.id}
+                  type="button"
+                  disabled={isToggling}
+                  onClick={async () => {
+                    setTogglingLists((prev) => new Set(prev).add(list.id));
+                    if (isSelected) {
+                      await removeFromList(list.id, animeId);
+                      setSelectedLists((prev) => {
+                        const next = new Set(prev);
+                        next.delete(list.id);
+                        return next;
+                      });
+                    } else {
+                      await addToList(list.id, animeId);
+                      setSelectedLists((prev) => new Set(prev).add(list.id));
+                    }
+                    setTogglingLists((prev) => {
+                      const next = new Set(prev);
+                      next.delete(list.id);
+                      return next;
+                    });
+                    refetchLists();
+                  }}
+                  className={cn(
+                    "flex items-center justify-between w-full p-3 rounded-xl border transition-all duration-200 cursor-pointer text-left",
+                    isSelected
+                      ? "border-primary/40 bg-primary/10"
+                      : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20",
+                  )}
+                >
+                  <span className="text-xs font-medium text-white/80 truncate">
+                    {list.name}
+                  </span>
+                  {isToggling ? (
+                    <Icon name="Loader2" size={14} className="animate-spin text-white/40" />
+                  ) : isSelected ? (
+                    <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                      <Icon name="Check" size={10} className="text-white" />
+                    </div>
+                  ) : (
+                    <div className="w-4 h-4 rounded-full border border-white/20" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Fallback when no lists */}
+        {lists.length === 0 && (
+          <div className="flex items-center justify-between p-4 rounded-xl border border-dashed border-white/10 bg-white/[0.02] opacity-60 select-none">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/5">
+                <Icon name="Plus" size={18} className="text-white/30" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-semibold text-white/50">Nueva Lista</p>
+                <p className="text-[11px] font-medium text-white/30">
+                  Crea una colección desde Mis listas
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="h-px bg-white/5" />
+      {/* ===== ERROR MESSAGE ===== */}
+      <AnimatePresence>
+        {error && (
+          <motion.p
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            role="alert"
+            className="text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-lg flex items-center gap-2"
+          >
+            <Icon name="AlertCircle" size={14} />
+            {error}
+          </motion.p>
+        )}
+      </AnimatePresence>
 
-      {/* Custom list placeholder */}
-      <div className="opacity-40 pointer-events-none select-none">
-        <span className="text-[10px] font-medium text-white/30 uppercase tracking-wider block mb-2">
-          Listas personalizadas
-        </span>
-        <div className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-dashed border-white/10">
-          <span className="text-xs text-white/40">
-            Añadir a lista personalizada
-          </span>
-          <span className="text-[9px] font-semibold text-white/20 uppercase tracking-wider bg-white/5 px-1.5 py-0.5 rounded">
-            Próximamente
-          </span>
+      {/* ===== FOOTER ACTIONS ===== */}
+      <div className="flex items-center justify-between pt-4 mt-2 border-t border-white/5">
+        {/* Lado Izquierdo: Acción Destructiva */}
+        <div>
+          {currentEntry && (
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleRemove}
+              className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-red-400 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <Icon name="Trash2" size={14} />
+              <span className="hidden sm:inline">Eliminar de lista</span>
+              <span className="sm:hidden">Eliminar</span>
+            </button>
+          )}
         </div>
-      </div>
 
-      {/* Remove from list */}
-      {currentEntry && (
-        <button
-          type="button"
-          disabled={isSubmitting}
-          onClick={handleRemove}
-          className="flex items-center gap-1.5 text-xs font-semibold text-red-400 hover:text-red-300 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Icon name="Trash2" size={12} />
-          Quitar de lista
-        </button>
-      )}
-
-      {/* Error */}
-      {error && (
-        <p role="alert" className="text-xs text-red-400 flex items-center gap-1.5">
-          <Icon name="AlertCircle" size={12} />
-          {error}
-        </p>
-      )}
-
-      {/* Action buttons */}
-      <div className="flex items-center gap-3 pt-1">
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={isSubmitting}
-          className="flex-1 px-4 py-2.5 rounded-lg border border-white/10 text-xs font-semibold text-white/60 hover:text-white hover:bg-white/5 transition-colors cursor-pointer disabled:opacity-50"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          onClick={handleConfirm}
-          disabled={isSubmitting}
-          className="flex-1 px-4 py-2.5 rounded-lg bg-primary text-white text-xs font-semibold hover:brightness-110 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-        >
-          {isSubmitting ? (
-            <>
-              <Icon name="Loader2" size={12} className="animate-spin" />
-              Guardando...
-            </>
-          ) : (
-            "Guardar"
-          )}
-        </button>
+        {/* Lado Derecho: Acciones Principales */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="px-4 py-2.5 rounded-xl text-xs font-bold text-white/60 hover:text-white hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={
+              isSubmitting || (!selectedStatus && !isFav && !currentEntry)
+            }
+            className="px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_14px_rgba(var(--primary),0.4)] hover:brightness-110 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isSubmitting ? (
+              <>
+                <Icon name="Loader2" size={14} className="animate-spin" />
+                Guardando...
+              </>
+            ) : (
+              "Guardar Cambios"
+            )}
+          </button>
+        </div>
       </div>
     </motion.div>
   );

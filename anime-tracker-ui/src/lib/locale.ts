@@ -14,7 +14,7 @@ export const uiTranslations = {
   es: {
     signIn: "Iniciar sesión",
     signUp: "Crear cuenta",
-    watchlist: "Watchlist",
+    tracking: "Mis listas",
     signOut: "Cerrar sesión",
     season: "Temporada",
     search: "Buscar",
@@ -24,7 +24,7 @@ export const uiTranslations = {
   en: {
     signIn: "Sign in",
     signUp: "Create account",
-    watchlist: "Watchlist",
+    tracking: "My Watchlist",
     signOut: "Sign out",
     season: "Season",
     search: "Search",

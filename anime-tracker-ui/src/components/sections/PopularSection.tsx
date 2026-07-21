@@ -1,8 +1,8 @@
 import { fetchSeason } from "@/lib/api";
-import { WatchlistShelf } from "@/components/common/WatchlistShelf";
+import { TrackingShelf } from "@/components/common/TrackingShelf";
 
 export default async function PopularSection() {
   const resp = await fetchSeason({ rank: "popular" });
   const items = resp.data ?? [];
-  return <WatchlistShelf title="Animes populares" items={items} />;
+  return <TrackingShelf title="Animes populares" items={items} />;
 }

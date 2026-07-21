@@ -117,12 +117,12 @@ export default function Header() {
                       </p>
                     </div>
                     <Link
-                      href="/watchlist"
+                      href="/lists"
                       onClick={() => setIsUserMenuOpen(false)}
                       className="flex items-center gap-2 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
                     >
                       <Icon name="List" size={16} />
-                      Watchlist
+                      Mis listas
                     </Link>
                     <button
                       onClick={handleSignOut}
@@ -198,12 +198,12 @@ export default function Header() {
             {user ? (
               <>
                 <Link
-                  href="/watchlist"
+                  href="/lists"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
                 >
                   <Icon name="List" size={20} />
-                  <span>Watchlist</span>
+                  <span>Mis listas</span>
                 </Link>
                 <button
                   onClick={() => {
