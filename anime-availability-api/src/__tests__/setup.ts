@@ -82,7 +82,37 @@ function mockAniListResponse(url: string, init?: RequestInit): unknown {
   const body = init?.body ? JSON.parse(init.body as string) : {};
   const query = (body.query || "") as string;
 
-  // Anime details query
+  // Batch anime query (aliases: a21, a22, a23)
+  if (query.includes("a") && /a\d+:/.test(query)) {
+    const data: Record<string, unknown> = {};
+    const idMatches = query.matchAll(/a(\d+):\s*Media\(id:\s*(\d+)/g);
+    for (const m of idMatches) {
+      const id = Number(m[2]);
+      data[`a${id}`] = {
+        id,
+        title: { romaji: `Anime ${id}`, english: `Anime ${id}`, native: "テスト" },
+        coverImage: { extraLarge: `https://example.com/cover${id}.jpg`, large: null },
+        bannerImage: null,
+        description: "<p>Test</p>",
+        episodes: 12,
+        duration: 24,
+        status: "RELEASING",
+        season: "WINTER",
+        seasonYear: 2024,
+        format: "TV",
+        genres: ["Action"],
+        averageScore: 75,
+        isAdult: false,
+        studios: { edges: [{ isMain: true, node: { name: "Studio" } }] },
+        startDate: { year: 2024, month: 1, day: 1 },
+        nextAiringEpisode: null,
+        trailer: null,
+      };
+    }
+    return { data };
+  }
+
+  // Anime details query (single id)
   if (query.includes("Media(id:")) {
     return {
       data: {
