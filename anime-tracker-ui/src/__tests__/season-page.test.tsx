@@ -207,10 +207,10 @@ describe("SeasonPage", () => {
     render(<SeasonPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Could not load season data")).toBeTruthy();
+      expect(screen.getByText("No se pudo cargar la temporada")).toBeTruthy();
     });
 
-    expect(screen.getByText("Retry")).toBeTruthy();
+    expect(screen.getByText("Reintentar")).toBeTruthy();
   });
 
   it("shows empty API state when backend returns no data", async () => {
@@ -234,7 +234,7 @@ describe("SeasonPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("No anime available for this season"),
+        screen.getByText("No hay lanzamientos para esta temporada."),
       ).toBeTruthy();
     });
   });
@@ -348,15 +348,15 @@ describe("SeasonPage", () => {
     });
 
     // Type a search that matches nothing
-    const input = screen.getByPlaceholderText("Filtrar por título…");
+    const input = screen.getByPlaceholderText("Filtrar por título...");
     await userEvent.type(input, "nonexistent");
 
     await waitFor(() => {
-      expect(screen.getByText("No anime match your filters")).toBeTruthy();
+      expect(screen.getByText("No se encontraron animes con estos filtros.")).toBeTruthy();
     });
 
     // Reset button should be visible
-    const resetBtn = screen.getByText("Reset filters");
+    const resetBtn = screen.getByText("Limpiar filtros");
     expect(resetBtn).toBeTruthy();
   });
 });

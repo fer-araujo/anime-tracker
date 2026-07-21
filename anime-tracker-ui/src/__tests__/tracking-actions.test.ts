@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
-  addToWatchlist,
+  addToTracking,
   updateStatus,
   toggleFavorite,
   setScore,
-  removeFromWatchlist,
-} from "@/actions/watchlist";
+  removeFromTracking,
+} from "@/actions/tracking";
 
 // vi.mock is hoisted, so variables used in its factory must use vi.hoisted()
 const { mockGetSession, mockFrom, mockSupabase } = vi.hoisted(() => {
@@ -25,7 +25,7 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn().mockResolvedValue(mockSupabase),
 }));
 
-describe("Watchlist Server Actions — auth guard", () => {
+describe("Tracking Server Actions — auth guard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -39,12 +39,12 @@ describe("Watchlist Server Actions — auth guard", () => {
       });
     });
 
-    it("addToWatchlist upserts and returns success", async () => {
+    it("addToTracking upserts and returns success", async () => {
       mockFrom.mockReturnValue({
         upsert: vi.fn().mockResolvedValue({ error: null }),
       });
 
-      const result = await addToWatchlist(1, "watching");
+      const result = await addToTracking(1, "watching");
       expect(result.success).toBe(true);
       expect(result.error).toBeUndefined();
     });
@@ -88,7 +88,7 @@ describe("Watchlist Server Actions — auth guard", () => {
       expect(result.success).toBe(true);
     });
 
-    it("removeFromWatchlist deletes and returns success", async () => {
+    it("removeFromTracking deletes and returns success", async () => {
       mockFrom.mockReturnValue({
         delete: vi.fn(() => ({
           eq: vi.fn(() => ({
@@ -97,7 +97,7 @@ describe("Watchlist Server Actions — auth guard", () => {
         })),
       });
 
-      const result = await removeFromWatchlist(1);
+      const result = await removeFromTracking(1);
       expect(result.success).toBe(true);
     });
   });
@@ -109,8 +109,8 @@ describe("Watchlist Server Actions — auth guard", () => {
       });
     });
 
-    it("addToWatchlist returns Not authenticated error", async () => {
-      const result = await addToWatchlist(1, "watching");
+    it("addToTracking returns Not authenticated error", async () => {
+      const result = await addToTracking(1, "watching");
       expect(result.success).toBe(false);
       expect(result.error).toBe("Not authenticated");
     });
@@ -133,8 +133,8 @@ describe("Watchlist Server Actions — auth guard", () => {
       expect(result.error).toBe("Not authenticated");
     });
 
-    it("removeFromWatchlist returns Not authenticated error", async () => {
-      const result = await removeFromWatchlist(1);
+    it("removeFromTracking returns Not authenticated error", async () => {
+      const result = await removeFromTracking(1);
       expect(result.success).toBe(false);
       expect(result.error).toBe("Not authenticated");
     });
