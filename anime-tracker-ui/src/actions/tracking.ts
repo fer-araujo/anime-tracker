@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import type { WatchlistStatus } from "@/types/anime";
+import type { TrackingStatus } from "@/types/anime";
 
 type ActionResult = { success: boolean; error?: string };
 
@@ -17,16 +17,16 @@ function unauthorized(): ActionResult {
   return { success: false, error: "Not authenticated" };
 }
 
-export async function addToWatchlist(
+export async function addToTracking(
   animeId: number,
-  status: WatchlistStatus,
+  status: TrackingStatus,
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return unauthorized();
 
   const supabase = await createClient();
 
-  const { error } = await supabase.from("watchlist").upsert(
+  const { error } = await supabase.from("user_anime").upsert(
     {
       user_id: userId,
       anime_id: animeId,
@@ -47,7 +47,7 @@ export async function addToWatchlist(
 
 export async function updateStatus(
   animeId: number,
-  status: WatchlistStatus,
+  status: TrackingStatus,
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return unauthorized();
@@ -55,7 +55,7 @@ export async function updateStatus(
   const supabase = await createClient();
 
   const { error } = await supabase
-    .from("watchlist")
+    .from("user_anime")
     .update({ status, updated_at: new Date().toISOString() })
     .eq("user_id", userId)
     .eq("anime_id", animeId);
@@ -77,7 +77,7 @@ export async function toggleFavorite(
   const supabase = await createClient();
 
   const { error } = await supabase
-    .from("watchlist")
+    .from("user_anime")
     .update({ favorite: next, updated_at: new Date().toISOString() })
     .eq("user_id", userId)
     .eq("anime_id", animeId);
@@ -99,7 +99,7 @@ export async function setScore(
   const supabase = await createClient();
 
   const { error } = await supabase
-    .from("watchlist")
+    .from("user_anime")
     .update({ score, updated_at: new Date().toISOString() })
     .eq("user_id", userId)
     .eq("anime_id", animeId);
@@ -111,7 +111,7 @@ export async function setScore(
   return { success: true };
 }
 
-export async function removeFromWatchlist(
+export async function removeFromTracking(
   animeId: number,
 ): Promise<ActionResult> {
   const userId = await getUserId();
@@ -120,7 +120,7 @@ export async function removeFromWatchlist(
   const supabase = await createClient();
 
   const { error } = await supabase
-    .from("watchlist")
+    .from("user_anime")
     .delete()
     .eq("user_id", userId)
     .eq("anime_id", animeId);
