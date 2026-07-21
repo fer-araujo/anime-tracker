@@ -210,46 +210,49 @@ export async function getAnimeBatch(
       return res.status(503).json({ error: "AniList unavailable" });
     }
 
-    const data = aniJson.data as Record<string, unknown>;
+    // AniList returns { a1: Media, a2: Media, ... } — iterate by id instead of key lookup
+    const rawEntries = Object.values(aniJson.data) as Record<string, unknown>[];
     const results: Record<number, Record<string, unknown>> = {};
+    const idSet = new Set(uniqueIds);
 
-    for (const id of uniqueIds) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const media = data[`a${id}`] as any;
-      if (!media) continue;
+    for (const media of rawEntries) {
+      if (!media || typeof media !== "object") continue;
+      const mid = media.id as number | undefined;
+      if (!mid || !idSet.has(mid)) continue;
 
-      const title =
-        media.title?.english ??
-        media.title?.romaji ??
-        media.title?.native ??
-        "Untitled";
+      const title = [media.title as { english?: string; romaji?: string; native?: string }]
+        .map((t) => t?.english ?? t?.romaji ?? t?.native)
+        .find(Boolean) ?? "Untitled";
 
-      results[id] = {
-        id: { anilist: media.id, tmdb: null },
+      const cover = media.coverImage as { extraLarge?: string; large?: string } | undefined;
+      const studios = media.studios as Parameters<typeof extractStudio>[0] | undefined;
+      const trailer = media.trailer as { id?: string; site?: string } | undefined;
+      const nextEp = media.nextAiringEpisode as { episode?: number; airingAt?: number } | undefined;
+
+      results[mid] = {
+        id: { anilist: mid, tmdb: null },
         title,
         providers: [],
         images: {
-          poster: media.coverImage?.extraLarge ?? media.coverImage?.large ?? null,
-          backdrop: media.bannerImage ?? null,
-          banner: media.bannerImage ?? null,
+          poster: cover?.extraLarge ?? cover?.large ?? null,
+          backdrop: (media.bannerImage as string) ?? null,
+          banner: (media.bannerImage as string) ?? null,
           logo: null,
         },
         meta: {
-          genres: media.genres ?? [],
-          rating: media.averageScore ? media.averageScore / 10 : null,
-          year: media.seasonYear ?? null,
-          status: media.status ?? "UNKNOWN",
-          episodes: media.episodes ?? null,
-          duration: media.duration ?? null,
-          isAdult: media.isAdult ?? false,
-          studio: extractStudio(media.studios as Parameters<typeof extractStudio>[0]),
-          type: media.format ?? "TV",
-          nextAiring: media.nextAiringEpisode
-            ? `Ep ${media.nextAiringEpisode.episode}`
-            : null,
-          nextEpisodeAt: media.nextAiringEpisode?.airingAt ?? null,
-          trailer: media.trailer?.site === "youtube"
-            ? `https://www.youtube.com/watch?v=${media.trailer.id}`
+          genres: (media.genres as string[]) ?? [],
+          rating: typeof media.averageScore === "number" ? (media.averageScore as number) / 10 : null,
+          year: (media.seasonYear as number) ?? null,
+          status: (media.status as string) ?? "UNKNOWN",
+          episodes: (media.episodes as number) ?? null,
+          duration: (media.duration as number) ?? null,
+          isAdult: (media.isAdult as boolean) ?? false,
+          studio: extractStudio(studios),
+          type: (media.format as string) ?? "TV",
+          nextAiring: nextEp ? `Ep ${nextEp.episode}` : null,
+          nextEpisodeAt: nextEp?.airingAt ?? null,
+          trailer: trailer?.site === "youtube" && trailer.id
+            ? `https://www.youtube.com/watch?v=${trailer.id}`
             : null,
         },
       };
