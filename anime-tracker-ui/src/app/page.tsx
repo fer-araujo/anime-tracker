@@ -7,7 +7,7 @@ import ComingSoonSection from "@/components/sections/ComingSoonSection";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
 
 export const revalidate = 21600;
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   return (
