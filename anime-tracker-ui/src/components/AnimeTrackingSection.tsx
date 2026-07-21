@@ -3,9 +3,9 @@
 import { useAuth } from "@/providers/AuthProvider";
 import Icon from "@/components/custom/Icon";
 import { cn } from "@/lib/utils";
-import type { WatchlistEntry, WatchlistStatus } from "@/types/anime";
+import type { AnimeEntry, TrackingStatus } from "@/types/anime";
 
-const STATUS_LABELS: Record<WatchlistStatus, string> = {
+const STATUS_LABELS: Record<TrackingStatus, string> = {
   plan_to_watch: "Plan to Watch",
   watching: "Watching",
   completed: "Completed",
@@ -13,7 +13,7 @@ const STATUS_LABELS: Record<WatchlistStatus, string> = {
   dropped: "Dropped",
 };
 
-const STATUS_ACTIVE_COLORS: Record<WatchlistStatus, string> = {
+const STATUS_ACTIVE_COLORS: Record<TrackingStatus, string> = {
   plan_to_watch: "border-white/20 text-white/60 bg-white/5",
   watching: "border-sky-500/40 text-sky-300 bg-sky-500/10",
   completed: "border-emerald-500/40 text-emerald-300 bg-emerald-500/10",
@@ -21,7 +21,7 @@ const STATUS_ACTIVE_COLORS: Record<WatchlistStatus, string> = {
   dropped: "border-red-500/40 text-red-300 bg-red-500/10",
 };
 
-const STATUS_BUTTON_COLORS: Record<WatchlistStatus, string> = {
+const STATUS_BUTTON_COLORS: Record<TrackingStatus, string> = {
   plan_to_watch:
     "border-white/10 text-white/60 hover:text-white hover:bg-white/5",
   watching:
@@ -35,16 +35,16 @@ const STATUS_BUTTON_COLORS: Record<WatchlistStatus, string> = {
 };
 
 type Props = {
-  entry: WatchlistEntry | null;
+  entry: AnimeEntry | null;
   loading: boolean;
-  onAddToList: (status: WatchlistStatus) => Promise<{ success: boolean; error?: string }>;
-  onUpdateStatus: (status: WatchlistStatus) => Promise<{ success: boolean; error?: string }>;
+  onAddToList: (status: TrackingStatus) => Promise<{ success: boolean; error?: string }>;
+  onUpdateStatus: (status: TrackingStatus) => Promise<{ success: boolean; error?: string }>;
   onToggleFavorite: (next: boolean) => Promise<{ success: boolean; error?: string }>;
   onSetScore: (score: number | null) => Promise<{ success: boolean; error?: string }>;
   onRemove: () => Promise<{ success: boolean; error?: string }>;
 };
 
-export default function AnimeWatchlistSection({
+export default function AnimeTrackingSection({
   entry,
   loading,
   onAddToList,
@@ -98,7 +98,7 @@ export default function AnimeWatchlistSection({
           Estado
         </label>
         <div className="flex flex-wrap gap-1.5">
-          {(Object.keys(STATUS_LABELS) as WatchlistStatus[]).map((s) => (
+          {(Object.keys(STATUS_LABELS) as TrackingStatus[]).map((s) => (
             <button
               key={s}
               type="button"

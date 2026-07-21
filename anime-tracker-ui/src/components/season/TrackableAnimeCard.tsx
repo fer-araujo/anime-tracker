@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
-import { useWatchlist } from "@/hooks/useWatchlist";
+import { useAnimeEntry } from "@/hooks/useAnimeEntry";
 import { AnimeCard } from "@/components/AnimeCard";
 import { Modal } from "@/components/custom/Modal";
 import { AuthPrompt } from "@/components/common/AuthPrompt";
@@ -15,10 +15,10 @@ type Props = {
   onOpen?: (anime: Anime) => void;
 };
 
-export function WatchlistAnimeCard({ anime, onOpen }: Props) {
+export function TrackableAnimeCard({ anime, onOpen }: Props) {
   const { user } = useAuth();
   const router = useRouter();
-  const { entry, toggleFavorite } = useWatchlist(anime.id.anilist);
+  const { entry, toggleFavorite } = useAnimeEntry(anime.id.anilist);
   const [showModal, setShowModal] = useState(false);
   const [variant, setVariant] = useState<"center" | "bottom-sheet">("center");
 
@@ -74,7 +74,7 @@ export function WatchlistAnimeCard({ anime, onOpen }: Props) {
         variant="compact"
         showTitleBelow
         onOpen={onOpen}
-        watchlistEntry={entry}
+        animeEntry={entry}
         onAddToList={handleAddToList}
         onToggleFavorite={handleToggleFavorite}
       />
@@ -83,7 +83,7 @@ export function WatchlistAnimeCard({ anime, onOpen }: Props) {
         isOpen={showModal}
         onClose={handleClose}
         variant={variant}
-        aria-labelledby="watchlist-modal-title"
+        aria-labelledby="tracking-modal-title"
       >
         {!user ? (
           <AuthPrompt

@@ -3,34 +3,34 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
-import { useBatchWatchlist } from "@/hooks/useBatchWatchlist";
+import { useBatchAnimeEntries } from "@/hooks/useBatchAnimeEntries";
 import { MinimalShelf } from "@/components/Shelf";
 import { AnimeCard } from "@/components/AnimeCard";
 import { Modal } from "@/components/custom/Modal";
 import { AuthPrompt } from "@/components/common/AuthPrompt";
 import { AddToListModal } from "@/components/common/AddToListModal";
 import type { Anime } from "@/types/anime";
-import { toggleFavorite as toggleFavoriteAction } from "@/actions/watchlist";
+import { toggleFavorite as toggleFavoriteAction } from "@/actions/tracking";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
-interface WatchlistShelfProps {
+interface TrackingShelfProps {
   title: string;
   items: Anime[];
   className?: string;
 }
 
 /* -------------------------------------------------------------------------- */
-/*  WatchlistShelf                                                             */
+/*  TrackingShelf                                                             */
 /* -------------------------------------------------------------------------- */
 
-export function WatchlistShelf({ title, items, className }: WatchlistShelfProps) {
+export function TrackingShelf({ title, items, className }: TrackingShelfProps) {
   const { user } = useAuth();
   const router = useRouter();
   const animeIds = items.map((a) => a.id.anilist);
-  const { entriesMap } = useBatchWatchlist(animeIds);
+  const { entriesMap } = useBatchAnimeEntries(animeIds);
 
   const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
   const [variant, setVariant] = useState<"center" | "bottom-sheet">("center");
@@ -100,7 +100,7 @@ export function WatchlistShelf({ title, items, className }: WatchlistShelfProps)
             onOpen={() => router.push(`/anime/${anime.id.anilist}`)}
             onAddToList={handleAddToList}
             onToggleFavorite={handleToggleFavorite}
-            watchlistEntry={entriesMap.get(anime.id.anilist) ?? null}
+            animeEntry={entriesMap.get(anime.id.anilist) ?? null}
             variant="default"
           />
         )}
@@ -110,7 +110,7 @@ export function WatchlistShelf({ title, items, className }: WatchlistShelfProps)
         isOpen={isModalOpen}
         onClose={handleClose}
         variant={variant}
-        aria-labelledby="watchlist-modal-title"
+        aria-labelledby="tracking-modal-title"
       >
         {selectedAnime && !user ? (
           <AuthPrompt
