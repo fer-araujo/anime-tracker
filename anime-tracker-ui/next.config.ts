@@ -19,6 +19,18 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  headers: async () => [
+    {
+      source: "/(.*)",
+      headers: [
+        {
+          key: "Content-Security-Policy-Report-Only",
+          value:
+            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self'; connect-src 'self' https://*.supabase.co https://graphql.anilist.co https://api.themoviedb.org https://*.fanart.tv https://*.rapidapi.com;",
+        },
+      ],
+    },
+  ],
 };
 
 export default nextConfig;
