@@ -119,6 +119,7 @@ export function GalleryLightbox({
           src={validImages[currentIndex].url_original}
           alt={`Imagen ${currentIndex + 1} de la galería`}
           fill
+          sizes="(max-width: 768px) 100vw, 80vw"
           className="object-contain"
           priority
         />
