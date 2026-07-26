@@ -109,6 +109,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
             src={heroImage || ""}
             alt="Banner"
             fill
+            sizes="100vw"
             priority
             className="object-cover object-[center_20%] opacity-40 md:opacity-50 xl:opacity-30"
           />
@@ -154,6 +155,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                       src={anime.images.logo}
                       alt={anime.title}
                       fill
+                      sizes="(max-width: 768px) 50vw, 300px"
                       className="object-contain object-left-bottom drop-shadow-2xl"
                       priority
                     />
@@ -187,6 +189,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                         src={anime.images.poster}
                         alt={anime.title}
                         fill
+                        sizes="(max-width: 768px) 50vw, 250px"
                         className="object-cover"
                       />
                     ) : (
@@ -538,6 +541,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                                       src={ep.thumbnail}
                                       alt={ep.title}
                                       fill
+                                      sizes="(max-width: 768px) 33vw, 200px"
                                       className="object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-300"
                                     />
                                   ) : (
@@ -590,6 +594,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                                   src={img.url_original}
                                   alt="Artwork"
                                   fill
+                                  sizes="(max-width: 768px) 50vw, 400px"
                                   className="object-cover transition-transform duration-500 group-hover:scale-110"
                                 />
                               ) : (
@@ -618,16 +623,6 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                   <h3 className="text-white text-xl font-light tracking-wide">
                     Animes Similares
                   </h3>
-                  <button
-                    onClick={() =>
-                      alert(
-                        "¡La página completa de recomendaciones estará disponible en la próxima actualización!",
-                      )
-                    }
-                    className="text-xs text-white/40 uppercase tracking-widest font-bold flex items-center gap-1 cursor-pointer hover:text-white transition-colors"
-                  >
-                    Ver más <Icon name="ChevronRight" size={12} />
-                  </button>
                 </div>
 
                 {anime.meta?.recommendations &&
@@ -636,8 +631,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                 ) : (
                   <div className="border border-dashed border-white/10 p-12 rounded-xl flex items-center justify-center bg-white/[0.01]">
                     <p className="text-white/30 text-sm font-medium">
-                      Las recomendaciones se cargarán aquí tras conectar el
-                      backend.
+                      Sin recomendaciones disponibles para este anime.
                     </p>
                   </div>
                 )}

@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import React, { useState, useRef, useEffect } from "react";
 // Adiós shadcn, hola componentes limpios
@@ -51,6 +52,10 @@ export function AnimeCard({
   const normalized = uniqueNormalizedProviders(anime.providers);
   const [isFav, setFav] = useState(animeEntry?.favorite ?? false);
   const [overlayMode, setOverlayMode] = useState<"base" | "ultra">("base");
+  const router = useRouter();
+  const prefetchDetail = () => {
+    router.prefetch(`/anime/${anime.id.anilist}`);
+  };
 
   // Sync favorite state when animeEntry changes
   useEffect(() => {
@@ -72,7 +77,11 @@ export function AnimeCard({
   };
 
   return (
-    <div className="group relative w-full select-none">
+    <div
+      className="group relative w-full select-none"
+      onMouseEnter={prefetchDetail}
+      onTouchStart={prefetchDetail}
+    >
       <div
         tabIndex={0}
         role="button"

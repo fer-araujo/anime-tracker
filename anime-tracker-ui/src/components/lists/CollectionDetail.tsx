@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { fetchAnimeBatch } from "@/lib/fetchAnimeBatch";
@@ -36,6 +36,18 @@ export function CollectionDetail({
   const [activeStatus, setActiveStatus] = useState<TrackingStatus | "all">("all");
   const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
   const [modalVariant, setModalVariant] = useState<"center" | "bottom-sheet">("center");
+
+  const filtered = useMemo(
+    () =>
+      activeStatus === "all"
+        ? animeList
+        : animeList.filter(
+            (a) =>
+              a.meta?.status?.toUpperCase() ===
+              activeStatus.toUpperCase(),
+          ),
+    [animeList, activeStatus],
+  );
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -130,7 +142,7 @@ export function CollectionDetail({
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {animeList.map((anime) => (
+              {filtered.map((anime) => (
                 <AnimeCard
                   key={anime.id.anilist}
                   anime={anime}
