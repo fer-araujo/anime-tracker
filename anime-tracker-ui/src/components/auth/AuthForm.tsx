@@ -10,6 +10,7 @@ import { Divider } from "@/components/common/Divider";
 import { GoogleOAuthButton } from "@/components/common/GoogleOAuthButton";
 import { AuthBackground } from "@/components/common/AuthBackground";
 import { SubmitButton } from "@/components/common/SubmitButton";
+import { LegalModal } from "@/components/legal/LegalModal";
 import { sanitizeInput } from "@/lib/sanitize";
 import {
   validateSignIn,
@@ -51,6 +52,8 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
   const [error, setError] = useState<FormError | null>(null);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   const supabase = createClient();
 
@@ -334,13 +337,13 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
                   <label className="flex items-start gap-2 text-xs text-white/50">
                     <input type="checkbox" required className="mt-0.5 accent-primary" />
                     Acepto los{" "}
-                    <a href="/legal/terms" target="_blank" className="text-primary hover:underline">
+                    <button type="button" onClick={() => setShowTerms(true)} className="text-primary hover:underline cursor-pointer">
                       términos
-                    </a>{" "}
+                    </button>{" "}
                     y{" "}
-                    <a href="/legal/privacy" target="_blank" className="text-primary hover:underline">
+                    <button type="button" onClick={() => setShowPrivacy(true)} className="text-primary hover:underline cursor-pointer">
                       política de privacidad
-                    </a>
+                    </button>
                   </label>
 
                   <SubmitButton
@@ -370,6 +373,10 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Legal modals */}
+          <LegalModal type="terms" isOpen={showTerms} onClose={() => setShowTerms(false)} />
+          <LegalModal type="privacy" isOpen={showPrivacy} onClose={() => setShowPrivacy(false)} />
         </motion.div>
       </motion.div>
     </div>
