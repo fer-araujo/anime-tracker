@@ -60,10 +60,17 @@ export function FavoritesBanner() {
 
   if (count === 0) {
     return (
-      <div className="relative w-full h-40 sm:h-48 rounded-3xl overflow-hidden border border-white/10 bg-white/[0.02] flex items-center justify-center">
+      <div className="relative w-full h-40 sm:h-48 rounded-3xl overflow-hidden border border-white/10 bg-white/[0.02] flex flex-col items-center justify-center gap-3">
         <p className="text-white/40 text-sm">
           Añade animes a favoritos para verlos aquí
         </p>
+        <button
+          type="button"
+          onClick={() => router.push("/season")}
+          className="px-4 py-1.5 rounded-full bg-pink-500/20 border border-pink-500/30 text-pink-300 text-sm font-medium hover:bg-pink-500/30 transition-colors"
+        >
+          Explorar temporada
+        </button>
       </div>
     );
   }
