@@ -331,6 +331,18 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
                   {error && <FormBanner variant="error" message={error.message} />}
                   {successMessage && <FormBanner variant="success" message={successMessage} />}
 
+                  <label className="flex items-start gap-2 text-xs text-white/50">
+                    <input type="checkbox" required className="mt-0.5 accent-primary" />
+                    Acepto los{" "}
+                    <a href="/legal/terms" target="_blank" className="text-primary hover:underline">
+                      términos
+                    </a>{" "}
+                    y{" "}
+                    <a href="/legal/privacy" target="_blank" className="text-primary hover:underline">
+                      política de privacidad
+                    </a>
+                  </label>
+
                   <SubmitButton
                     label="Crear cuenta"
                     loading={loading}
