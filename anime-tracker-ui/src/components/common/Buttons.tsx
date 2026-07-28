@@ -41,7 +41,7 @@ export const ActionButton = (props: ActionButtonProps) => {
   );
   const styles =
     variant === "primary"
-      ? "bg-primary text-primary-foreground border-transparent hover:bg-primary-hover"
+      ? "bg-primary/85 text-primary-foreground border-transparent hover:bg-primary-hover"
       : variant === "solid"
         ? "border-white/15 bg-white/10 hover:bg-white/15"
         : "border-white/15 bg-white/5 hover:bg-white/10";
