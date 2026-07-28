@@ -8,7 +8,7 @@ import React, {
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Icon from "@/components/custom/Icon";
-import type { Anime } from "@/types/anime";
+import type { Anime, StreamingEpisode } from "@/types/anime";
 import { cn, formatNextAiring } from "@/lib/utils";
 import { ActionButton } from "@/components/common/Buttons";
 import { GalleryLightbox } from "./common/Gallery";
@@ -517,7 +517,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                           </p>
                         </div>
                         <div className="space-y-3 max-h-[350px] overflow-y-auto pr-3 overflow-x-hidden [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
-                          {anime.episodesData?.map((ep: any, i: number) => (
+                          {anime.episodesData?.map((ep: StreamingEpisode, i: number) => (
                             <a
                               href={ep.url}
                               target="_blank"
