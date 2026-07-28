@@ -39,6 +39,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
     toggleFavorite,
     setScore,
     remove,
+    refetch,
   } = useAnimeEntry(anime.id.anilist);
 
   const [showTrackingModal, setShowTrackingModal] = useState(false);
@@ -48,7 +49,8 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
   const handleTrackingClose = useCallback(() => {
     setShowTrackingModal(false);
     setRefreshKey((k) => k + 1);
-  }, []);
+    refetch();
+  }, [refetch]);
   const handleLoginNavigate = useCallback(
     () => router.push("/login"),
     [router],
@@ -253,7 +255,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                         href={anime.meta.trailer}
                         target="_blank"
                         rel="noreferrer"
-                        variant="soft"
+                        variant="solid"
                         icon={<Icon name="Play" size={16} />}
                         size="md"
                       >
