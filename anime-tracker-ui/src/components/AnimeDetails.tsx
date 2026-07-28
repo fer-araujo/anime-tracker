@@ -10,6 +10,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import Icon from "@/components/custom/Icon";
 import type { Anime } from "@/types/anime";
 import { cn, formatNextAiring } from "@/lib/utils";
+import { ActionButton } from "@/components/common/Buttons";
 import { GalleryLightbox } from "./common/Gallery";
 import { MinimalShelf } from "./Shelf";
 import { ImagePlaceholder } from "./common/ImagePlaceholder";
@@ -258,20 +259,23 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     )}
 
                     {!entry ? (
-                      <button
+                      <ActionButton
                         onClick={() => setShowTrackingModal(true)}
-                        className="flex items-center gap-3 bg-primary/85 text-gray-100 border border-transparent px-7 py-3 rounded-lg text-sm font-bold hover:bg-primary transition-all cursor-pointer"
+                        variant="solid"
+                        icon={<Icon name="Plus" size={16} />}
+                        size="md"
                       >
-                        <Icon name="Plus" size={16} /> + Añadir a lista
-                      </button>
+                        Añadir a lista
+                      </ActionButton>
                     ) : (
-                      <button
+                      <ActionButton
                         onClick={() => setShowTrackingModal(true)}
-                        className="flex items-center gap-3 px-7 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white"
+                        variant="soft"
+                        icon={<Icon name="List" size={16} />}
+                        size="md"
                       >
-                        <Icon name="List" size={16} />
                         Mis Colecciones
-                      </button>
+                      </ActionButton>
                     )}
                   </div>
 

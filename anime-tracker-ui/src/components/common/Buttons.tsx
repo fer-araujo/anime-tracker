@@ -6,14 +6,18 @@ export const ActionButton = ({
   onClick,
   variant = "solid",
   icon,
+  size = "sm",
 }: {
   children: React.ReactNode;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   variant?: "solid" | "soft";
   icon?: React.ReactNode;
+  size?: "sm" | "md";
 }) => {
-  const base =
-    "inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-white border focus:outline-none hover:cursor-pointer focus:ring-2 focus:ring-white/40 transition-colors h-8 px-2.5";
+  const base = cn(
+    "inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold text-white border focus:outline-none hover:cursor-pointer focus:ring-2 focus:ring-white/40 transition-colors",
+    size === "sm" ? "text-xs h-8 px-2.5" : "text-sm h-10 px-4",
+  );
   const styles =
     variant === "solid"
       ? "border-white/15 bg-white/10 hover:bg-white/15"
