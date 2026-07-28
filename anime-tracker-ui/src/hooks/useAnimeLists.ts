@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 
-export function useAnimeLists(animeId: number | null) {
+export function useAnimeLists(animeId: number | null, refreshKey?: number) {
   const { user } = useAuth();
   const [lists, setLists] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,7 +39,7 @@ export function useAnimeLists(animeId: number | null) {
         }
         setLoading(false);
       });
-  }, [animeId, user]);
+  }, [animeId, user, refreshKey]);
 
   return { lists, loading };
 }

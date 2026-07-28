@@ -18,6 +18,7 @@ type Props = {
   animeId: number;
   entry: AnimeEntry | null;
   loading: boolean;
+  refreshKey?: number;
   onAddToList: (
     status: TrackingStatus,
   ) => Promise<{ success: boolean; error?: string }>;
@@ -51,6 +52,7 @@ export default function AnimeTrackingSection({
   animeId,
   entry,
   loading,
+  refreshKey,
   onAddToList,
   onUpdateStatus,
   onToggleFavorite,
@@ -63,7 +65,7 @@ export default function AnimeTrackingSection({
   const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [showScorePicker, setShowScorePicker] = useState(false);
   const [showListExpanded, setShowListExpanded] = useState(false);
-  const { lists } = useAnimeLists(animeId);
+  const { lists } = useAnimeLists(animeId, refreshKey);
 
   if (authLoading) return null;
 
@@ -129,7 +131,7 @@ export default function AnimeTrackingSection({
   };
 
   return (
-    <div className="w-full p-4 rounded-xl border border-white/5 bg-white/[0.02] backdrop-blur-md space-y-3">
+    <div className="w-full p-4 rounded-xl border border-white/10 bg-white/5 space-y-3">
       {/* ===== COMPACT TOOLBAR ===== */}
       <div className="flex items-center gap-2 flex-wrap">
         {/* Status pill — clickable */}

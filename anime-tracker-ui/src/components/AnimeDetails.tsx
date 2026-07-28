@@ -41,12 +41,13 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
   } = useAnimeEntry(anime.id.anilist);
 
   const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const modalVariant = useResponsiveModalVariant();
 
-  const handleTrackingClose = useCallback(
-    () => setShowTrackingModal(false),
-    [],
-  );
+  const handleTrackingClose = useCallback(() => {
+    setShowTrackingModal(false);
+    setRefreshKey((k) => k + 1);
+  }, []);
   const handleLoginNavigate = useCallback(
     () => router.push("/login"),
     [router],
@@ -256,14 +257,22 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                       </a>
                     )}
 
-                    {/* Botón para manejar las Listas Personalizadas (Abre el Modal) */}
-                    <button
-                      onClick={() => setShowTrackingModal(true)}
-                      className="flex items-center gap-3 px-7 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white"
-                    >
-                      <Icon name="List" size={16} />
-                      Mis Colecciones
-                    </button>
+                    {!entry ? (
+                      <button
+                        onClick={() => setShowTrackingModal(true)}
+                        className="flex items-center gap-3 bg-primary/85 text-gray-100 border border-transparent px-7 py-3 rounded-lg text-sm font-bold hover:bg-primary transition-all cursor-pointer"
+                      >
+                        <Icon name="Plus" size={16} /> + Añadir a lista
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setShowTrackingModal(true)}
+                        className="flex items-center gap-3 px-7 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white"
+                      >
+                        <Icon name="List" size={16} />
+                        Mis Colecciones
+                      </button>
+                    )}
                   </div>
 
                   {/* NUESTRO NUEVO HORIZONTAL CONTROL DECK */}
@@ -271,6 +280,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     animeId={anime.id.anilist}
                     entry={entry}
                     loading={loading}
+                    refreshKey={refreshKey}
                     onAddToList={addToList}
                     onUpdateStatus={updateStatus}
                     onToggleFavorite={toggleFavorite}
