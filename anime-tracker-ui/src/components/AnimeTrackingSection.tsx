@@ -112,7 +112,7 @@ export default function AnimeTrackingSection({
   const handleSelectStatus = (s: TrackingStatus) => {
     setShowStatusPicker(false);
     if (currentStatus === s) return;
-    currentStatus ? onUpdateStatus(s) : onAddToList(s);
+    void (currentStatus ? onUpdateStatus(s) : onAddToList(s));
   };
 
   const handleSelectScore = (n: number) => {
