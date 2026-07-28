@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/providers/AuthProvider";
 import Icon from "@/components/custom/Icon";
 import { cn } from "@/lib/utils";
+import { useAnimeLists } from "@/hooks/useAnimeLists";
 import type { AnimeEntry, TrackingStatus } from "@/types/anime";
 import {
   STATUS_LABELS,
@@ -11,6 +15,7 @@ import {
 } from "@/constants/tracking";
 
 type Props = {
+  animeId: number;
   entry: AnimeEntry | null;
   loading: boolean;
   onAddToList: (
@@ -26,9 +31,24 @@ type Props = {
     score: number | null,
   ) => Promise<{ success: boolean; error?: string }>;
   onRemove: () => Promise<{ success: boolean; error?: string }>;
+  onOpenLists?: () => void;
+};
+
+const allStatuses: TrackingStatus[] = [
+  "plan_to_watch",
+  "watching",
+  "completed",
+  "on_hold",
+  "dropped",
+];
+
+const pickerVariants = {
+  open: { opacity: 1, height: "auto", scale: 1 },
+  closed: { opacity: 0, height: 0, scale: 0.95 },
 };
 
 export default function AnimeTrackingSection({
+  animeId,
   entry,
   loading,
   onAddToList,
@@ -36,8 +56,14 @@ export default function AnimeTrackingSection({
   onToggleFavorite,
   onSetScore,
   onRemove,
+  onOpenLists,
 }: Props) {
+  const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const [showStatusPicker, setShowStatusPicker] = useState(false);
+  const [showScorePicker, setShowScorePicker] = useState(false);
+  const [showListExpanded, setShowListExpanded] = useState(false);
+  const { lists } = useAnimeLists(animeId);
 
   if (authLoading) return null;
 
@@ -77,102 +103,255 @@ export default function AnimeTrackingSection({
   const isFavorite = entry?.favorite ?? false;
   const currentScore = entry?.score ?? null;
 
-  return (
-    <div className="w-full p-5 rounded-xl border border-white/5 bg-white/[0.02] backdrop-blur-md flex flex-col gap-5">
-      {/* ===== FILA 1: ESTADOS Y ACCIONES ===== */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
-        {/* Lado Izquierdo: Estados */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest mr-2">
-            Progreso
-          </span>
-          {(Object.keys(STATUS_LABELS) as TrackingStatus[]).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => {
-                if (currentStatus === s) return;
-                currentStatus ? onUpdateStatus(s) : onAddToList(s);
-              }}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold border transition-all duration-200 cursor-pointer",
-                s === currentStatus
-                  ? STATUS_COLORS[s].active
-                  : STATUS_COLORS[s].hover,
-              )}
-            >
-              <Icon name={STATUS_ICONS[s]} size={14} />
-              {STATUS_LABELS[s]}
-            </button>
-          ))}
-        </div>
+  const handleSelectStatus = (s: TrackingStatus) => {
+    setShowStatusPicker(false);
+    if (currentStatus === s) return;
+    currentStatus ? onUpdateStatus(s) : onAddToList(s);
+  };
 
-        {/* Lado Derecho: Favorito y Eliminar */}
-        <div className="flex items-center gap-3 xl:border-l xl:border-white/5 xl:pl-5">
-          <button
-            type="button"
-            onClick={() => onToggleFavorite(!isFavorite)}
+  const handleSelectScore = (n: number) => {
+    setShowScorePicker(false);
+    onSetScore(currentScore === n ? null : n);
+  };
+
+  const listCount = lists.length;
+  const visibleLists = lists.slice(0, 3);
+  const overflowCount = listCount > 3 ? listCount - 3 : 0;
+
+  const handleListBadgeClick = () => {
+    setShowStatusPicker(false);
+    setShowScorePicker(false);
+    if (listCount === 0) {
+      onOpenLists?.();
+    } else {
+      setShowListExpanded((v) => !v);
+    }
+  };
+
+  return (
+    <div className="w-full p-4 rounded-xl border border-white/5 bg-white/[0.02] backdrop-blur-md space-y-3">
+      {/* ===== COMPACT TOOLBAR ===== */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* Status pill — clickable */}
+        <button
+          type="button"
+          onClick={() => {
+            setShowScorePicker(false);
+            setShowStatusPicker((v) => !v);
+          }}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold border transition-all duration-200 cursor-pointer",
+            currentStatus
+              ? STATUS_COLORS[currentStatus].active
+              : "border-white/10 text-white/50 hover:border-white/30 hover:text-white hover:bg-white/5",
+          )}
+        >
+          <Icon
+            name={currentStatus ? STATUS_ICONS[currentStatus] : "Plus"}
+            size={14}
+          />
+          {currentStatus ? STATUS_LABELS[currentStatus] : "Añadir"}
+          <Icon
+            name="ChevronDown"
+            size={12}
             className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-bold transition-all duration-200 cursor-pointer",
-              isFavorite
-                ? "border-pink-500/50 bg-pink-500/10 text-pink-300 shadow-[0_0_15px_rgba(236,72,153,0.1)]"
-                : "border-white/10 text-white/50 hover:bg-white/10 hover:text-white",
+              "transition-transform duration-200",
+              showStatusPicker && "rotate-180",
             )}
-          >
+          />
+        </button>
+
+        {/* Score badge — clickable */}
+        <button
+          type="button"
+          onClick={() => {
+            setShowStatusPicker(false);
+            setShowScorePicker((v) => !v);
+          }}
+          className={cn(
+            "flex items-center gap-1 px-2.5 py-2 rounded-lg border text-[11px] font-bold transition-all duration-200 cursor-pointer",
+            currentScore != null
+              ? "border-emerald-500/30 text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20"
+              : "border-white/10 text-white/40 hover:border-white/30 hover:text-white hover:bg-white/5",
+          )}
+        >
+          <Icon name="Star" size={12} />
+          {currentScore != null ? `${currentScore}/10` : "Calificar"}
+          <Icon
+            name="ChevronDown"
+            size={10}
+            className={cn(
+              "transition-transform duration-200",
+              showScorePicker && "rotate-180",
+            )}
+          />
+        </button>
+
+        {/* List badge — clickable */}
+        <button
+          type="button"
+          onClick={handleListBadgeClick}
+          className={cn(
+            "flex items-center gap-1 px-2.5 py-2 rounded-lg border text-[11px] font-bold transition-all duration-200 cursor-pointer",
+            listCount > 0
+              ? "border-violet-500/30 text-violet-300 bg-violet-500/10 hover:bg-violet-500/20"
+              : "border-white/10 text-white/40 hover:border-white/30 hover:text-white hover:bg-white/5",
+          )}
+        >
+          <Icon name="List" size={12} />
+          {listCount > 0 ? `${listCount} ${listCount === 1 ? "lista" : "listas"}` : "0 listas"}
+          {listCount > 0 && (
             <Icon
-              name="Heart"
-              size={14}
+              name="ChevronDown"
+              size={10}
               className={cn(
-                "transition-transform",
-                isFavorite && "fill-pink-400 scale-110",
+                "transition-transform duration-200",
+                showListExpanded && "rotate-180",
               )}
             />
-            {isFavorite ? "Favorito" : "Añadir a Favoritos"}
-          </button>
-
-          {entry && (
-            <button
-              type="button"
-              onClick={() => onRemove()}
-              className="flex items-center justify-center w-9 h-9 rounded-lg border border-red-500/10 text-red-400/80 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition-colors cursor-pointer group"
-              title="Eliminar de mi lista"
-            >
-              <Icon
-                name="Trash2"
-                size={14}
-                className="group-hover:scale-110 transition-transform"
-              />
-            </button>
           )}
-        </div>
+        </button>
+
+        <div className="h-5 w-px bg-white/5 mx-1" />
+
+        {/* Favorite */}
+        <button
+          type="button"
+          onClick={() => onToggleFavorite(!isFavorite)}
+          className={cn(
+            "flex items-center justify-center w-9 h-9 rounded-lg border transition-all duration-200 cursor-pointer",
+            isFavorite
+              ? "border-pink-500/50 bg-pink-500/10"
+              : "border-white/10 text-white/50 hover:bg-white/10",
+          )}
+          title={isFavorite ? "Quitar de favoritos" : "Añadir a favoritos"}
+        >
+          <Icon
+            name="Heart"
+            size={14}
+            className={cn(
+              "transition-transform",
+              isFavorite && "fill-pink-400 text-pink-400 scale-110",
+            )}
+          />
+        </button>
+
+        {/* Delete */}
+        {entry && (
+          <button
+            type="button"
+            onClick={() => onRemove()}
+            className="flex items-center justify-center w-9 h-9 rounded-lg border border-red-500/10 text-red-400/80 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition-colors cursor-pointer"
+            title="Eliminar de mi lista"
+          >
+            <Icon name="Trash2" size={14} />
+          </button>
+        )}
       </div>
 
-      {/* ===== FILA 2: PUNTUACIÓN ===== */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-4 border-t border-white/5">
-        <div className="flex items-center justify-between sm:w-auto">
-          <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest mr-4">
-            Calificación
-          </span>
-        </div>
+      {/* ===== EXPANDED STATUS PICKER ===== */}
+      <AnimatePresence initial={false}>
+        {showStatusPicker && (
+          <motion.div
+            key="status-picker"
+            variants={pickerVariants}
+            initial="closed"
+            animate="open"
+            exit="closed"
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-wrap gap-2 pt-1">
+              {allStatuses.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => handleSelectStatus(s)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold border transition-all duration-200 cursor-pointer",
+                    s === currentStatus
+                      ? STATUS_COLORS[s].active
+                      : STATUS_COLORS[s].hover,
+                  )}
+                >
+                  <Icon name={STATUS_ICONS[s]} size={14} />
+                  {STATUS_LABELS[s]}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => onSetScore(currentScore === n ? null : n)}
-              className={cn(
-                "min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center text-[11px] font-bold border transition-all duration-200",
-                currentScore === n
-                  ? "bg-primary text-white border-primary shadow-[0_0_10px_rgba(var(--primary),0.5)] z-10 scale-110"
-                  : "border-white/10 text-white/50 hover:border-primary/50 hover:text-white hover:bg-primary/10 cursor-pointer",
+      {/* ===== EXPANDED SCORE PICKER ===== */}
+      <AnimatePresence initial={false}>
+        {showScorePicker && (
+          <motion.div
+            key="score-picker"
+            variants={pickerVariants}
+            initial="closed"
+            animate="open"
+            exit="closed"
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="flex items-center gap-1.5 flex-wrap pt-1">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => handleSelectScore(n)}
+                  className={cn(
+                    "min-w-[40px] min-h-[40px] rounded-full flex items-center justify-center text-[11px] font-bold border transition-all duration-200 cursor-pointer",
+                    currentScore === n
+                      ? "bg-primary text-white border-primary shadow-[0_0_10px_rgba(var(--primary),0.5)] z-10 scale-110"
+                      : "border-white/10 text-white/50 hover:border-primary/50 hover:text-white hover:bg-primary/10",
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ===== EXPANDED LIST PILLS ===== */}
+      <AnimatePresence initial={false}>
+        {showListExpanded && listCount > 0 && (
+          <motion.div
+            key="list-pills"
+            variants={pickerVariants}
+            initial="closed"
+            animate="open"
+            exit="closed"
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-wrap gap-2 pt-1">
+              {visibleLists.map((list) => (
+                <button
+                  key={list.id}
+                  type="button"
+                  onClick={() => router.push(`/lists/${list.id}`)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[11px] font-medium text-white/70 hover:border-violet-500/30 hover:text-violet-300 hover:bg-violet-500/5 transition-all duration-200 cursor-pointer"
+                >
+                  {list.name}
+                </button>
+              ))}
+              {overflowCount > 0 && (
+                <button
+                  type="button"
+                  onClick={onOpenLists}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dashed border-white/15 text-[11px] font-medium text-white/50 hover:border-primary/30 hover:text-primary hover:bg-primary/5 transition-all duration-200 cursor-pointer"
+                >
+                  +{overflowCount} más
+                </button>
               )}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
-      </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

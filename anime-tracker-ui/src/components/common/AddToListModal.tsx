@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import Icon from "@/components/custom/Icon";
 import { cn } from "@/lib/utils";
@@ -8,9 +9,7 @@ import type { AnimeEntry, TrackingStatus } from "@/types/anime";
 import {
   addToTracking,
   updateStatus,
-  toggleFavorite,
   removeFromTracking,
-  setScore,
 } from "@/actions/tracking";
 import { addToList, removeFromList } from "@/actions/lists";
 import { useUserLists } from "@/hooks/useUserLists";
@@ -35,10 +34,6 @@ export function AddToListModal({
   const [selectedStatus, setSelectedStatus] = useState<TrackingStatus | null>(
     currentEntry?.status ?? null,
   );
-  const [isFav, setIsFav] = useState(currentEntry?.favorite ?? false);
-  const [score, setScoreState] = useState<number | null>(
-    currentEntry?.score ?? null,
-  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreateList, setShowCreateList] = useState(false);
@@ -47,14 +42,25 @@ export function AddToListModal({
   const [selectedLists, setSelectedLists] = useState<Set<string>>(new Set());
   const [togglingLists, setTogglingLists] = useState<Set<string>>(new Set());
 
+  // Pre-select lists that already contain this anime
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from("list_entries")
+      .select("list_id")
+      .eq("anime_id", animeId)
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setSelectedLists(new Set(data.map((e) => e.list_id)));
+        }
+      });
+  }, [animeId]);
+
   const handleConfirm = useCallback(async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || !selectedStatus) return;
 
     const statusChanged = selectedStatus !== (currentEntry?.status ?? null);
-    const favChanged = isFav !== (currentEntry?.favorite ?? false);
-    const scoreChanged = score !== (currentEntry?.score ?? null);
-
-    if (!statusChanged && !favChanged && !scoreChanged) {
+    if (!statusChanged) {
       onClose();
       return;
     }
@@ -63,28 +69,11 @@ export function AddToListModal({
     setError(null);
 
     try {
-      const promises: Promise<{ success: boolean; error?: string }>[] = [];
+      const result = currentEntry
+        ? await updateStatus(animeId, selectedStatus)
+        : await addToTracking(animeId, selectedStatus);
 
-      if (statusChanged && selectedStatus) {
-        if (currentEntry) {
-          promises.push(updateStatus(animeId, selectedStatus));
-        } else {
-          promises.push(addToTracking(animeId, selectedStatus));
-        }
-      }
-
-      if (favChanged) {
-        promises.push(toggleFavorite(animeId, isFav));
-      }
-
-      if (scoreChanged) {
-        promises.push(setScore(animeId, score));
-      }
-
-      const results = await Promise.all(promises);
-      const failed = results.find((r) => !r.success);
-
-      if (failed) {
+      if (!result.success) {
         setError("No se pudo guardar. Intenta de nuevo.");
         setIsSubmitting(false);
       } else {
@@ -94,7 +83,7 @@ export function AddToListModal({
       setError("No se pudo guardar. Intenta de nuevo.");
       setIsSubmitting(false);
     }
-  }, [animeId, currentEntry, selectedStatus, isFav, score, isSubmitting, onClose]);
+  }, [animeId, currentEntry, selectedStatus, isSubmitting, onClose]);
 
   const handleRemove = useCallback(async () => {
     setIsSubmitting(true);
@@ -221,109 +210,7 @@ export function AddToListModal({
 
         <div className="h-px bg-white/5 w-full" />
 
-        {/* --- 2. FAVORITE TOGGLE CARD --- */}
-        <div className="space-y-3">
-          <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">
-            Colección Rápida
-          </label>
-
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isFav}
-            onClick={() => setIsFav(!isFav)}
-            className={cn(
-              "flex items-center justify-between w-full p-3.5 rounded-xl border transition-all duration-300 cursor-pointer group",
-              isFav
-                ? "border-pink-500/50 bg-pink-500/10 shadow-[0_0_20px_rgba(236,72,153,0.1)]"
-                : "border-white/10 bg-white/5 hover:bg-white/10",
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "flex items-center justify-center w-8 h-8 rounded-full transition-colors",
-                  isFav
-                    ? "bg-pink-500/20"
-                    : "bg-white/10 group-hover:bg-white/20",
-                )}
-              >
-                <Icon
-                  name="Heart"
-                  size={14}
-                  className={cn(
-                    "transition-all duration-300",
-                    isFav
-                      ? "fill-pink-400 text-pink-400 scale-110"
-                      : "text-white/50",
-                  )}
-                />
-              </div>
-              <div className="text-left">
-                <p
-                  className={cn(
-                    "text-sm font-semibold transition-colors",
-                    isFav ? "text-pink-300" : "text-white/80",
-                  )}
-                >
-                  Mis Favoritos
-                </p>
-              </div>
-            </div>
-
-            <div
-              className={cn(
-                "w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all duration-300",
-                isFav ? "border-pink-500 bg-pink-500" : "border-white/20",
-              )}
-            >
-              <AnimatePresence>
-                {isFav && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                  >
-                    <Icon name="Check" size={10} className="text-white" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </button>
-        </div>
-
-        {/* --- 3. SCORE SELECTOR --- */}
-        <div className="space-y-3">
-          <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">
-            Calificación
-          </label>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setScoreState(score === n ? null : n)}
-                className={cn(
-                  "min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center text-[11px] font-bold border transition-all duration-200",
-                  score === n
-                    ? "bg-primary text-white border-primary shadow-[0_0_10px_rgba(var(--primary),0.5)] z-10 scale-110"
-                    : "border-white/10 text-white/50 hover:border-primary/50 hover:text-white hover:bg-primary/10 cursor-pointer",
-                )}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-          {score != null && (
-            <p className="text-[10px] text-white/30 font-medium ml-1">
-              Puntuación: {score}/10
-            </p>
-          )}
-        </div>
-
-        <div className="h-px bg-white/5 w-full" />
-
-        {/* --- 4. CUSTOM COLLECTIONS --- */}
+        {/* --- 2. CUSTOM COLLECTIONS --- */}
         <div className="space-y-3">
           <div className="flex items-center justify-between ml-1">
             <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
@@ -468,9 +355,7 @@ export function AddToListModal({
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={
-              isSubmitting || (!selectedStatus && !isFav && score === (currentEntry?.score ?? null) && !currentEntry)
-            }
+            disabled={isSubmitting || !selectedStatus}
             className="px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_15px_rgba(var(--primary),0.2)] hover:brightness-110 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isSubmitting ? (

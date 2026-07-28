@@ -7,7 +7,7 @@ process.env.STREAMING_AVAILABILITY_KEY = "";
 process.env.STREAMING_AVAIL_KEY = "";
 process.env.RAPIDAPI_KEY = "";
 process.env.REDIS_URL = "";
-process.env.FANART_TV_KEY = "55f7d6df186e9785f1b1fb85f89df381";
+process.env.FANART_TV_KEY = "55f7d6df186e9785f1b1fb85f89df381"; // Test mock key — not a real credential
 
 beforeAll(() => {
   process.env.DISABLE_CIRCUIT_BREAKER = "true";

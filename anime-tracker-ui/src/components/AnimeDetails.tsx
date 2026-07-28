@@ -268,6 +268,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
 
                   {/* NUESTRO NUEVO HORIZONTAL CONTROL DECK */}
                   <AnimeTrackingSection
+                    animeId={anime.id.anilist}
                     entry={entry}
                     loading={loading}
                     onAddToList={addToList}
@@ -275,6 +276,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     onToggleFavorite={toggleFavorite}
                     onSetScore={setScore}
                     onRemove={remove}
+                    onOpenLists={() => setShowTrackingModal(true)}
                   />
                 </div>
 
