@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { TrackingStatus } from "@/types/anime";
 
 type ActionResult = { success: boolean; error?: string };
@@ -8,13 +9,17 @@ type ActionResult = { success: boolean; error?: string };
 async function getUserId(): Promise<string | null> {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return session?.user?.id ?? null;
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id ?? null;
 }
 
 function unauthorized(): ActionResult {
   return { success: false, error: "Not authenticated" };
+}
+
+function rateLimited(): ActionResult {
+  return { success: false, error: "Too many requests. Try again later." };
 }
 
 export async function addToTracking(
@@ -23,6 +28,7 @@ export async function addToTracking(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return unauthorized();
+  if (!checkRateLimit(`tracking:${userId}`)) return rateLimited();
 
   const supabase = await createClient();
 
@@ -51,6 +57,7 @@ export async function updateStatus(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return unauthorized();
+  if (!checkRateLimit(`tracking:${userId}`)) return rateLimited();
 
   const supabase = await createClient();
 
@@ -73,6 +80,7 @@ export async function toggleFavorite(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return unauthorized();
+  if (!checkRateLimit(`tracking:${userId}`)) return rateLimited();
 
   const supabase = await createClient();
 
@@ -95,6 +103,7 @@ export async function setScore(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return unauthorized();
+  if (!checkRateLimit(`tracking:${userId}`)) return rateLimited();
 
   const supabase = await createClient();
 
@@ -116,6 +125,7 @@ export async function removeFromTracking(
 ): Promise<ActionResult> {
   const userId = await getUserId();
   if (!userId) return unauthorized();
+  if (!checkRateLimit(`tracking:${userId}`)) return rateLimited();
 
   const supabase = await createClient();
 

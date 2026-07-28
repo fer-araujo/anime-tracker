@@ -7,7 +7,7 @@ import ComingSoonSection from "@/components/sections/ComingSoonSection";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
 
 export const revalidate = 21600;
-export const dynamic = "force-dynamic";
+// auto: ISR with 6h revalidation. Falls back to dynamic render if static generation fails.
 
 export default async function HomePage() {
   return (

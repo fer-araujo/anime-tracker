@@ -4,43 +4,27 @@ import { useAuth } from "@/providers/AuthProvider";
 import Icon from "@/components/custom/Icon";
 import { cn } from "@/lib/utils";
 import type { AnimeEntry, TrackingStatus } from "@/types/anime";
-
-const STATUS_LABELS: Record<TrackingStatus, string> = {
-  plan_to_watch: "Plan to Watch",
-  watching: "Watching",
-  completed: "Completed",
-  on_hold: "On Hold",
-  dropped: "Dropped",
-};
-
-const STATUS_ACTIVE_COLORS: Record<TrackingStatus, string> = {
-  plan_to_watch: "border-white/20 text-white/60 bg-white/5",
-  watching: "border-sky-500/40 text-sky-300 bg-sky-500/10",
-  completed: "border-emerald-500/40 text-emerald-300 bg-emerald-500/10",
-  on_hold: "border-amber-500/40 text-amber-300 bg-amber-500/10",
-  dropped: "border-red-500/40 text-red-300 bg-red-500/10",
-};
-
-const STATUS_BUTTON_COLORS: Record<TrackingStatus, string> = {
-  plan_to_watch:
-    "border-white/10 text-white/60 hover:text-white hover:bg-white/5",
-  watching:
-    "border-sky-500/30 text-sky-400 hover:bg-sky-500/10 hover:border-sky-500/50",
-  completed:
-    "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/50",
-  on_hold:
-    "border-amber-500/30 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50",
-  dropped:
-    "border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50",
-};
+import {
+  STATUS_LABELS,
+  STATUS_ICONS,
+  STATUS_COLORS,
+} from "@/constants/tracking";
 
 type Props = {
   entry: AnimeEntry | null;
   loading: boolean;
-  onAddToList: (status: TrackingStatus) => Promise<{ success: boolean; error?: string }>;
-  onUpdateStatus: (status: TrackingStatus) => Promise<{ success: boolean; error?: string }>;
-  onToggleFavorite: (next: boolean) => Promise<{ success: boolean; error?: string }>;
-  onSetScore: (score: number | null) => Promise<{ success: boolean; error?: string }>;
+  onAddToList: (
+    status: TrackingStatus,
+  ) => Promise<{ success: boolean; error?: string }>;
+  onUpdateStatus: (
+    status: TrackingStatus,
+  ) => Promise<{ success: boolean; error?: string }>;
+  onToggleFavorite: (
+    next: boolean,
+  ) => Promise<{ success: boolean; error?: string }>;
+  onSetScore: (
+    score: number | null,
+  ) => Promise<{ success: boolean; error?: string }>;
   onRemove: () => Promise<{ success: boolean; error?: string }>;
 };
 
@@ -59,25 +43,32 @@ export default function AnimeTrackingSection({
 
   if (!user) {
     return (
-      <div className="p-5 rounded-xl border border-white/5 bg-white/[0.02] backdrop-blur-md text-center">
-        <p className="text-xs text-white/40">
-          <a href="/login" className="text-primary hover:underline">
-            Inicia sesión
-          </a>{" "}
-          para añadir a tu lista
-        </p>
+      <div className="w-full p-4 rounded-xl border border-white/5 bg-white/[0.02] backdrop-blur-md flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
+            <Icon name="Lock" size={16} className="text-white/40" />
+          </div>
+          <p className="text-sm text-white/60">
+            <a
+              href="/login"
+              className="text-primary font-semibold hover:text-primary/80 transition-colors"
+            >
+              Inicia sesión
+            </a>{" "}
+            para llevar el progreso de este anime.
+          </p>
+        </div>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="p-5 rounded-xl border border-white/5 bg-white/[0.02] backdrop-blur-md text-center">
-        <Icon
-          name="Loader2"
-          size={16}
-          className="animate-spin text-primary mx-auto"
-        />
+      <div className="w-full p-6 rounded-xl border border-white/5 bg-white/[0.02] backdrop-blur-md flex items-center justify-center gap-3">
+        <Icon name="Loader2" size={20} className="animate-spin text-primary" />
+        <span className="text-xs font-bold text-white/40 uppercase tracking-widest">
+          Sincronizando progreso...
+        </span>
       </div>
     );
   }
@@ -87,114 +78,100 @@ export default function AnimeTrackingSection({
   const currentScore = entry?.score ?? null;
 
   return (
-    <div className="p-5 rounded-xl border border-white/5 bg-white/[0.02] backdrop-blur-md space-y-4">
-      <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] block">
-        Mi Lista
-      </span>
-
-      {/* Status selector */}
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
-          Estado
-        </label>
-        <div className="flex flex-wrap gap-1.5">
+    <div className="w-full p-5 rounded-xl border border-white/5 bg-white/[0.02] backdrop-blur-md flex flex-col gap-5">
+      {/* ===== FILA 1: ESTADOS Y ACCIONES ===== */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
+        {/* Lado Izquierdo: Estados */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest mr-2">
+            Progreso
+          </span>
           {(Object.keys(STATUS_LABELS) as TrackingStatus[]).map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => {
                 if (currentStatus === s) return;
-                if (currentStatus) {
-                  onUpdateStatus(s);
-                } else {
-                  onAddToList(s);
-                }
+                currentStatus ? onUpdateStatus(s) : onAddToList(s);
               }}
               className={cn(
-                "px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider border transition-all duration-150 cursor-pointer",
+                "flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold border transition-all duration-200 cursor-pointer",
                 s === currentStatus
-                  ? STATUS_ACTIVE_COLORS[s]
-                  : STATUS_BUTTON_COLORS[s],
+                  ? STATUS_COLORS[s].active
+                  : STATUS_COLORS[s].hover,
               )}
             >
+              <Icon name={STATUS_ICONS[s]} size={14} />
               {STATUS_LABELS[s]}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Remove button */}
-      {entry && (
-        <button
-          type="button"
-          onClick={() => onRemove()}
-          className="flex items-center gap-1.5 text-[10px] font-semibold text-red-400 hover:text-red-300 uppercase tracking-wider transition-colors cursor-pointer"
-        >
-          <Icon name="Trash2" size={12} />
-          Quitar de lista
-        </button>
-      )}
+        {/* Lado Derecho: Favorito y Eliminar */}
+        <div className="flex items-center gap-3 xl:border-l xl:border-white/5 xl:pl-5">
+          <button
+            type="button"
+            onClick={() => onToggleFavorite(!isFavorite)}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-bold transition-all duration-200 cursor-pointer",
+              isFavorite
+                ? "border-pink-500/50 bg-pink-500/10 text-pink-300 shadow-[0_0_15px_rgba(236,72,153,0.1)]"
+                : "border-white/10 text-white/50 hover:bg-white/10 hover:text-white",
+            )}
+          >
+            <Icon
+              name="Heart"
+              size={14}
+              className={cn(
+                "transition-transform",
+                isFavorite && "fill-pink-400 scale-110",
+              )}
+            />
+            {isFavorite ? "Favorito" : "Añadir a Favoritos"}
+          </button>
 
-      <div className="h-px bg-white/5" />
-
-      {/* Favorite toggle */}
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
-          Favorito
-        </span>
-        <button
-          type="button"
-          onClick={() => onToggleFavorite(!isFavorite)}
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all duration-150 cursor-pointer",
-            isFavorite
-              ? "border-pink-400/40 bg-pink-500/20 text-pink-300"
-              : "border-white/10 text-white/50 hover:text-white hover:bg-white/5",
+          {entry && (
+            <button
+              type="button"
+              onClick={() => onRemove()}
+              className="flex items-center justify-center w-9 h-9 rounded-lg border border-red-500/10 text-red-400/80 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition-colors cursor-pointer group"
+              title="Eliminar de mi lista"
+            >
+              <Icon
+                name="Trash2"
+                size={14}
+                className="group-hover:scale-110 transition-transform"
+              />
+            </button>
           )}
-        >
-          <Icon
-            name="Heart"
-            size={14}
-            className={isFavorite ? "fill-pink-300" : ""}
-          />
-          {isFavorite ? "Favorito" : "Añadir a favoritos"}
-        </button>
+        </div>
       </div>
 
-      {/* Score selector — only for completed */}
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
-          Puntuación
-        </label>
-        <div className="flex flex-wrap gap-1">
+      {/* ===== FILA 2: PUNTUACIÓN ===== */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-4 border-t border-white/5">
+        <div className="flex items-center justify-between sm:w-auto">
+          <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest mr-4">
+            Calificación
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
             <button
               key={n}
               type="button"
-              disabled={currentStatus !== "completed" && currentStatus !== null}
-              onClick={() => {
-                onSetScore(currentScore === n ? null : n);
-              }}
+              onClick={() => onSetScore(currentScore === n ? null : n)}
               className={cn(
-                "w-7 h-7 rounded-md text-[10px] font-bold border transition-all duration-150 cursor-pointer",
+                "min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center text-[11px] font-bold border transition-all duration-200",
                 currentScore === n
-                  ? "bg-primary/20 text-primary border-primary/30"
-                  : currentStatus === "completed" || currentStatus === null
-                    ? "border-white/10 text-white/50 hover:text-white hover:bg-white/5"
-                    : "border-white/5 text-white/20 cursor-not-allowed",
+                  ? "bg-primary text-white border-primary shadow-[0_0_10px_rgba(var(--primary),0.5)] z-10 scale-110"
+                  : "border-white/10 text-white/50 hover:border-primary/50 hover:text-white hover:bg-primary/10 cursor-pointer",
               )}
             >
               {n}
             </button>
           ))}
         </div>
-        {(currentStatus === "completed" || currentStatus === null) && (
-          <p className="text-[9px] text-white/30">
-            {currentStatus === "completed"
-              ? "Puntúa del 1 al 10"
-              : "Puntúa después de marcar como completado"}
-          </p>
-        )}
       </div>
     </div>
   );

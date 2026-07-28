@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
 
 export async function createList(name: string, color?: string) {
@@ -9,6 +10,7 @@ export async function createList(name: string, color?: string) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not authenticated" };
+  if (!checkRateLimit(`lists:${user.id}`)) return { success: false, error: "Too many requests. Try again later." };
 
   const { error } = await supabase.from("user_lists").insert({
     user_id: user.id,
@@ -27,6 +29,7 @@ export async function deleteList(id: string) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not authenticated" };
+  if (!checkRateLimit(`lists:${user.id}`)) return { success: false, error: "Too many requests. Try again later." };
 
   const { error } = await supabase
     .from("user_lists")
@@ -45,6 +48,7 @@ export async function addToList(listId: string, animeId: number) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not authenticated" };
+  if (!checkRateLimit(`lists:${user.id}`)) return { success: false, error: "Too many requests. Try again later" };
 
   const { data: list } = await supabase
     .from("user_lists")
@@ -69,6 +73,7 @@ export async function removeFromList(listId: string, animeId: number) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not authenticated" };
+  if (!checkRateLimit(`lists:${user.id}`)) return { success: false, error: "Too many requests. Try again later" };
 
   const { error } = await supabase
     .from("list_entries")

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { useBatchAnimeEntries } from "@/hooks/useBatchAnimeEntries";
@@ -9,6 +9,7 @@ import { AnimeCard } from "@/components/AnimeCard";
 import { Modal } from "@/components/custom/Modal";
 import { AuthPrompt } from "@/components/common/AuthPrompt";
 import { AddToListModal } from "@/components/common/AddToListModal";
+import { useResponsiveModalVariant } from "@/hooks/useResponsiveModalVariant";
 import type { Anime } from "@/types/anime";
 import { toggleFavorite as toggleFavoriteAction } from "@/actions/tracking";
 
@@ -33,17 +34,7 @@ export function TrackingShelf({ title, items, className }: TrackingShelfProps) {
   const { entriesMap } = useBatchAnimeEntries(animeIds);
 
   const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
-  const [variant, setVariant] = useState<"center" | "bottom-sheet">("center");
-
-  // Responsive variant
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    setVariant(mq.matches ? "bottom-sheet" : "center");
-    const handler = (e: MediaQueryListEvent) =>
-      setVariant(e.matches ? "bottom-sheet" : "center");
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
+  const variant = useResponsiveModalVariant();
 
   const handleAddToList = useCallback(
     (anime: Anime) => {

@@ -8,6 +8,8 @@ import { AnimeCard } from "@/components/AnimeCard";
 import { Modal } from "@/components/custom/Modal";
 import { AuthPrompt } from "@/components/common/AuthPrompt";
 import { AddToListModal } from "@/components/common/AddToListModal";
+import { useResponsiveModalVariant } from "@/hooks/useResponsiveModalVariant";
+import { useBatchAnimeEntries } from "@/hooks/useBatchAnimeEntries";
 import Icon from "@/components/custom/Icon";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -35,28 +37,20 @@ export function CollectionDetail({
   const [loading, setLoading] = useState(true);
   const [activeStatus, setActiveStatus] = useState<TrackingStatus | "all">("all");
   const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
-  const [modalVariant, setModalVariant] = useState<"center" | "bottom-sheet">("center");
+  const modalVariant = useResponsiveModalVariant();
+  const { entriesMap } = useBatchAnimeEntries(animeIds);
 
   const filtered = useMemo(
     () =>
       activeStatus === "all"
         ? animeList
-        : animeList.filter(
-            (a) =>
-              a.meta?.status?.toUpperCase() ===
-              activeStatus.toUpperCase(),
-          ),
-    [animeList, activeStatus],
+        : animeList.filter((a) => {
+            const entry = entriesMap.get(a.id.anilist);
+            if (!entry) return false;
+            return entry.status === activeStatus;
+          }),
+    [animeList, activeStatus, entriesMap],
   );
-
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    setModalVariant(mq.matches ? "bottom-sheet" : "center");
-    const handler = (e: MediaQueryListEvent) =>
-      setModalVariant(e.matches ? "bottom-sheet" : "center");
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
 
   useEffect(() => {
     if (animeIds.length === 0) {
@@ -171,7 +165,7 @@ export function CollectionDetail({
           ) : (
             <AddToListModal
               animeId={selectedAnime.id.anilist}
-              currentEntry={null}
+              currentEntry={entriesMap.get(selectedAnime.id.anilist) ?? null}
               onClose={() => setSelectedAnime(null)}
             />
           )}

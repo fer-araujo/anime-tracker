@@ -8,14 +8,14 @@ import {
 } from "@/actions/tracking";
 
 // vi.mock is hoisted, so variables used in its factory must use vi.hoisted()
-const { mockGetSession, mockFrom, mockSupabase } = vi.hoisted(() => {
-  const getSession = vi.fn();
+const { mockGetUser, mockFrom, mockSupabase } = vi.hoisted(() => {
+  const getUser = vi.fn();
   const from = vi.fn();
   return {
-    mockGetSession: getSession,
+    mockGetUser: getUser,
     mockFrom: from,
     mockSupabase: {
-      auth: { getSession: getSession },
+      auth: { getUser: getUser },
       from: from,
     },
   };
@@ -32,9 +32,9 @@ describe("Tracking Server Actions — auth guard", () => {
 
   describe("when authenticated", () => {
     beforeEach(() => {
-      mockGetSession.mockResolvedValue({
+      mockGetUser.mockResolvedValue({
         data: {
-          session: { user: { id: "test-user-id" } },
+          user: { id: "test-user-id" },
         },
       });
     });
@@ -104,8 +104,8 @@ describe("Tracking Server Actions — auth guard", () => {
 
   describe("when NOT authenticated", () => {
     beforeEach(() => {
-      mockGetSession.mockResolvedValue({
-        data: { session: null },
+      mockGetUser.mockResolvedValue({
+        data: { user: null },
       });
     });
 

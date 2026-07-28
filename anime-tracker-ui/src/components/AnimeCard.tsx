@@ -13,25 +13,18 @@ import { ActionButton, FavButton } from "./common/Buttons";
 import { PosterSkeleton } from "./Loaders/PosterSkeleton";
 import Tooltip from "@/components/custom/Tooltip";
 import Icon from "@/components/custom/Icon";
+import {
+  STATUS_LABELS,
+  STATUS_COLORS as TRACKING_COLORS,
+} from "@/constants/tracking";
 
-/* -------------------------------------------------------------------------- */
-/*  Status helpers                                                             */
-/* -------------------------------------------------------------------------- */
-
-const STATUS_LABELS: Record<TrackingStatus, string> = {
-  plan_to_watch: "Plan to Watch",
-  watching: "Watching",
-  completed: "Completed",
-  on_hold: "On Hold",
-  dropped: "Dropped",
-};
-
-const STATUS_COLORS: Record<TrackingStatus, string> = {
+// Thin pill variant derived from the shared active colors, but with subtle opacity
+const STATUS_PILL_COLORS: Record<TrackingStatus, string> = {
   plan_to_watch: "border-white/20 text-white/60 bg-white/5",
-  watching: "border-sky-500/40 text-sky-300 bg-sky-500/10",
-  completed: "border-emerald-500/40 text-emerald-300 bg-emerald-500/10",
-  on_hold: "border-amber-500/40 text-amber-300 bg-amber-500/10",
-  dropped: "border-red-500/40 text-red-300 bg-red-500/10",
+  watching: "border-sky-500/50 text-sky-300 bg-sky-500/10",
+  completed: "border-emerald-500/50 text-emerald-300 bg-emerald-500/10",
+  on_hold: "border-amber-500/50 text-amber-300 bg-amber-500/10",
+  dropped: "border-red-500/50 text-red-300 bg-red-500/10",
 };
 
 /* -------------------------------------------------------------------------- */
@@ -133,20 +126,19 @@ export function AnimeCard({
             <span
               className={cn(
                 "px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border",
-                STATUS_COLORS[animeEntry.status],
+                STATUS_PILL_COLORS[animeEntry.status],
               )}
             >
               {STATUS_LABELS[animeEntry.status]}
             </span>
           )}
 
-          {/* Score badge when completed */}
-          {animeEntry?.status === "completed" &&
-            animeEntry.score != null && (
-              <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
-                {animeEntry.score}/10
-              </span>
-            )}
+          {/* Score badge — show for any status */}
+          {animeEntry?.score != null && (
+            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+              {animeEntry.score}/10
+            </span>
+          )}
 
           <FavButton
             active={isFav}
@@ -264,13 +256,12 @@ export function AnimeCard({
                   Añadir
                 </ActionButton>
 
-                {/* Score badge when completed */}
-                {animeEntry?.status === "completed" &&
-                  animeEntry.score != null && (
-                    <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
-                      {animeEntry.score}/10
-                    </span>
-                  )}
+                {/* Score badge — show for any status */}
+                {animeEntry?.score != null && (
+                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                    {animeEntry.score}/10
+                  </span>
+                )}
 
                 <FavButton
                   active={isFav}

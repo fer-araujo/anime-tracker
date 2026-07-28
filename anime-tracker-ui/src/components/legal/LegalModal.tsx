@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Modal } from "@/components/custom/Modal";
+import { useResponsiveModalVariant } from "@/hooks/useResponsiveModalVariant";
 import { TermsContent } from "./TermsContent";
 import { PrivacyContent } from "./PrivacyContent";
 
@@ -16,16 +16,7 @@ export function LegalModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const [variant, setVariant] = useState<"center" | "bottom-sheet">("center");
-
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    setVariant(mq.matches ? "bottom-sheet" : "center");
-    const handler = (e: MediaQueryListEvent) =>
-      setVariant(e.matches ? "bottom-sheet" : "center");
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
+  const variant = useResponsiveModalVariant();
 
   const title = type === "terms" ? "Términos y Condiciones" : "Aviso de Privacidad";
 

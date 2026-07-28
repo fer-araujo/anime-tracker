@@ -1,5 +1,10 @@
 "use client";
-import React, { useRef, useState, useMemo, useEffect, useCallback } from "react";
+import React, {
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+} from "react";
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Icon from "@/components/custom/Icon";
@@ -15,6 +20,7 @@ import { useAnimeEntry } from "@/hooks/useAnimeEntry";
 import { Modal } from "@/components/custom/Modal";
 import { AuthPrompt } from "@/components/common/AuthPrompt";
 import { AddToListModal } from "@/components/common/AddToListModal";
+import { useResponsiveModalVariant } from "@/hooks/useResponsiveModalVariant";
 
 export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
   const ref = useRef(null);
@@ -22,7 +28,6 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
   const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-  // Tracking modal
   const router = useRouter();
   const { user } = useAuth();
   const {
@@ -34,20 +39,18 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
     setScore,
     remove,
   } = useAnimeEntry(anime.id.anilist);
+
   const [showTrackingModal, setShowTrackingModal] = useState(false);
-  const [modalVariant, setModalVariant] = useState<"center" | "bottom-sheet">("center");
+  const modalVariant = useResponsiveModalVariant();
 
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    setModalVariant(mq.matches ? "bottom-sheet" : "center");
-    const handler = (e: MediaQueryListEvent) =>
-      setModalVariant(e.matches ? "bottom-sheet" : "center");
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-
-  const handleTrackingClose = useCallback(() => setShowTrackingModal(false), []);
-  const handleLoginNavigate = useCallback(() => router.push("/login"), [router]);
+  const handleTrackingClose = useCallback(
+    () => setShowTrackingModal(false),
+    [],
+  );
+  const handleLoginNavigate = useCallback(
+    () => router.push("/login"),
+    [router],
+  );
 
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -83,7 +86,6 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
     availableTabs.push("Galeria");
   }
 
-  // Si por alguna razón la tab activa ya no está disponible, regresamos a Detalles
   if (!availableTabs.includes(activeTab)) {
     setActiveTab("Detalles");
   }
@@ -180,7 +182,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
         <main className="relative z-20 bg-gradient-to-b from-transparent via-background to-background pt-12 -mt-24 md:-mt-32">
           <div className="max-w-7xl mx-auto px-6 md:px-16 lg:px-24 pb-14">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16">
-              {/* COLUMNA IZQ (Póster) */}
+              {/* ===== COLUMNA IZQUIERDA (Restaurada a su gloria sticky) ===== */}
               <div className="md:col-span-3 lg:col-span-3 relative">
                 <div className="sticky top-28 space-y-6">
                   <div className="relative aspect-[2/3] w-full rounded-xl overflow-hidden shadow-2xl border border-white/10 group bg-background">
@@ -222,7 +224,6 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                         {anime.meta?.type || "TV"}
                       </span>
                     </div>
-                    {/* AQUI QUITAMOS DURACIÓN Y PUSIMOS ESTUDIO */}
                     <div className="flex justify-between items-center text-xs mt-3 pt-3 border-t border-white/5">
                       <span className="font-bold text-white/40 uppercase tracking-widest">
                         Estudio
@@ -235,8 +236,37 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                       </span>
                     </div>
                   </div>
+                  {/* AQUÍ YA NO HAY TRACKING SECTION. EL STICKY VUELVE A SER PERFECTO. */}
+                </div>
+              </div>
 
-                  {/* Tracking section */}
+              {/* ===== COLUMNA DERECHA ===== */}
+              <div className="md:col-span-9 lg:col-span-9 space-y-12 min-w-0">
+                {/* 1. Botones de Acción y Tracking Bar (¡El equilibrio restaurado!) */}
+                <div className="space-y-6">
+                  <div className="flex flex-wrap gap-4 justify-start">
+                    {anime.meta?.trailer && (
+                      <a
+                        href={anime.meta.trailer}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-3 bg-primary/85 text-gray-100 border border-transparent px-7 py-3 rounded-lg text-sm font-bold hover:bg-primary transition-all cursor-pointer"
+                      >
+                        <Icon name="Play" size={16} /> Ver trailer
+                      </a>
+                    )}
+
+                    {/* Botón para manejar las Listas Personalizadas (Abre el Modal) */}
+                    <button
+                      onClick={() => setShowTrackingModal(true)}
+                      className="flex items-center gap-3 px-7 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white"
+                    >
+                      <Icon name="List" size={16} />
+                      Mis Colecciones
+                    </button>
+                  </div>
+
+                  {/* NUESTRO NUEVO HORIZONTAL CONTROL DECK */}
                   <AnimeTrackingSection
                     entry={entry}
                     loading={loading}
@@ -247,36 +277,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     onRemove={remove}
                   />
                 </div>
-              </div>
 
-              {/* COLUMNA DER */}
-              <div className="md:col-span-9 lg:col-span-9 space-y-16 min-w-0">
-                <div className="flex flex-wrap gap-4 justify-start">
-                  {/* Condicional para el trailer */}
-                  {anime.meta?.trailer && (
-                    <a
-                      href={anime.meta.trailer}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-3 bg-primary/85 text-gray-100 border border-transparent px-7 py-3 rounded-lg text-sm font-bold hover:bg-primary transition-all cursor-pointer"
-                    >
-                      <Icon name="Play" size={16} /> Ver trailer
-                    </a>
-                  )}
-
-                  <button
-                    onClick={() => setShowTrackingModal(true)}
-                    className={cn(
-                      "flex items-center gap-3 px-7 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer",
-                      entry
-                        ? "bg-white/5 border border-white/15 text-white/80 hover:bg-white/10"
-                        : "bg-transparent border border-white/10 text-white/70 hover:text-white hover:bg-white/10",
-                    )}
-                  >
-                    <Icon name={entry ? "List" : "Plus"} size={16} />
-                    {entry ? "Editar lista" : "Añadir a lista"}
-                  </button>
-                </div>
                 <section className="space-y-4 text-left">
                   <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-[0.3em]">
                     Sinopsis
@@ -324,6 +325,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     ))}
                   </div>
                 </section>
+
                 <section className="space-y-6 pt-2">
                   <h3 className="text-white text-xl font-light tracking-wide flex items-center gap-3">
                     <Icon
@@ -351,12 +353,12 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     )}
                   </div>
                 </section>
+
                 {/* TABS Y DETALLES */}
                 <section className="space-y-6 pt-8 border-t border-white/5">
                   <div
                     role="tablist"
                     aria-label="Secciones del anime"
-                    // EL FIX: En móvil es w-full, pero en escritorio (md:) vuelve a ser w-fit (ajustado a su contenido)
                     className="flex w-full md:w-fit border border-white/10 p-1 rounded-lg bg-white/[0.01]"
                   >
                     {availableTabs.map((tab) => (
@@ -367,7 +369,6 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                         aria-controls={`panel-${tab}`}
                         onClick={() => setActiveTab(tab)}
                         className={cn(
-                          // EL FIX: En móvil usa flex-1 (se reparten el 100%), pero en escritorio usa md:flex-none (toman solo su tamaño)
                           "flex-1 md:flex-none flex justify-center px-2 md:px-8 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                           activeTab === tab
                             ? "bg-primary/10 text-primary border border-primary/20"
@@ -384,9 +385,6 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     id={`panel-${activeTab}`}
                     className="min-h-[140px]"
                   >
-                    {/* Detalles (Con info real para rellenar) */}
-                    {/* Detalles */}
-                    {/* Detalles */}
                     {activeTab === "Detalles" && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01]">
@@ -402,7 +400,6 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                             {anime.meta?.episodes || "??"}
                           </p>
                         </div>
-
                         <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01]">
                           <Icon
                             name="Clock"
@@ -418,8 +415,6 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                               : "N/A"}
                           </p>
                         </div>
-
-                        {/* TARJETA 3: Ranking (¡La nueva!) */}
                         <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01]">
                           <Icon
                             name="Trophy"
@@ -437,27 +432,20 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                               : "N/A"}
                           </p>
                         </div>
-
-                        {/* TARJETA 4: Próximo Ep / Año */}
                         {anime.meta?.nextAiring ? (
-                          // Nota: Extraemos la info antes del return o directo aquí:
                           (() => {
                             const airingInfo = formatNextAiring(
                               anime.meta.nextAiring,
                               anime.meta.nextEpisodeAt,
                             );
-
                             return (
                               <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01] flex flex-col justify-between">
-                                {/* 1. Icono arriba (Igual que las demás) */}
                                 <Icon
                                   name="MonitorPlay"
                                   size={20}
                                   className="text-primary mb-6"
                                 />
-
                                 <div>
-                                  {/* 2. Título en medio (Con el puntito de "en emisión") */}
                                   <div className="flex items-center gap-2 mb-1">
                                     <span className="relative flex h-2 w-2">
                                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -467,13 +455,10 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                                       Próx. Ep. {airingInfo.ep}
                                     </p>
                                   </div>
-
-                                  {/* 3. Valor principal abajo (Igual que las demás) */}
                                   <div className="flex flex-col">
                                     <p className="text-xl font-light text-white">
                                       {airingInfo.main}
                                     </p>
-                                    {/* Dato secundario muy sutil para no saturar */}
                                     <p className="text-[10px] font-medium text-white/40 uppercase tracking-widest mt-0.5">
                                       {airingInfo.sub}
                                     </p>
@@ -500,7 +485,6 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                       </div>
                     )}
 
-                    {/* RESTAURADO Y MEJORADO: Episodios con Scroll y Diseño Original */}
                     {activeTab === "Episodios" && (
                       <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-4">
                         <div className="flex justify-between items-center mb-2">
@@ -509,75 +493,56 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                             {anime.episodesData?.length || 0})
                           </p>
                         </div>
-
-                        {/* El contenedor mágico: altura fija, scroll interno y scrollbar invisible/delgada */}
-                        <div
-                          className="space-y-3 max-h-[350px] overflow-y-auto pr-3 overflow-x-hidden 
-                            [&::-webkit-scrollbar]:w-1.5 
-                            [&::-webkit-scrollbar-track]:bg-transparent 
-                            [&::-webkit-scrollbar-thumb]:bg-white/10 
-                            [&::-webkit-scrollbar-thumb]:rounded-full 
-                            hover:[&::-webkit-scrollbar-thumb]:bg-white/20"
-                        >
-                          {anime.episodesData?.map(
-                            (
-                              ep: {
-                                title: string;
-                                thumbnail?: string | null;
-                                url: string;
-                              },
-                              i: number,
-                            ) => (
-                              <a
-                                href={ep.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                key={i}
-                                className="flex items-center gap-4 p-3 rounded-lg border border-white/5 hover:bg-white/[0.04] cursor-pointer group transition-colors bg-white/[0.01]"
-                              >
-                                <div className="w-24 h-16 bg-white/5 rounded-md flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                                  {ep.thumbnail ? (
-                                    <Image
-                                      src={ep.thumbnail}
-                                      alt={ep.title}
-                                      fill
-                                      sizes="(max-width: 768px) 33vw, 200px"
-                                      className="object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-300"
-                                    />
-                                  ) : (
-                                    <Icon
-                                      name="Play"
-                                      size={20}
-                                      className="text-white/30 group-hover:text-primary"
-                                    />
-                                  )}
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-transparent transition-colors">
-                                    <Icon
-                                      name="Play"
-                                      size={20}
-                                      className="text-white/80 group-hover:text-primary"
-                                    />
-                                  </div>
+                        <div className="space-y-3 max-h-[350px] overflow-y-auto pr-3 overflow-x-hidden [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
+                          {anime.episodesData?.map((ep: any, i: number) => (
+                            <a
+                              href={ep.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              key={i}
+                              className="flex items-center gap-4 p-3 rounded-lg border border-white/5 hover:bg-white/[0.04] cursor-pointer group transition-colors bg-white/[0.01]"
+                            >
+                              <div className="w-24 h-16 bg-white/5 rounded-md flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                                {ep.thumbnail ? (
+                                  <Image
+                                    src={ep.thumbnail}
+                                    alt={ep.title}
+                                    fill
+                                    sizes="(max-width: 768px) 33vw, 200px"
+                                    className="object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-300"
+                                  />
+                                ) : (
+                                  <Icon
+                                    name="Play"
+                                    size={20}
+                                    className="text-white/30 group-hover:text-primary"
+                                  />
+                                )}
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-transparent transition-colors">
+                                  <Icon
+                                    name="Play"
+                                    size={20}
+                                    className="text-white/80 group-hover:text-primary"
+                                  />
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                  <h4
-                                    className="text-sm font-semibold text-white/90 group-hover:text-white line-clamp-1"
-                                    title={ep.title}
-                                  >
-                                    {ep.title}
-                                  </h4>
-                                  <p className="text-xs text-white/40 mt-1 line-clamp-1">
-                                    Ver episodio
-                                  </p>
-                                </div>
-                              </a>
-                            ),
-                          )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h4
+                                  className="text-sm font-semibold text-white/90 group-hover:text-white line-clamp-1"
+                                  title={ep.title}
+                                >
+                                  {ep.title}
+                                </h4>
+                                <p className="text-xs text-white/40 mt-1 line-clamp-1">
+                                  Ver episodio
+                                </p>
+                              </div>
+                            </a>
+                          ))}
                         </div>
                       </div>
                     )}
 
-                    {/* Galería */}
                     {activeTab === "Galeria" && (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         {anime.images.artworkCandidates
@@ -586,7 +551,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                             <button
                               key={i}
                               onClick={() => setLightboxIndex(i)}
-                              aria-label={`Ver imagen ${i + 1} en pantalla completa`}
+                              aria-label={`Ver imagen ${i + 1}`}
                               className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-white/5 group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                             >
                               {img.url_original ? (
@@ -616,7 +581,6 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
               </div>
             </div>
 
-            {/* SECCIONES INFERIORES */}
             <div className="mt-20 space-y-10 border-t border-white/5 pt-12">
               <section className="space-y-4">
                 <div className="flex justify-between items-end">
@@ -624,7 +588,6 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     Animes Similares
                   </h3>
                 </div>
-
                 {anime.meta?.recommendations &&
                 anime.meta?.recommendations.length > 0 ? (
                   <MinimalShelf items={anime.meta?.recommendations} title="" />

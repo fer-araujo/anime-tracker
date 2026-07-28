@@ -29,10 +29,8 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => mockSearchParams(),
 }));
 
-// Mock server action
-vi.mock("@/actions/auth", () => ({
-  checkEmailExists: vi.fn(),
-}));
+// Mock server action (checkEmailExists removed — Supabase handles email validation natively)
+vi.mock("@/actions/auth", () => ({}));
 
 // Mock framer-motion to render children directly (no animations in tests)
 vi.mock("framer-motion", () => ({

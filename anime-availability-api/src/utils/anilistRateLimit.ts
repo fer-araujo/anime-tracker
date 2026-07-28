@@ -27,6 +27,10 @@ const WINDOW_MS = 60_000;
 const CACHE_TTL_MS = 1000 * 60 * 60 * 6; // 6 hours for individual GraphQL queries
 
 // Sliding window rate limiter
+// NOTE: This is a single-instance, in-memory rate limiter. The `requestTimestamps`
+// array mutation is not atomic — in a multi-instance or clustered deployment,
+// each instance maintains its own window, which can lead to burst violations.
+// For production multi-instance use, replace with a shared store (Redis/Upstash).
 let requestTimestamps: number[] = [];
 
 function waitForRateLimit(): Promise<void> {
