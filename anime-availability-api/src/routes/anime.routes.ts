@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { getAnimeDetails, getAnimeBatch } from "../controllers/anime.controller.js";
+import { getAnimeDetails, getAnimeBatch, getAnimeRating } from "../controllers/anime.controller.js";
 
 const router = Router();
 
@@ -17,6 +17,9 @@ router.post("/batch", (req, res, next) => {
   req.body = parsed.data;
   next();
 }, getAnimeBatch);
+
+// GET /v1/anime/:id/rating — community rating (MUST be before /:id param middleware)
+router.get("/:id/rating", getAnimeRating);
 
 // Validate that :id is a positive integer
 router.use("/:id", (req, res, next) => {

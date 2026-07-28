@@ -14,6 +14,8 @@ import { resolveHeroArtwork } from "../utils/artwork.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
 import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
+import { bayesianAverage } from "../utils/rating.js";
+import { createSupabaseAdmin } from "../utils/supabase.js";
 
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
@@ -170,6 +172,78 @@ export async function getAnimeDetails(
     return res.json({ data: result });
   } catch (err) {
     logger.error({ err }, "Error crítico en getAnimeDetails");
+    next(err);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Community rating — Bayesian average from user scores                      */
+/* -------------------------------------------------------------------------- */
+
+export async function getAnimeRating(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const anilistId = Number(req.params.id);
+
+    const supabase = createSupabaseAdmin();
+
+    // 1. Get all user scores for this anime
+    const { data: rawScores, error: scoresError } = await supabase
+      .from("user_anime")
+      .select("score")
+      .eq("anime_id", anilistId)
+      .not("score", "is", null);
+
+    if (scoresError) {
+      logger.error({ err: scoresError }, "Error querying user scores");
+      return res.status(500).json({ error: "Failed to fetch ratings" });
+    }
+
+    const scores = (rawScores ?? []) as { score: number }[];
+    const voteCount = scores.length;
+
+    if (voteCount === 0) {
+      return res.json({
+        communityRating: null,
+        voteCount: 0,
+        bayesianRating: null,
+      });
+    }
+
+    const userAverage =
+      scores.reduce((sum, row) => sum + row.score, 0) / voteCount;
+
+    // 2. Get global average of ALL scored entries
+    const { data: rawGlobal, error: globalError } = await supabase
+      .from("user_anime")
+      .select("score")
+      .not("score", "is", null);
+
+    if (globalError) {
+      logger.error({ err: globalError }, "Error querying global average");
+      return res.status(500).json({ error: "Failed to fetch global ratings" });
+    }
+
+    const globalScores = (rawGlobal ?? []) as { score: number }[];
+    const totalVotes = globalScores.length;
+    const globalAverage =
+      totalVotes > 0
+        ? globalScores.reduce((sum, row) => sum + row.score, 0) / totalVotes
+        : 0;
+
+    // 3. Apply Bayesian average
+    const bayesianRating = bayesianAverage(userAverage, voteCount, globalAverage);
+
+    return res.json({
+      communityRating: Math.round(userAverage * 100) / 100,
+      voteCount,
+      bayesianRating: Math.round(bayesianRating * 100) / 100,
+    });
+  } catch (err) {
+    logger.error({ err }, "Error en getAnimeRating");
     next(err);
   }
 }
