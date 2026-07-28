@@ -56,7 +56,7 @@ export function FloatingLabelInput({
         <Icon
           name={icon}
           size={18}
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none z-10 transition-all duration-200"
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none z-10 transition-opacity duration-200"
         />
       )}
       <input
@@ -80,7 +80,7 @@ export function FloatingLabelInput({
           onBlur?.();
         }}
         className={cn(
-          "h-14 w-full rounded-xl bg-white/5 text-sm text-white transition-all duration-200 focus:outline-none disabled:opacity-50 pr-4 pt-5",
+          "h-14 w-full rounded-xl bg-white/5 text-sm text-white transition-[background-color,border-color,box-shadow] duration-200 focus:outline-none disabled:opacity-50 pr-4 pt-5",
           icon ? "pl-12" : "px-4",
           focused
             ? "border border-primary/50 bg-white/[0.07] shadow-[0_0_12px_-4px_theme(colors.primary/0.25)]"
@@ -90,7 +90,7 @@ export function FloatingLabelInput({
       <label
         htmlFor={id}
         className={cn(
-          "absolute pointer-events-none transition-all duration-200",
+          "absolute pointer-events-none transition-[top,transform,font-size,color] duration-200",
           icon ? "left-12" : "left-4",
           isFloating
             ? "top-2 text-[11px] text-primary/60"

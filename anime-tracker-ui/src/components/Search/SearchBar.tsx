@@ -139,7 +139,7 @@ export default function SearchBar({
             }, 200);
           }}
           spellCheck={false}
-          className="h-10 w-full pl-4 pr-10 bg-white/10 border border-white/10 text-white placeholder:text-white/50 backdrop-blur-xs transition-all duration-300 focus:bg-black/40 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary shadow-sm rounded-xl"
+          className="h-10 w-full pl-4 pr-10 bg-white/10 border border-white/10 text-white placeholder:text-white/50 backdrop-blur-xs transition-colors duration-300 focus:bg-black/40 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary shadow-sm rounded-xl"
         />
 
         {/* BOTÓN NATIVO LIMPIO (Adiós shadcn) */}

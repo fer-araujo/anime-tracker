@@ -176,7 +176,7 @@ export function AddToListModal({
             aria-checked={selectedStatus === "plan_to_watch"}
             onClick={() => setSelectedStatus("plan_to_watch")}
             className={cn(
-              "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold border transition-all duration-300 cursor-pointer",
+              "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold border transition-colors duration-300 cursor-pointer",
               selectedStatus === "plan_to_watch"
                 ? STATUS_COLORS["plan_to_watch"].active
                 : STATUS_COLORS["plan_to_watch"].hover,
@@ -195,7 +195,7 @@ export function AddToListModal({
                 aria-checked={selectedStatus === s}
                 onClick={() => setSelectedStatus(s)}
                   className={cn(
-                  "flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all duration-300 cursor-pointer",
+                  "flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-colors duration-300 cursor-pointer",
                   s === selectedStatus
                     ? STATUS_COLORS[s].active
                     : STATUS_COLORS[s].hover,
@@ -263,7 +263,7 @@ export function AddToListModal({
                       refetchLists();
                     }}
                     className={cn(
-                      "flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl border transition-all duration-200 cursor-pointer text-left group",
+                      "flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl border transition-colors duration-200 cursor-pointer text-left group",
                       isSelected
                         ? "border-primary/40 bg-primary/10"
                         : "border-white/5 bg-white/[0.02] hover:bg-white/5 hover:border-white/10",
@@ -356,7 +356,7 @@ export function AddToListModal({
             type="button"
             onClick={handleConfirm}
             disabled={isSubmitting || !selectedStatus}
-            className="px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_15px_rgba(var(--primary),0.2)] hover:brightness-110 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_15px_rgba(var(--primary),0.2)] hover:brightness-110 active:scale-95 transition-[filter,transform] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isSubmitting ? (
               <>

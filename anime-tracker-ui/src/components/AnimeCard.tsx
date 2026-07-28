@@ -84,7 +84,7 @@ export function AnimeCard({
         className={cn(
           "relative w-full p-0 isolate rounded-md cursor-pointer",
           variant === "compact" ? "aspect-[3/4]" : "aspect-[2/3]",
-          "border border-white/10 bg-neutral-950 transition-all duration-300 ease-out md:hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.5)]",
+          "border border-white/10 bg-neutral-950 transition-shadow duration-300 ease-out md:hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.5)]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
         )}
         onClick={() => {

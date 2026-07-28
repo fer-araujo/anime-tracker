@@ -363,7 +363,7 @@ export default function SeasonPage({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 spellCheck={false}
-                className="h-10 w-full pl-9 pr-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl focus:bg-white/10 focus:border-primary/50 text-white placeholder:text-white/40 transition-all outline-none text-sm"
+                className="h-10 w-full pl-9 pr-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl focus:bg-white/10 focus:border-primary/50 text-white placeholder:text-white/40 transition-colors outline-none text-sm"
               />
             </div>
 

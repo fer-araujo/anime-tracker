@@ -92,7 +92,7 @@ export function CreateListDialog({
                 key={c.value}
                 type="button"
                 onClick={() => setColor(c.value)}
-                className={`w-8 h-8 rounded-full ${c.bg} transition-all cursor-pointer ${
+                className={`w-8 h-8 rounded-full ${c.bg} transition-[box-shadow,transform] cursor-pointer ${
                   color === c.value
                     ? "ring-2 ring-white ring-offset-2 ring-offset-neutral-900 scale-110"
                     : "hover:scale-105"
@@ -125,7 +125,7 @@ export function CreateListDialog({
             type="button"
             onClick={handleSubmit}
             disabled={!name.trim() || submitting}
-            className="px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:brightness-110 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:brightness-110 active:scale-95 transition-[filter,transform] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? "Creando..." : "Crear colección"}
           </button>

@@ -307,7 +307,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     <p
                       id="synopsis-text"
                       className={cn(
-                        "text-[0.95rem] md:text-[1.05rem] leading-[1.6] text-white/80 font-normal transition-all duration-300",
+                        "text-[0.95rem] md:text-[1.05rem] leading-[1.6] text-white/80 font-normal transition-opacity duration-300",
                         !isSynopsisExpanded && "line-clamp-4",
                       )}
                     >
@@ -360,7 +360,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     {uniqueProviders.map((p) => (
                       <div
                         key={p}
-                        className="flex items-center px-5 py-2.5 rounded-lg border border-white/10 bg-white/[0.01] hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer group shadow-sm"
+                        className="flex items-center px-5 py-2.5 rounded-lg border border-white/10 bg-white/[0.01] hover:bg-white/10 hover:border-white/20 transition-colors cursor-pointer group shadow-sm"
                       >
                         <span className="text-sm font-medium text-white/70 group-hover:text-white transition-colors">
                           {p}
@@ -390,7 +390,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                         aria-controls={`panel-${tab}`}
                         onClick={() => setActiveTab(tab)}
                         className={cn(
-                          "flex-1 md:flex-none flex justify-center px-2 md:px-8 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                          "flex-1 md:flex-none flex justify-center px-2 md:px-8 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                           activeTab === tab
                             ? "bg-primary/10 text-primary border border-primary/20"
                             : "text-white/40 hover:text-white/80 border border-transparent hover:bg-white/5",

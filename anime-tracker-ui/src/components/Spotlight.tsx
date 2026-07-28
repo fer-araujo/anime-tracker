@@ -347,7 +347,7 @@ export function HeroCarouselCinematic({
                     onClick={() => dotSelect(i)}
                     aria-label={`Ir al anime ${i + 1}`}
                     className={cn(
-                      "relative h-2 rounded-full overflow-hidden transition-all duration-500 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                      "relative h-2 rounded-full overflow-hidden transition-[width,background-color] duration-500 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                       isActive
                         ? "w-12 bg-white/30"
                         : "w-2.5 bg-white/50 hover:bg-white/80",

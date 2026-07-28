@@ -142,7 +142,7 @@ export default function AnimeTrackingSection({
             setShowStatusPicker((v) => !v);
           }}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold border transition-all duration-200 cursor-pointer",
+            "flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold border transition-colors duration-200 cursor-pointer",
             currentStatus
               ? STATUS_COLORS[currentStatus].active
               : "border-white/10 text-white/50 hover:border-white/30 hover:text-white hover:bg-white/5",
@@ -171,7 +171,7 @@ export default function AnimeTrackingSection({
             setShowScorePicker((v) => !v);
           }}
           className={cn(
-            "flex items-center gap-1 px-2.5 py-2 rounded-lg border text-[11px] font-bold transition-all duration-200 cursor-pointer",
+            "flex items-center gap-1 px-2.5 py-2 rounded-lg border text-[11px] font-bold transition-colors duration-200 cursor-pointer",
             currentScore != null
               ? "border-emerald-500/30 text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20"
               : "border-white/10 text-white/40 hover:border-white/30 hover:text-white hover:bg-white/5",
@@ -194,7 +194,7 @@ export default function AnimeTrackingSection({
           type="button"
           onClick={handleListBadgeClick}
           className={cn(
-            "flex items-center gap-1 px-2.5 py-2 rounded-lg border text-[11px] font-bold transition-all duration-200 cursor-pointer",
+            "flex items-center gap-1 px-2.5 py-2 rounded-lg border text-[11px] font-bold transition-colors duration-200 cursor-pointer",
             listCount > 0
               ? "border-violet-500/30 text-violet-300 bg-violet-500/10 hover:bg-violet-500/20"
               : "border-white/10 text-white/40 hover:border-white/30 hover:text-white hover:bg-white/5",
@@ -221,7 +221,7 @@ export default function AnimeTrackingSection({
           type="button"
           onClick={() => onToggleFavorite(!isFavorite)}
           className={cn(
-            "flex items-center justify-center w-9 h-9 rounded-lg border transition-all duration-200 cursor-pointer",
+            "flex items-center justify-center w-9 h-9 rounded-lg border transition-colors duration-200 cursor-pointer",
             isFavorite
               ? "border-pink-500/50 bg-pink-500/10"
               : "border-white/10 text-white/50 hover:bg-white/10",
@@ -270,7 +270,7 @@ export default function AnimeTrackingSection({
                   type="button"
                   onClick={() => handleSelectStatus(s)}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold border transition-all duration-200 cursor-pointer",
+                    "flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold border transition-colors duration-200 cursor-pointer",
                     s === currentStatus
                       ? STATUS_COLORS[s].active
                       : STATUS_COLORS[s].hover,
@@ -304,7 +304,7 @@ export default function AnimeTrackingSection({
                   type="button"
                   onClick={() => handleSelectScore(n)}
                   className={cn(
-                    "min-w-[40px] min-h-[40px] rounded-full flex items-center justify-center text-[11px] font-bold border transition-all duration-200 cursor-pointer",
+                    "min-w-[40px] min-h-[40px] rounded-full flex items-center justify-center text-[11px] font-bold border transition-[background-color,border-color,color,transform] duration-200 cursor-pointer",
                     currentScore === n
                       ? "bg-primary text-white border-primary shadow-[0_0_10px_rgba(var(--primary),0.5)] z-10 scale-110"
                       : "border-white/10 text-white/50 hover:border-primary/50 hover:text-white hover:bg-primary/10",
@@ -336,7 +336,7 @@ export default function AnimeTrackingSection({
                   key={list.id}
                   type="button"
                   onClick={() => router.push(`/lists/${list.id}`)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[11px] font-medium text-white/70 hover:border-violet-500/30 hover:text-violet-300 hover:bg-violet-500/5 transition-all duration-200 cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[11px] font-medium text-white/70 hover:border-violet-500/30 hover:text-violet-300 hover:bg-violet-500/5 transition-colors duration-200 cursor-pointer"
                 >
                   {list.name}
                 </button>
@@ -345,7 +345,7 @@ export default function AnimeTrackingSection({
                 <button
                   type="button"
                   onClick={onOpenLists}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dashed border-white/15 text-[11px] font-medium text-white/50 hover:border-primary/30 hover:text-primary hover:bg-primary/5 transition-all duration-200 cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dashed border-white/15 text-[11px] font-medium text-white/50 hover:border-primary/30 hover:text-primary hover:bg-primary/5 transition-colors duration-200 cursor-pointer"
                 >
                   +{overflowCount} más
                 </button>

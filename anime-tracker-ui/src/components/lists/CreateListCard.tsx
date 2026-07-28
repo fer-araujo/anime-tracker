@@ -6,7 +6,7 @@ import Icon from "@/components/custom/Icon";
 export function CreateListCard({ onClick }: { onClick: () => void }) {
   return (
     <motion.div
-      className="group relative flex flex-col items-center justify-center w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-white/10 bg-white/[0.02] hover:bg-white/[0.05] hover:border-primary/50 transition-all duration-300 cursor-pointer"
+      className="group relative flex flex-col items-center justify-center w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-white/10 bg-white/[0.02] hover:bg-white/[0.05] hover:border-primary/50 transition-colors duration-300 cursor-pointer"
       whileHover={{ scale: 0.98 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
