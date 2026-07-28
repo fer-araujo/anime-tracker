@@ -119,5 +119,6 @@ export function useAnimeEntry(animeId: number | null) {
     toggleFavorite,
     setScore: setScoreWrapper,
     remove,
+    refetch: fetchEntry,
   };
 }

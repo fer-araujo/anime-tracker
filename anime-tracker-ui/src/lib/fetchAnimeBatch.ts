@@ -36,8 +36,8 @@ export async function fetchAnimeBatch(
         anime,
       });
     }
-  } catch {
-    // Fail silently — caller handles missing data
+  } catch (err) {
+    console.error("[fetchAnimeBatch] API error:", err);
   }
 
   return results;

@@ -19,11 +19,21 @@ import {
 } from "@/lib/validations/auth";
 
 /* -------------------------------------------------------------------------- */
+/*  Helpers                                                                   */
+/* -------------------------------------------------------------------------- */
+
+function getSiteUrl(): string {
+  if (typeof window !== "undefined") {
+    return process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+  }
+  return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
 type AuthStep = "signin" | "signup";
-type FormError = { message: string };
 
 /* -------------------------------------------------------------------------- */
 /*  Step transition                                                            */
@@ -49,7 +59,10 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
-  const [error, setError] = useState<FormError | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [genericError, setGenericError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showTerms, setShowTerms] = useState(false);
@@ -57,13 +70,19 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
 
   const supabase = createClient();
 
+  /* ---- Clear all field errors ---- */
+  const clearErrors = useCallback(() => {
+    setEmailError(null);
+    setPasswordError(null);
+    setUsernameError(null);
+    setGenericError(null);
+  }, []);
+
   /* ---- Handle OAuth callback errors ---- */
   useEffect(() => {
     const oauthError = searchParams.get("error");
     if (oauthError) {
-      setError({
-        message: "No se pudo completar el inicio de sesión. Intenta de nuevo.",
-      });
+      setGenericError("No se pudo completar el inicio de sesión. Intenta de nuevo.");
     }
   }, [searchParams]);
 
@@ -71,11 +90,15 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
   const handleSignIn = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
-      setError(null);
+      clearErrors();
 
       const validation = validateSignIn(email, password);
       if (!validation.valid) {
-        setError({ message: validation.message });
+        if (validation.message.toLowerCase().includes("correo")) {
+          setEmailError(validation.message);
+        } else {
+          setPasswordError(validation.message);
+        }
         return;
       }
 
@@ -90,9 +113,10 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
 
         if (signInError) {
           if (signInError.message.includes("Invalid login credentials")) {
-            setError({ message: "Correo o contraseña incorrectos." });
+            setEmailError("Correo o contraseña incorrectos.");
+            setPasswordError("Correo o contraseña incorrectos.");
           } else {
-            setError({ message: signInError.message });
+            setGenericError(signInError.message);
           }
           return;
         }
@@ -100,23 +124,31 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
         router.push(safeRedirect);
         router.refresh();
       } catch {
-        setError({ message: "Error inesperado. Intenta de nuevo." });
+        setGenericError("Error inesperado. Intenta de nuevo.");
       } finally {
         setLoading(false);
       }
     },
-    [email, password, supabase, router, redirectTo],
+    [email, password, supabase, router, redirectTo, clearErrors],
   );
 
   /* ---- Sign up ---- */
   const handleSignUp = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
-      setError(null);
+      clearErrors();
 
       const validation = validateSignUp(email, username, password);
       if (!validation.valid) {
-        setError({ message: validation.message });
+        if (validation.message.toLowerCase().includes("correo")) {
+          setEmailError(validation.message);
+        } else if (
+          validation.message.toLowerCase().includes("nombre de usuario")
+        ) {
+          setUsernameError(validation.message);
+        } else {
+          setPasswordError(validation.message);
+        }
         return;
       }
 
@@ -127,39 +159,42 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
           password,
           options: {
             data: { username: username.trim() },
-            emailRedirectTo: `${window.location.origin}/auth/callback?redirect_to=/login`,
+            emailRedirectTo: `${getSiteUrl()}/auth/callback?redirect_to=/login`,
           },
         });
 
         if (signUpError) {
-          if (signUpError.message.includes("already registered")) {
-            setError({ message: "Este correo ya está registrado." });
-          } else if (
-            signUpError.message.toLowerCase().includes("weak password")
+          if (
+            signUpError.message.toLowerCase().includes("already registered") ||
+            signUpError.message.toLowerCase().includes("already exists")
           ) {
-            setError({
-              message:
-                "La contraseña es muy débil. Usa al menos 6 caracteres con mayúsculas, minúsculas y números.",
-            });
+            setEmailError("Este correo ya está registrado.");
+          } else if (
+            signUpError.message.toLowerCase().includes("weak password") ||
+            signUpError.message.toLowerCase().includes("password")
+          ) {
+            setPasswordError(
+              "La contraseña es muy débil. Usa al menos 6 caracteres con mayúsculas, minúsculas y números.",
+            );
           } else {
-            setError({ message: signUpError.message });
+            setGenericError(signUpError.message);
           }
           return;
         }
 
         setSuccessMessage("¡Cuenta creada! Revisa tu correo para confirmar.");
       } catch {
-        setError({ message: "Error inesperado. Intenta de nuevo." });
+        setGenericError("Error inesperado. Intenta de nuevo.");
       } finally {
         setLoading(false);
       }
     },
-    [email, password, username, supabase],
+    [email, password, username, supabase, clearErrors],
   );
 
   /* ---- Google OAuth ---- */
   const handleGoogleOAuth = useCallback(async () => {
-    setError(null);
+    clearErrors();
     setLoading(true);
 
     const safeRedirect = validateRedirectTo(redirectTo);
@@ -168,33 +203,48 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?redirect_to=${encodeURIComponent(safeRedirect)}`,
+          redirectTo: `${getSiteUrl()}/auth/callback?redirect_to=${encodeURIComponent(safeRedirect)}`,
         },
       });
 
       if (oauthError) {
-        setError({
-          message: `Error en OAuth: ${oauthError.message}. Verifica que las URLs de redirección en Supabase estén configuradas.`,
-        });
+        setGenericError(
+          `Error en OAuth: ${oauthError.message}. Verifica que las URLs de redirección en Supabase estén configuradas.`,
+        );
       }
     } catch {
-      setError({
-        message:
-          "Error al iniciar sesión con Google. Revisa la configuración de OAuth en el panel de Supabase (URLs de redirección y orígenes autorizados).",
-      });
+      setGenericError(
+        "Error al iniciar sesión con Google. Revisa la configuración de OAuth en el panel de Supabase (URLs de redirección y orígenes autorizados).",
+      );
     } finally {
       setLoading(false);
     }
-  }, [supabase, redirectTo]);
+  }, [supabase, redirectTo, clearErrors]);
 
   /* ---- Toggle signin / signup ---- */
   const toggleStep = () => {
     setStep((prev) => (prev === "signin" ? "signup" : "signin"));
-    setError(null);
+    clearErrors();
     setPassword("");
     setUsername("");
     setSuccessMessage(null);
   };
+
+  /* ---- Field change handlers (clear inline error on edit) ---- */
+  const handleEmailChange = useCallback((v: string) => {
+    setEmail(sanitizeInput(v, 254));
+    setEmailError(null);
+  }, []);
+
+  const handlePasswordChange = useCallback((v: string) => {
+    setPassword(sanitizeInput(v, 128));
+    setPasswordError(null);
+  }, []);
+
+  const handleUsernameChange = useCallback((v: string) => {
+    setUsername(sanitizeInput(v, 30));
+    setUsernameError(null);
+  }, []);
 
   /* ========================================================================= */
   /*  RENDER                                                                   */
@@ -244,11 +294,12 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
                     label="Correo electrónico"
                     type="email"
                     value={email}
-                    onChange={(v) => setEmail(sanitizeInput(v, 254))}
+                    onChange={handleEmailChange}
                     autoComplete="email"
                     disabled={loading}
                     autoFocus
                     icon="Mail"
+                    error={emailError}
                   />
 
                   <FloatingLabelInput
@@ -256,13 +307,14 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
                     label="Contraseña"
                     type="password"
                     value={password}
-                    onChange={(v) => setPassword(sanitizeInput(v, 128))}
+                    onChange={handlePasswordChange}
                     autoComplete="current-password"
                     disabled={loading}
                     icon="Lock"
+                    error={passwordError}
                   />
 
-                  {error && <FormBanner variant="error" message={error.message} />}
+                  {genericError && <FormBanner variant="error" message={genericError} />}
 
                   <SubmitButton
                     label="Iniciar sesión"
@@ -301,11 +353,12 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
                     id="signup-username"
                     label="Nombre de usuario"
                     value={username}
-                    onChange={(v) => setUsername(sanitizeInput(v, 30))}
+                    onChange={handleUsernameChange}
                     autoComplete="username"
                     disabled={loading}
                     autoFocus
                     icon="User"
+                    error={usernameError}
                   />
 
                   <FloatingLabelInput
@@ -313,10 +366,11 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
                     label="Correo electrónico"
                     type="email"
                     value={email}
-                    onChange={(v) => setEmail(sanitizeInput(v, 254))}
+                    onChange={handleEmailChange}
                     autoComplete="email"
                     disabled={loading}
                     icon="Mail"
+                    error={emailError}
                   />
 
                   <FloatingLabelInput
@@ -324,14 +378,15 @@ export default function AuthForm({ standalone = true }: { standalone?: boolean }
                     label="Contraseña"
                     type="password"
                     value={password}
-                    onChange={(v) => setPassword(sanitizeInput(v, 128))}
+                    onChange={handlePasswordChange}
                     autoComplete="new-password"
                     disabled={loading}
                     minLength={6}
                     icon="Lock"
+                    error={passwordError}
                   />
 
-                  {error && <FormBanner variant="error" message={error.message} />}
+                  {genericError && <FormBanner variant="error" message={genericError} />}
                   {successMessage && <FormBanner variant="success" message={successMessage} />}
 
                   <label className="flex items-start gap-2 text-xs text-white/50">

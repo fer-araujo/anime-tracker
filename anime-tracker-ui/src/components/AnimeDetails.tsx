@@ -10,6 +10,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import Icon from "@/components/custom/Icon";
 import type { Anime } from "@/types/anime";
 import { cn, formatNextAiring } from "@/lib/utils";
+import { ActionButton } from "@/components/common/Buttons";
 import { GalleryLightbox } from "./common/Gallery";
 import { MinimalShelf } from "./Shelf";
 import { ImagePlaceholder } from "./common/ImagePlaceholder";
@@ -38,15 +39,18 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
     toggleFavorite,
     setScore,
     remove,
+    refetch,
   } = useAnimeEntry(anime.id.anilist);
 
   const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const modalVariant = useResponsiveModalVariant();
 
-  const handleTrackingClose = useCallback(
-    () => setShowTrackingModal(false),
-    [],
-  );
+  const handleTrackingClose = useCallback(() => {
+    setShowTrackingModal(false);
+    setRefreshKey((k) => k + 1);
+    refetch();
+  }, [refetch]);
   const handleLoginNavigate = useCallback(
     () => router.push("/login"),
     [router],
@@ -246,24 +250,38 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                 <div className="space-y-6">
                   <div className="flex flex-wrap gap-4 justify-start">
                     {anime.meta?.trailer && (
-                      <a
+                      <ActionButton
+                        as="a"
                         href={anime.meta.trailer}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-3 bg-primary/85 text-gray-100 border border-transparent px-7 py-3 rounded-lg text-sm font-bold hover:bg-primary transition-all cursor-pointer"
+                        variant="primary"
+                        icon={<Icon name="Play" size={16} />}
+                        size="md"
                       >
-                        <Icon name="Play" size={16} /> Ver trailer
-                      </a>
+                        Ver trailer
+                      </ActionButton>
                     )}
 
-                    {/* Botón para manejar las Listas Personalizadas (Abre el Modal) */}
-                    <button
-                      onClick={() => setShowTrackingModal(true)}
-                      className="flex items-center gap-3 px-7 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white"
-                    >
-                      <Icon name="List" size={16} />
-                      Mis Colecciones
-                    </button>
+                    {!entry ? (
+                      <ActionButton
+                        onClick={() => setShowTrackingModal(true)}
+                        variant="primary"
+                        icon={<Icon name="Plus" size={16} />}
+                        size="md"
+                      >
+                        Añadir a lista
+                      </ActionButton>
+                    ) : (
+                      <ActionButton
+                        onClick={() => setShowTrackingModal(true)}
+                        variant="solid"
+                        icon={<Icon name="List" size={16} />}
+                        size="md"
+                      >
+                        Mis Colecciones
+                      </ActionButton>
+                    )}
                   </div>
 
                   {/* NUESTRO NUEVO HORIZONTAL CONTROL DECK */}
@@ -271,6 +289,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     animeId={anime.id.anilist}
                     entry={entry}
                     loading={loading}
+                    refreshKey={refreshKey}
                     onAddToList={addToList}
                     onUpdateStatus={updateStatus}
                     onToggleFavorite={toggleFavorite}

@@ -35,6 +35,7 @@ export function CollectionDetail({
   const { user } = useAuth();
   const [animeList, setAnimeList] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [activeStatus, setActiveStatus] = useState<TrackingStatus | "all">("all");
   const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
   const modalVariant = useResponsiveModalVariant();
@@ -57,7 +58,15 @@ export function CollectionDetail({
       setLoading(false);
       return;
     }
+    setLoading(true);
+    setFetchError(false);
     fetchAnimeBatch(animeIds).then((data) => {
+      if (data.size === 0) {
+        setFetchError(true);
+        setAnimeList([]);
+        setLoading(false);
+        return;
+      }
       const items: Anime[] = [];
       for (const id of animeIds) {
         const entry = data.get(id);
@@ -86,6 +95,29 @@ export function CollectionDetail({
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="aspect-[2/3] rounded-md bg-white/5 animate-pulse" />
             ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="min-h-screen pt-24 px-6 md:px-10 lg:px-16 pb-16 bg-background">
+        <div className="max-w-7xl mx-auto">
+          <Link
+            href="/lists"
+            className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors mb-6"
+          >
+            <Icon name="ChevronLeft" size={16} />
+            Volver a colecciones
+          </Link>
+          <div className="flex flex-col items-center justify-center min-h-[30vh] border border-dashed border-red-500/20 rounded-2xl bg-red-500/5 p-10">
+            <Icon name="AlertCircle" size={40} className="text-red-400/60 mb-4" />
+            <p className="text-red-300 text-lg mb-2">Error al cargar animes</p>
+            <p className="text-white/40 text-sm text-center max-w-md">
+              No se pudieron obtener los datos de esta colección. Intenta de nuevo más tarde.
+            </p>
           </div>
         </div>
       </div>

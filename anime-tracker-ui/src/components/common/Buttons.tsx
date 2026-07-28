@@ -1,25 +1,73 @@
 import { cn } from "@/lib/utils";
 import Icon from "@/components/custom/Icon";
 
-export const ActionButton = ({
-  children,
-  onClick,
-  variant = "solid",
-  icon,
-}: {
-  children: React.ReactNode;
-  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
-  variant?: "solid" | "soft";
-  icon?: React.ReactNode;
-}) => {
-  const base =
-    "inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-white border focus:outline-none hover:cursor-pointer focus:ring-2 focus:ring-white/40 transition-colors h-8 px-2.5";
+type ActionButtonAs = "button" | "a";
+
+type ActionButtonProps =
+  | {
+      as?: "button";
+      children: React.ReactNode;
+      onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+      variant?: "primary" | "solid" | "soft";
+      icon?: React.ReactNode;
+      size?: "sm" | "md";
+    }
+  | {
+      as: "a";
+      children: React.ReactNode;
+      onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+      href?: string;
+      target?: string;
+      rel?: string;
+      variant?: "primary" | "solid" | "soft";
+      icon?: React.ReactNode;
+      size?: "sm" | "md";
+    };
+
+export const ActionButton = (props: ActionButtonProps) => {
+  const {
+    children,
+    onClick,
+    variant = "solid",
+    icon,
+    size = "sm",
+    as,
+    ...rest
+  } = props;
+
+  const base = cn(
+    "inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold text-white border focus:outline-none hover:cursor-pointer focus:ring-2 focus:ring-white/40 transition-colors",
+    size === "sm" ? "text-xs h-8 px-2.5" : "text-sm h-10 px-4",
+  );
   const styles =
-    variant === "solid"
-      ? "border-white/15 bg-white/10 hover:bg-white/15"
-      : "border-white/15 bg-white/5 hover:bg-white/10";
+    variant === "primary"
+      ? "bg-primary/85 text-primary-foreground border-transparent hover:bg-primary-hover"
+      : variant === "solid"
+        ? "border-white/15 bg-white/10 hover:bg-white/15"
+        : "border-white/15 bg-white/5 hover:bg-white/10";
+
+  if (as === "a") {
+    const { href, target, rel } = rest as {
+      href?: string;
+      target?: string;
+      rel?: string;
+    };
+    return (
+      <a
+        href={href}
+        target={target}
+        rel={rel}
+        onClick={onClick as React.MouseEventHandler<HTMLAnchorElement>}
+        className={cn(base, styles)}
+      >
+        {icon}
+        <span className="truncate">{children}</span>
+      </a>
+    );
+  }
+
   return (
-    <button type="button" onClick={onClick} className={cn(base, styles)}>
+    <button type="button" onClick={onClick as React.MouseEventHandler<HTMLButtonElement>} className={cn(base, styles)}>
       {icon}
       <span className="truncate">{children}</span>
     </button>
