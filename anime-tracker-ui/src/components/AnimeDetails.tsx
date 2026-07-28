@@ -255,7 +255,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                         href={anime.meta.trailer}
                         target="_blank"
                         rel="noreferrer"
-                        variant="solid"
+                        variant="primary"
                         icon={<Icon name="Play" size={16} />}
                         size="md"
                       >
@@ -266,7 +266,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     {!entry ? (
                       <ActionButton
                         onClick={() => setShowTrackingModal(true)}
-                        variant="solid"
+                        variant="primary"
                         icon={<Icon name="Plus" size={16} />}
                         size="md"
                       >
@@ -275,7 +275,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     ) : (
                       <ActionButton
                         onClick={() => setShowTrackingModal(true)}
-                        variant="soft"
+                        variant="solid"
                         icon={<Icon name="List" size={16} />}
                         size="md"
                       >

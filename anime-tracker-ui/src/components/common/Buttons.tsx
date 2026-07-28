@@ -8,7 +8,7 @@ type ActionButtonProps =
       as?: "button";
       children: React.ReactNode;
       onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
-      variant?: "solid" | "soft";
+      variant?: "primary" | "solid" | "soft";
       icon?: React.ReactNode;
       size?: "sm" | "md";
     }
@@ -19,7 +19,7 @@ type ActionButtonProps =
       href?: string;
       target?: string;
       rel?: string;
-      variant?: "solid" | "soft";
+      variant?: "primary" | "solid" | "soft";
       icon?: React.ReactNode;
       size?: "sm" | "md";
     };
@@ -40,9 +40,11 @@ export const ActionButton = (props: ActionButtonProps) => {
     size === "sm" ? "text-xs h-8 px-2.5" : "text-sm h-10 px-4",
   );
   const styles =
-    variant === "solid"
-      ? "border-white/15 bg-white/10 hover:bg-white/15"
-      : "border-white/15 bg-white/5 hover:bg-white/10";
+    variant === "primary"
+      ? "bg-primary text-primary-foreground border-transparent hover:bg-primary-hover"
+      : variant === "solid"
+        ? "border-white/15 bg-white/10 hover:bg-white/15"
+        : "border-white/15 bg-white/5 hover:bg-white/10";
 
   if (as === "a") {
     const { href, target, rel } = rest as {
