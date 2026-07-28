@@ -4,6 +4,7 @@ import React, {
   useState,
   useMemo,
   useCallback,
+  useEffect,
 } from "react";
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
@@ -15,6 +16,7 @@ import { GalleryLightbox } from "./common/Gallery";
 import { MinimalShelf } from "./Shelf";
 import { ImagePlaceholder } from "./common/ImagePlaceholder";
 import AnimeTrackingSection from "./AnimeTrackingSection";
+import { fetchAnimeRating } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAnimeEntry } from "@/hooks/useAnimeEntry";
@@ -41,6 +43,19 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
     remove,
     refetch,
   } = useAnimeEntry(anime.id.anilist);
+
+  // Community rating
+  const [communityRating, setCommunityRating] = useState<number | null>(null);
+  const [communityVotes, setCommunityVotes] = useState(0);
+
+  useEffect(() => {
+    fetchAnimeRating(anime.id.anilist).then((data) => {
+      if (data) {
+        setCommunityRating(data.bayesianRating);
+        setCommunityVotes(data.voteCount);
+      }
+    }).catch(() => {});
+  }, [anime.id.anilist]);
 
   const [showTrackingModal, setShowTrackingModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -290,6 +305,8 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     entry={entry}
                     loading={loading}
                     refreshKey={refreshKey}
+                    communityRating={communityRating}
+                    communityVotes={communityVotes}
                     onAddToList={addToList}
                     onUpdateStatus={updateStatus}
                     onToggleFavorite={toggleFavorite}
@@ -632,6 +649,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
           onClose={handleTrackingClose}
           variant={modalVariant}
           aria-labelledby="tracking-modal-title"
+          hideClose
         >
           {!user ? (
             <AuthPrompt

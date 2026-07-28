@@ -19,6 +19,8 @@ type Props = {
   entry: AnimeEntry | null;
   loading: boolean;
   refreshKey?: number;
+  communityRating?: number | null;
+  communityVotes?: number;
   onAddToList: (
     status: TrackingStatus,
   ) => Promise<{ success: boolean; error?: string }>;
@@ -53,6 +55,8 @@ export default function AnimeTrackingSection({
   entry,
   loading,
   refreshKey,
+  communityRating,
+  communityVotes,
   onAddToList,
   onUpdateStatus,
   onToggleFavorite,
@@ -187,7 +191,14 @@ export default function AnimeTrackingSection({
               showScorePicker && "rotate-180",
             )}
           />
-        </button>
+          </button>
+
+        {/* Community rating badge */}
+        {communityRating != null && communityVotes != null && communityVotes >= 10 && (
+          <span className="text-[10px] font-medium text-white/40">
+            ⭐ {communityRating.toFixed(1)} ({communityVotes})
+          </span>
+        )}
 
         {/* List badge — clickable */}
         <button

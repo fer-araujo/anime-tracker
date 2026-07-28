@@ -34,4 +34,8 @@ export const ENV = {
 
   // Circuit breaker bypass
   DISABLE_CIRCUIT_BREAKER: process.env.DISABLE_CIRCUIT_BREAKER === "true",
+
+  // Supabase (service role for reading scores)
+  SUPABASE_URL: process.env.SUPABASE_URL || "",
+  SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY || "",
 } as const;

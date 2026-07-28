@@ -188,6 +188,7 @@ export function CollectionDetail({
           onClose={() => setSelectedAnime(null)}
           variant={modalVariant}
           aria-labelledby="tracking-modal-title"
+          hideClose
         >
           {!user ? (
             <AuthPrompt

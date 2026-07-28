@@ -109,3 +109,13 @@ export async function fetchComingSoon(): Promise<Anime[]> {
   const json = await res.json();
   return json.data as Anime[];
 }
+
+export async function fetchAnimeRating(animeId: number): Promise<{
+  communityRating: number;
+  voteCount: number;
+  bayesianRating: number;
+} | null> {
+  const res = await fetch(`${API_BASE}/anime/${animeId}/rating`);
+  if (!res.ok) return null;
+  return res.json();
+}

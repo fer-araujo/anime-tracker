@@ -24,6 +24,7 @@ interface ModalProps {
   children: ReactNode;
   variant?: ModalVariant;
   "aria-labelledby"?: string;
+  hideClose?: boolean;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -71,6 +72,7 @@ export function Modal({
   children,
   variant = "center",
   "aria-labelledby": ariaLabelledBy,
+  hideClose = false,
 }: ModalProps) {
   const [mounted, setMounted] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -212,8 +214,8 @@ export function Modal({
               </div>
             )}
 
-            {/* Bottom-sheet close button */}
-            {!isCenter && (
+            {/* Bottom-sheet close button — hidden when AddToListModal provides its own */}
+            {!isCenter && !hideClose && (
               <button
                 type="button"
                 onClick={onClose}

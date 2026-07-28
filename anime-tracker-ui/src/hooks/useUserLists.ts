@@ -10,6 +10,7 @@ export type UserList = {
   name: string;
   color: string | null;
   anime_count: number;
+  anime_ids: number[];
   poster_anime_ids: number[];
   poster_urls: (string | null)[];
 };
@@ -45,16 +46,18 @@ export function useUserLists() {
         name: string;
         color: string | null;
         list_entries: { anime_id: number }[];
-      }) => ({
-        id: l.id,
-        name: l.name,
-        color: l.color,
-        anime_count: l.list_entries?.length ?? 0,
-        poster_anime_ids: (l.list_entries ?? [])
-          .slice(0, 3)
-          .map((e) => e.anime_id),
-        poster_urls: [],
-      }),
+      }) => {
+        const allAnimeIds = (l.list_entries ?? []).map((e) => e.anime_id);
+        return {
+          id: l.id,
+          name: l.name,
+          color: l.color,
+          anime_count: allAnimeIds.length,
+          anime_ids: allAnimeIds,
+          poster_anime_ids: allAnimeIds.slice(0, 3),
+          poster_urls: [],
+        };
+      },
     );
 
     // Batch fetch poster images
