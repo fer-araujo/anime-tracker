@@ -119,7 +119,7 @@ const CACHE_CONTROL_MAP: Record<CacheType, string> = {
   hero: "public, s-maxage=21600, stale-while-revalidate=86400",
   season: "public, s-maxage=3600, stale-while-revalidate=43200",
   anime: "public, s-maxage=7200, stale-while-revalidate=43200",
-  schedule: "public, s-maxage=600, stale-while-revalidate=3600",
+  schedule: "public, s-maxage=1800, stale-while-revalidate=3600",
 };
 
 export function setCacheControl(
