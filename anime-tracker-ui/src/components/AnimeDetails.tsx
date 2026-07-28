@@ -248,14 +248,17 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                 <div className="space-y-6">
                   <div className="flex flex-wrap gap-4 justify-start">
                     {anime.meta?.trailer && (
-                      <a
+                      <ActionButton
+                        as="a"
                         href={anime.meta.trailer}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-3 bg-primary/85 text-gray-100 border border-transparent px-7 py-3 rounded-lg text-sm font-bold hover:bg-primary transition-all cursor-pointer"
+                        variant="soft"
+                        icon={<Icon name="Play" size={16} />}
+                        size="md"
                       >
-                        <Icon name="Play" size={16} /> Ver trailer
-                      </a>
+                        Ver trailer
+                      </ActionButton>
                     )}
 
                     {!entry ? (
