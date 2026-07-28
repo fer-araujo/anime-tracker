@@ -41,6 +41,7 @@ export function AnimeCard({
   showTitleBelow = true,
   overlayTone = "soft",
   autoContrast = true,
+  listCount,
 }: AnimeCardProps) {
   const normalized = uniqueNormalizedProviders(anime.providers);
   const [isFav, setFav] = useState(animeEntry?.favorite ?? false);
@@ -244,7 +245,7 @@ export function AnimeCard({
                   Detalles
                 </ActionButton>
 
-                {/* Add button — always calls onAddToList */}
+                {/* Add button — muestra contador si listCount > 0 */}
                 <ActionButton
                   variant="soft"
                   onClick={(e) => {
@@ -253,7 +254,9 @@ export function AnimeCard({
                   }}
                   icon={<Icon name="Plus" size={14} />}
                 >
-                  Añadir
+                  {listCount != null && listCount > 0
+                    ? `Añadir (${listCount})`
+                    : "Añadir"}
                 </ActionButton>
 
                 {/* Score badge — show for any status */}

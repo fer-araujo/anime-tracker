@@ -228,6 +228,8 @@ export async function getAnimeBatch(
       const studios = media.studios as Parameters<typeof extractStudio>[0] | undefined;
       const trailer = media.trailer as { id?: string; site?: string } | undefined;
       const nextEp = media.nextAiringEpisode as { episode?: number; airingAt?: number } | undefined;
+      const desc = (media.description as string) || "";
+      const synopsisText = htmlToText(desc);
 
       results[mid] = {
         id: { anilist: mid, tmdb: null },
@@ -249,6 +251,8 @@ export async function getAnimeBatch(
           isAdult: (media.isAdult as boolean) ?? false,
           studio: extractStudio(studios),
           type: (media.format as string) ?? "TV",
+          synopsis: synopsisText || null,
+          synopsisShort: synopsisText ? synopsisText.slice(0, 200) + (synopsisText.length > 200 ? "..." : "") : null,
           nextAiring: nextEp ? `Ep ${nextEp.episode}` : null,
           nextEpisodeAt: nextEp?.airingAt ?? null,
           trailer: trailer?.site === "youtube" && trailer.id

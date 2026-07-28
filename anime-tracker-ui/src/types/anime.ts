@@ -85,6 +85,7 @@ export type AnimeCardProps = {
   showTitleBelow?: boolean; // título fuera del card
   overlayTone?: "soft" | "strong"; // tono manual base
   autoContrast?: boolean; // detectar pósters claros automáticamente
+  listCount?: number; // si > 0, muestra "Añadir (N)" en el botón
 };
 
 export interface AnimeMeta {
