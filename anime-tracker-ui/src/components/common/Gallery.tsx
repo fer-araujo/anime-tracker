@@ -95,6 +95,7 @@ export function GalleryLightbox({
       </div>
 
       <button
+        type="button"
         ref={closeBtnRef}
         onClick={onClose}
         aria-label="Cerrar visor"
@@ -104,6 +105,7 @@ export function GalleryLightbox({
       </button>
 
       <button
+        type="button"
         onClick={handlePrev}
         aria-label="Imagen anterior"
         className="absolute left-6 p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-colors z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -126,6 +128,7 @@ export function GalleryLightbox({
       </div>
 
       <button
+        type="button"
         onClick={handleNext}
         aria-label="Siguiente imagen"
         className="absolute right-6 p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-colors z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"

@@ -50,6 +50,7 @@ export function MinimalShelf({
       >
         {/* --- FLECHAS --- */}
         <button
+          type="button"
           aria-label="Desplazar a la izquierda"
           onClick={() => scroll(-1)}
           className="hidden md:grid absolute inset-y-0 -left-16 z-10 w-[18vw] max-w-24 place-items-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -62,6 +63,7 @@ export function MinimalShelf({
           </span>
         </button>
         <button
+          type="button"
           aria-label="Desplazar a la derecha"
           onClick={() => scroll(1)}
           className="hidden md:grid absolute inset-y-0 -right-16 z-10 w-[18vw] max-w-24 place-items-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"

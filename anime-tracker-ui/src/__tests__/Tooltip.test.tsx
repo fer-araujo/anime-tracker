@@ -6,7 +6,7 @@ describe("Tooltip", () => {
   it("renders trigger element", () => {
     render(
       <Tooltip content="Tooltip content">
-        <button>Trigger</button>
+        <button type="button">Trigger</button>
       </Tooltip>,
     );
     expect(screen.getByText("Trigger")).toBeInTheDocument();
@@ -16,7 +16,7 @@ describe("Tooltip", () => {
     vi.useFakeTimers();
     render(
       <Tooltip content="Tooltip content">
-        <button>Trigger</button>
+        <button type="button">Trigger</button>
       </Tooltip>,
     );
 
@@ -49,7 +49,7 @@ describe("Tooltip", () => {
   it("tooltip has correct visual classes when visible", () => {
     render(
       <Tooltip content="Visual check">
-        <button>Trigger</button>
+        <button type="button">Trigger</button>
       </Tooltip>,
     );
 
@@ -69,7 +69,7 @@ describe("Tooltip", () => {
   it("has aria-describedby on trigger span when tooltip is visible", () => {
     render(
       <Tooltip content="A11y check">
-        <button>Trigger</button>
+        <button type="button">Trigger</button>
       </Tooltip>,
     );
 
@@ -88,7 +88,7 @@ describe("Tooltip", () => {
   it("renders portal at document.body level", () => {
     render(
       <Tooltip content="Portal check">
-        <button>Trigger</button>
+        <button type="button">Trigger</button>
       </Tooltip>,
     );
 
@@ -102,7 +102,7 @@ describe("Tooltip", () => {
   it("has correct fixed positioning style when visible", () => {
     render(
       <Tooltip content="Position check">
-        <button>Trigger</button>
+        <button type="button">Trigger</button>
       </Tooltip>,
     );
 
@@ -117,7 +117,7 @@ describe("Tooltip", () => {
     vi.useFakeTimers();
     render(
       <Tooltip content="Persist">
-        <button>Trigger</button>
+        <button type="button">Trigger</button>
       </Tooltip>,
     );
 
@@ -151,7 +151,7 @@ describe("Tooltip", () => {
     vi.useFakeTimers();
     render(
       <Tooltip content="Ghost">
-        <button>Trigger</button>
+        <button type="button">Trigger</button>
       </Tooltip>,
     );
 
@@ -175,7 +175,7 @@ describe("Tooltip", () => {
 
     const { unmount } = render(
       <Tooltip content="Unmount">
-        <button>Trigger</button>
+        <button type="button">Trigger</button>
       </Tooltip>,
     );
 
@@ -202,7 +202,7 @@ describe("Tooltip", () => {
     it("renders badge when synopsisLang is 'en'", () => {
       render(
         <Tooltip content="English text" synopsisLang="en">
-          <button>Trigger</button>
+          <button type="button">Trigger</button>
         </Tooltip>,
       );
       fireEvent.mouseEnter(screen.getByText("Trigger"));
@@ -212,7 +212,7 @@ describe("Tooltip", () => {
     it("does not render badge when synopsisLang is 'es'", () => {
       render(
         <Tooltip content="Texto español" synopsisLang="es">
-          <button>Trigger</button>
+          <button type="button">Trigger</button>
         </Tooltip>,
       );
       fireEvent.mouseEnter(screen.getByText("Trigger"));
@@ -224,7 +224,7 @@ describe("Tooltip", () => {
     it("does not render badge when synopsisLang is undefined", () => {
       render(
         <Tooltip content="No badge">
-          <button>Trigger</button>
+          <button type="button">Trigger</button>
         </Tooltip>,
       );
       fireEvent.mouseEnter(screen.getByText("Trigger"));
@@ -236,7 +236,7 @@ describe("Tooltip", () => {
     it("does not render badge when synopsisLang is null", () => {
       render(
         <Tooltip content="Null badge" synopsisLang={null}>
-          <button>Trigger</button>
+          <button type="button">Trigger</button>
         </Tooltip>,
       );
       fireEvent.mouseEnter(screen.getByText("Trigger"));

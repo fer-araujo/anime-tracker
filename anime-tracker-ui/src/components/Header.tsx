@@ -94,6 +94,7 @@ export default function Header() {
             {loading ? null : user ? (
               <>
                 <button
+                  type="button"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary text-xs font-bold hover:bg-primary/30 transition-colors cursor-pointer uppercase"
                   aria-label="Menú de usuario"
@@ -125,6 +126,7 @@ export default function Header() {
                       Mis listas
                     </Link>
                     <button
+                      type="button"
                       onClick={handleSignOut}
                       className="flex items-center gap-2 w-full text-left px-4 py-2.5 text-sm text-white/50 hover:text-red-400 hover:bg-white/5 transition-colors cursor-pointer"
                     >
@@ -149,6 +151,7 @@ export default function Header() {
         {/* ICONOS MOBILE (Lupa + Hamburguesa) */}
         <div className="md:hidden flex items-center gap-3 z-10">
           <button
+            type="button"
             onClick={() => setIsMobileMenuOpen(true)}
             className="text-white/80 hover:text-white p-1"
             aria-label="Buscar"
@@ -157,6 +160,7 @@ export default function Header() {
           </button>
 
           <button
+            type="button"
             className="text-white/80 hover:text-white p-1 transition-transform active:scale-95"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Alternar menú"
@@ -206,6 +210,7 @@ export default function Header() {
                   <span>Mis listas</span>
                 </Link>
                 <button
+                  type="button"
                   onClick={() => {
                     signOut();
                     setIsMobileMenuOpen(false);

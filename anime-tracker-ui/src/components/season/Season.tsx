@@ -265,6 +265,7 @@ export default function SeasonPage({
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-center px-6">
         <p className="text-white/50 text-lg mb-4">No se pudo cargar la temporada</p>
         <button
+          type="button"
           onClick={retry}
           className="h-11 px-6 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors cursor-pointer"
         >
@@ -370,6 +371,7 @@ export default function SeasonPage({
             {/* Botones de Acción Rápida */}
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setGenrePanelOpen((prev) => !prev)}
                 className={cn(
                   "h-10 px-4 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 border cursor-pointer",
@@ -389,6 +391,7 @@ export default function SeasonPage({
 
               {hasActiveFilters && (
                 <button
+                  type="button"
                   onClick={resetFilters}
                   className="h-10 px-3 text-sm font-medium text-white/40 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
                 >
@@ -416,6 +419,7 @@ export default function SeasonPage({
                     allGenres.map((genre) => (
                       <button
                         key={genre}
+                        type="button"
                         onClick={() => toggleGenre(genre)}
                         className={cn(
                           "px-3 py-1.5 rounded-lg text-xs transition-colors border cursor-pointer",
@@ -467,6 +471,7 @@ export default function SeasonPage({
             <Icon name="Search" size={48} className="text-white/20 mb-4" />
             <p className="text-white/50 text-lg mb-4">No se encontraron animes con estos filtros.</p>
             <button
+              type="button"
               onClick={resetFilters}
               className="h-10 px-6 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-xl transition-colors cursor-pointer"
             >

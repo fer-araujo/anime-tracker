@@ -316,6 +316,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     {anime.meta?.synopsis &&
                       anime.meta.synopsis.length > 300 && (
                         <button
+                          type="button"
                           onClick={() =>
                             setIsSynopsisExpanded(!isSynopsisExpanded)
                           }
@@ -385,6 +386,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     {availableTabs.map((tab) => (
                       <button
                         key={tab}
+                        type="button"
                         role="tab"
                         aria-selected={activeTab === tab}
                         aria-controls={`panel-${tab}`}
@@ -571,6 +573,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                           .map((img, i) => (
                             <button
                               key={i}
+                              type="button"
                               onClick={() => setLightboxIndex(i)}
                               aria-label={`Ver imagen ${i + 1}`}
                               className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-white/5 group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
