@@ -1,8 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import React, { useState, useRef, useEffect } from "react";
-// Adiós shadcn, hola componentes limpios
+import React, { useState, useEffect } from "react";
 import { ProviderBadge } from "./ProviderBadge";
 import { uniqueNormalizedProviders } from "@/lib/providers";
 import { cn, handleImageLoad } from "@/lib/utils";
@@ -15,7 +14,6 @@ import Tooltip from "@/components/custom/Tooltip";
 import Icon from "@/components/custom/Icon";
 import {
   STATUS_LABELS,
-  STATUS_COLORS as TRACKING_COLORS,
 } from "@/constants/tracking";
 
 // Thin pill variant derived from the shared active colors, but with subtle opacity
@@ -135,8 +133,7 @@ export function AnimeCard({
           )}
 
           {/* Score badge when completed */}
-          {animeEntry?.status === "completed" &&
-            animeEntry.score != null && (
+          {animeEntry?.status === "completed" && animeEntry.score != null && (
             <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
               {animeEntry.score}/10
             </span>
@@ -218,7 +215,10 @@ export function AnimeCard({
                 side="bottom"
                 synopsisLang={anime.meta?.synopsisLang ?? null}
               >
-                <button type="button" className="mt-2 px-3 w-full text-left text-[0.78rem] leading-[1.25rem] text-white/90 [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 rounded-sm">
+                <button
+                  type="button"
+                  className="mt-2 px-3 w-full text-left text-[0.78rem] leading-[1.25rem] text-white/90 [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 rounded-sm"
+                >
                   {anime.meta.synopsisShort}
                 </button>
               </Tooltip>
@@ -255,16 +255,10 @@ export function AnimeCard({
                   }}
                   icon={<Icon name="Plus" size={14} />}
                 >
-                  {listCount != null && listCount > 0 ? `Añadir (${listCount})` : "Añadir"}
+                  {listCount != null && listCount > 0
+                    ? `Añadir (${listCount})`
+                    : "Añadir"}
                 </ActionButton>
-
-                {/* Score badge when completed */}
-                {animeEntry?.status === "completed" &&
-                  animeEntry.score != null && (
-                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
-                    {animeEntry.score}/10
-                  </span>
-                )}
 
                 <FavButton
                   active={isFav}
