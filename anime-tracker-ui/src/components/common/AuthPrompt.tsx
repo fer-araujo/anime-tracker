@@ -71,7 +71,7 @@ export function AuthPrompt({ onClose, onLoginNavigate }: AuthPromptProps) {
           type="button"
           autoFocus
           onClick={handleLogin}
-          className="w-full px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:brightness-110 transition-all focus:outline-none focus:ring-2 focus:ring-primary/60 cursor-pointer"
+          className="w-full px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:brightness-110 transition-[filter] focus:outline-none focus:ring-2 focus:ring-primary/60 cursor-pointer"
         >
           Inicia sesión
         </button>

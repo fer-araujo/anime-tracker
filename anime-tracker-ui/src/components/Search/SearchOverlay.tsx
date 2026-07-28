@@ -174,7 +174,7 @@ export default function SearchOverlay({
             [&::-webkit-scrollbar]:w-1.5
             [&::-webkit-scrollbar-track]:bg-transparent
             [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full
-            hover:[&::-webkit-scrollbar-thumb]:bg-white/20 transition-all"
+            hover:[&::-webkit-scrollbar-thumb]:bg-white/20 transition-colors"
         >
           {items.map((it, i) => {
             const isActive = i === activeIndex;
@@ -185,7 +185,7 @@ export default function SearchOverlay({
                 onMouseEnter={() => setActiveIndex(i)}
                 onClick={() => onSelect(it)}
                 className={cn(
-                  "group flex items-center gap-4 px-3 py-2 cursor-pointer outline-none rounded-xl transition-all duration-200 mb-1",
+                  "group flex items-center gap-4 px-3 py-2 cursor-pointer outline-none rounded-xl transition-[background-color,transform] duration-200 mb-1",
                   isActive
                     ? "bg-white/15 shadow-lg shadow-black/20 ring-1 ring-white/10 translate-x-1"
                     : "hover:bg-white/5 hover:translate-x-0.5 text-white/70",
@@ -223,7 +223,7 @@ export default function SearchOverlay({
 
                 <div
                   className={cn(
-                    "text-primary opacity-0 -translate-x-2 transition-all duration-300",
+                    "text-primary opacity-0 -translate-x-2 transition-[opacity,transform] duration-300",
                     isActive && "opacity-100 translate-x-0",
                   )}
                 >

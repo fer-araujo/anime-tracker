@@ -46,7 +46,7 @@ export function ListCard({
     >
       {/* Glow orb */}
       <div
-        className={`absolute -top-10 -right-10 w-40 h-40 blur-[50px] rounded-full transition-all duration-500 ${GLOW_ORB_MAP[idx]}`}
+        className={`absolute -top-10 -right-10 w-40 h-40 blur-[50px] rounded-full transition-colors duration-500 ${GLOW_ORB_MAP[idx]}`}
       />
 
       {/* Stacked poster fan */}
@@ -114,7 +114,7 @@ export function ListCard({
           e.stopPropagation();
           onDelete(list.id);
         }}
-        className="absolute top-3 right-3 z-20 flex items-center justify-center w-7 h-7 rounded-full bg-black/40 hover:bg-red-500/80 text-white/50 hover:text-white transition-all md:opacity-0 md:group-hover:opacity-100 cursor-pointer"
+        className="absolute top-3 right-3 z-20 flex items-center justify-center w-7 h-7 rounded-full bg-black/40 hover:bg-red-500/80 text-white/50 hover:text-white transition-colors md:opacity-0 md:group-hover:opacity-100 cursor-pointer"
         aria-label={`Eliminar ${list.name}`}
       >
         <Icon name="X" size={12} />

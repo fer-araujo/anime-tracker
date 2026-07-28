@@ -1,12 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { validateRedirectTo } from "@/lib/validations/auth";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
-  const redirectTo = searchParams.get("redirect_to") ?? next;
+  const redirectTo = validateRedirectTo(searchParams.get("redirect_to")) ?? "/";
 
   if (code) {
     const cookieStore = await cookies();

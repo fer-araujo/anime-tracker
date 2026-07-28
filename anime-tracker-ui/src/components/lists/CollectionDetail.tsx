@@ -156,7 +156,7 @@ export function CollectionDetail({
                   type="button"
                   onClick={() => setActiveStatus(tab.key)}
                   className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer border",
+                    "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200 cursor-pointer border",
                     activeStatus === tab.key
                       ? "bg-primary/20 text-primary border-primary/30"
                       : "bg-white/5 text-white/50 border-white/10 hover:text-white hover:bg-white/10",

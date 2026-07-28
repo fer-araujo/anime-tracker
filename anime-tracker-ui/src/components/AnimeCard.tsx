@@ -1,8 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import React, { useState, useRef, useEffect } from "react";
-// Adiós shadcn, hola componentes limpios
+import React, { useState, useEffect } from "react";
 import { ProviderBadge } from "./ProviderBadge";
 import { uniqueNormalizedProviders } from "@/lib/providers";
 import { cn, handleImageLoad } from "@/lib/utils";
@@ -15,7 +14,6 @@ import Tooltip from "@/components/custom/Tooltip";
 import Icon from "@/components/custom/Icon";
 import {
   STATUS_LABELS,
-  STATUS_COLORS as TRACKING_COLORS,
 } from "@/constants/tracking";
 
 // Thin pill variant derived from the shared active colors, but with subtle opacity
@@ -41,6 +39,7 @@ export function AnimeCard({
   showTitleBelow = true,
   overlayTone = "soft",
   autoContrast = true,
+  listCount,
 }: AnimeCardProps) {
   const normalized = uniqueNormalizedProviders(anime.providers);
   const [isFav, setFav] = useState(animeEntry?.favorite ?? false);
@@ -83,7 +82,7 @@ export function AnimeCard({
         className={cn(
           "relative w-full p-0 isolate rounded-md cursor-pointer",
           variant === "compact" ? "aspect-[3/4]" : "aspect-[2/3]",
-          "border border-white/10 bg-neutral-950 transition-all duration-300 ease-out md:hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.5)]",
+          "border border-white/10 bg-neutral-950 transition-shadow duration-300 ease-out md:hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.5)]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
         )}
         onClick={() => {
@@ -133,8 +132,8 @@ export function AnimeCard({
             </span>
           )}
 
-          {/* Score badge — show for any status */}
-          {animeEntry?.score != null && (
+          {/* Score badge when completed */}
+          {animeEntry?.status === "completed" && animeEntry.score != null && (
             <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
               {animeEntry.score}/10
             </span>
@@ -216,7 +215,10 @@ export function AnimeCard({
                 side="bottom"
                 synopsisLang={anime.meta?.synopsisLang ?? null}
               >
-                <button className="mt-2 px-3 w-full text-left text-[0.78rem] leading-[1.25rem] text-white/90 [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 rounded-sm">
+                <button
+                  type="button"
+                  className="mt-2 px-3 w-full text-left text-[0.78rem] leading-[1.25rem] text-white/90 [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 rounded-sm"
+                >
                   {anime.meta.synopsisShort}
                 </button>
               </Tooltip>
@@ -244,7 +246,7 @@ export function AnimeCard({
                   Detalles
                 </ActionButton>
 
-                {/* Add button — always calls onAddToList */}
+                {/* Add button — muestra contador si listCount > 0 */}
                 <ActionButton
                   variant="soft"
                   onClick={(e) => {
@@ -253,15 +255,10 @@ export function AnimeCard({
                   }}
                   icon={<Icon name="Plus" size={14} />}
                 >
-                  Añadir
+                  {listCount != null && listCount > 0
+                    ? `Añadir (${listCount})`
+                    : "Añadir"}
                 </ActionButton>
-
-                {/* Score badge — show for any status */}
-                {animeEntry?.score != null && (
-                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
-                    {animeEntry.score}/10
-                  </span>
-                )}
 
                 <FavButton
                   active={isFav}

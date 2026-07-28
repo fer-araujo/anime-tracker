@@ -10,18 +10,12 @@ export default async function CollectionDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: list } = await supabase
-    .from("user_lists")
-    .select("id, name")
-    .eq("id", id)
-    .single();
+  const [{ data: list }, { data: entries }] = await Promise.all([
+    supabase.from("user_lists").select("id, name").eq("id", id).single(),
+    supabase.from("list_entries").select("anime_id").eq("list_id", id),
+  ]);
 
   if (!list) notFound();
-
-  const { data: entries } = await supabase
-    .from("list_entries")
-    .select("anime_id")
-    .eq("list_id", id);
 
   const animeIds = (entries ?? []).map((e) => e.anime_id);
 

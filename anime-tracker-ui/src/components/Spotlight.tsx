@@ -305,6 +305,7 @@ export function HeroCarouselCinematic({
           {total > 1 && (
             <>
               <button
+                type="button"
                 aria-label="Anime anterior"
                 onClick={prev}
                 className="hidden md:grid pointer-events-auto group absolute inset-y-0 left-0 w-[15vw] max-w-24 place-items-center transition-colors"
@@ -317,6 +318,7 @@ export function HeroCarouselCinematic({
                 </span>
               </button>
               <button
+                type="button"
                 aria-label="Siguiente anime"
                 onClick={next}
                 className="hidden md:grid pointer-events-auto group absolute inset-y-0 right-0 w-[15vw] max-w-24 place-items-center transition-colors"
@@ -342,12 +344,13 @@ export function HeroCarouselCinematic({
                 return (
                   <button
                     key={i}
+                    type="button"
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => dotSelect(i)}
                     aria-label={`Ir al anime ${i + 1}`}
                     className={cn(
-                      "relative h-2 rounded-full overflow-hidden transition-all duration-500 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                      "relative h-2 rounded-full overflow-hidden transition-[width,background-color] duration-500 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                       isActive
                         ? "w-12 bg-white/30"
                         : "w-2.5 bg-white/50 hover:bg-white/80",

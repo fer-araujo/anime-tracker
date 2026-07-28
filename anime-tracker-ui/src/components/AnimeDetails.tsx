@@ -8,7 +8,7 @@ import React, {
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Icon from "@/components/custom/Icon";
-import type { Anime } from "@/types/anime";
+import type { Anime, StreamingEpisode } from "@/types/anime";
 import { cn, formatNextAiring } from "@/lib/utils";
 import { ActionButton } from "@/components/common/Buttons";
 import { GalleryLightbox } from "./common/Gallery";
@@ -307,7 +307,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     <p
                       id="synopsis-text"
                       className={cn(
-                        "text-[0.95rem] md:text-[1.05rem] leading-[1.6] text-white/80 font-normal transition-all duration-300",
+                        "text-[0.95rem] md:text-[1.05rem] leading-[1.6] text-white/80 font-normal transition-opacity duration-300",
                         !isSynopsisExpanded && "line-clamp-4",
                       )}
                     >
@@ -316,6 +316,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     {anime.meta?.synopsis &&
                       anime.meta.synopsis.length > 300 && (
                         <button
+                          type="button"
                           onClick={() =>
                             setIsSynopsisExpanded(!isSynopsisExpanded)
                           }
@@ -360,7 +361,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     {uniqueProviders.map((p) => (
                       <div
                         key={p}
-                        className="flex items-center px-5 py-2.5 rounded-lg border border-white/10 bg-white/[0.01] hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer group shadow-sm"
+                        className="flex items-center px-5 py-2.5 rounded-lg border border-white/10 bg-white/[0.01] hover:bg-white/10 hover:border-white/20 transition-colors cursor-pointer group shadow-sm"
                       >
                         <span className="text-sm font-medium text-white/70 group-hover:text-white transition-colors">
                           {p}
@@ -385,12 +386,13 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     {availableTabs.map((tab) => (
                       <button
                         key={tab}
+                        type="button"
                         role="tab"
                         aria-selected={activeTab === tab}
                         aria-controls={`panel-${tab}`}
                         onClick={() => setActiveTab(tab)}
                         className={cn(
-                          "flex-1 md:flex-none flex justify-center px-2 md:px-8 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                          "flex-1 md:flex-none flex justify-center px-2 md:px-8 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                           activeTab === tab
                             ? "bg-primary/10 text-primary border border-primary/20"
                             : "text-white/40 hover:text-white/80 border border-transparent hover:bg-white/5",
@@ -515,7 +517,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                           </p>
                         </div>
                         <div className="space-y-3 max-h-[350px] overflow-y-auto pr-3 overflow-x-hidden [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
-                          {anime.episodesData?.map((ep: any, i: number) => (
+                          {anime.episodesData?.map((ep: StreamingEpisode, i: number) => (
                             <a
                               href={ep.url}
                               target="_blank"
@@ -571,6 +573,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                           .map((img, i) => (
                             <button
                               key={i}
+                              type="button"
                               onClick={() => setLightboxIndex(i)}
                               aria-label={`Ver imagen ${i + 1}`}
                               className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-white/5 group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"

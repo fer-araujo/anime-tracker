@@ -82,7 +82,7 @@ function PageButton({
       aria-label={`Página ${page}`}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "w-9 h-9 hidden sm:inline-flex items-center justify-center rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer border",
+        "w-9 h-9 hidden sm:inline-flex items-center justify-center rounded-lg text-xs font-medium transition-colors duration-200 cursor-pointer border",
         active
           ? "bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/25"
           : "bg-white/5 text-muted-foreground border-transparent hover:bg-white/10 hover:text-foreground hover:border-white/10",
@@ -144,7 +144,7 @@ export function Pagination({
           disabled={currentPage === 1}
           aria-label="Página anterior"
           className={cn(
-            "h-9 w-9 inline-flex items-center justify-center rounded-lg transition-all duration-200 cursor-pointer border",
+            "h-9 w-9 inline-flex items-center justify-center rounded-lg transition-colors duration-200 cursor-pointer border",
             currentPage === 1
               ? "border-white/5 bg-transparent text-muted-foreground/30 cursor-not-allowed"
               : "border-white/10 bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground",
@@ -170,7 +170,7 @@ export function Pagination({
           disabled={currentPage === totalPages}
           aria-label="Página siguiente"
           className={cn(
-            "h-9 w-9 inline-flex items-center justify-center rounded-lg transition-all duration-200 cursor-pointer border",
+            "h-9 w-9 inline-flex items-center justify-center rounded-lg transition-colors duration-200 cursor-pointer border",
             currentPage === totalPages
               ? "border-white/5 bg-transparent text-muted-foreground/30 cursor-not-allowed"
               : "border-white/10 bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground",

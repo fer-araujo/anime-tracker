@@ -66,7 +66,7 @@ export default function Select({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         className={cn(
-          "flex w-full items-center justify-between h-10 px-3 bg-white/10 border text-sm rounded-xl transition-all duration-300 backdrop-blur-xs focus:outline-none focus:ring-1 shadow-sm cursor-pointer",
+          "flex w-full items-center justify-between h-10 px-3 bg-white/10 border text-sm rounded-xl transition-[background-color,border-color,box-shadow] duration-300 backdrop-blur-xs focus:outline-none focus:ring-1 shadow-sm cursor-pointer",
           isOpen
             ? "border-primary/50 ring-1 ring-primary bg-black/40 text-foreground"
             : "border-white/10 text-foreground hover:bg-white/20",

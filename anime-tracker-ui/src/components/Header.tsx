@@ -59,7 +59,7 @@ export default function Header() {
   return (
     <header
       className={cn(
-        "fixed top-0 inset-x-0 z-50 transition-all duration-500 ease-out",
+        "fixed top-0 inset-x-0 z-50 transition-[background,box-shadow,padding,border-color] duration-500 ease-out",
         isScrolled || isMobileMenuOpen
           ? "bg-neutral-950/80 backdrop-blur-xl border-b border-white/10 py-3 shadow-xl shadow-black/20"
           : "bg-gradient-to-b from-black/90 via-black/40 to-transparent py-4 md:py-5",
@@ -94,6 +94,7 @@ export default function Header() {
             {loading ? null : user ? (
               <>
                 <button
+                  type="button"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary text-xs font-bold hover:bg-primary/30 transition-colors cursor-pointer uppercase"
                   aria-label="Menú de usuario"
@@ -125,6 +126,7 @@ export default function Header() {
                       Mis listas
                     </Link>
                     <button
+                      type="button"
                       onClick={handleSignOut}
                       className="flex items-center gap-2 w-full text-left px-4 py-2.5 text-sm text-white/50 hover:text-red-400 hover:bg-white/5 transition-colors cursor-pointer"
                     >
@@ -137,7 +139,7 @@ export default function Header() {
             ) : (
               <Link
                 href="/login"
-                className="relative inline-flex items-center gap-1.5 px-5 py-2 rounded-full border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl text-[13px] font-medium text-white/70 hover:text-white hover:border-primary/30 hover:bg-primary/[0.06] hover:shadow-[0_0_20px_rgba(74,222,128,0.15)] transition-all duration-300 active:scale-[0.97]"
+                className="relative inline-flex items-center gap-1.5 px-5 py-2 rounded-full border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl text-[13px] font-medium text-white/70 hover:text-white hover:border-primary/30 hover:bg-primary/[0.06] hover:shadow-[0_0_20px_rgba(74,222,128,0.15)] transition-[background-color,border-color,color,box-shadow,transform] duration-300 active:scale-[0.97]"
               >
                 <Icon name="User" size={13} />
                 Iniciar sesión
@@ -149,6 +151,7 @@ export default function Header() {
         {/* ICONOS MOBILE (Lupa + Hamburguesa) */}
         <div className="md:hidden flex items-center gap-3 z-10">
           <button
+            type="button"
             onClick={() => setIsMobileMenuOpen(true)}
             className="text-white/80 hover:text-white p-1"
             aria-label="Buscar"
@@ -157,6 +160,7 @@ export default function Header() {
           </button>
 
           <button
+            type="button"
             className="text-white/80 hover:text-white p-1 transition-transform active:scale-95"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Alternar menú"
@@ -173,7 +177,7 @@ export default function Header() {
       {/* MENÚ DESPLEGABLE MOBILE (Compacto y con lista normal) */}
       <div
         className={cn(
-          "md:hidden absolute top-full left-0 w-full bg-neutral-950/95 backdrop-blur-2xl border-b border-white/10 flex flex-col overflow-hidden transition-all duration-300 ease-in-out origin-top",
+          "md:hidden absolute top-full left-0 w-full bg-neutral-950/95 backdrop-blur-2xl border-b border-white/10 flex flex-col overflow-hidden transition-[max-height,opacity,padding,border-color] duration-300 ease-in-out origin-top",
           isMobileMenuOpen
             ? "max-h-[400px] opacity-100 py-4 px-6"
             : "max-h-0 opacity-0 py-0 px-6 border-transparent",
@@ -206,6 +210,7 @@ export default function Header() {
                   <span>Mis listas</span>
                 </Link>
                 <button
+                  type="button"
                   onClick={() => {
                     signOut();
                     setIsMobileMenuOpen(false);
