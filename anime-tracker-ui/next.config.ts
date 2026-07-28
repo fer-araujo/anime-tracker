@@ -28,8 +28,8 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy",
             value: isDev
-              ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* https://*.supabase.co https://graphql.anilist.co https://api.themoviedb.org https://*.fanart.tv https://*.rapidapi.com;"
-              : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self'; connect-src 'self' https://*.supabase.co https://graphql.anilist.co https://api.themoviedb.org https://*.fanart.tv https://*.rapidapi.com;",
+              ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* https://*.supabase.co https://graphql.anilist.co https://api.themoviedb.org https://*.fanart.tv https://*.rapidapi.com https://*.onrender.com;"
+              : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self'; connect-src 'self' https://*.supabase.co https://graphql.anilist.co https://api.themoviedb.org https://*.fanart.tv https://*.rapidapi.com https://*.onrender.com;",
           },
         ],
       },
