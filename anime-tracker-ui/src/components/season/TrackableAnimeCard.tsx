@@ -75,6 +75,7 @@ export function TrackableAnimeCard({ anime, onOpen }: Props) {
         onClose={handleClose}
         variant={variant}
         aria-labelledby="tracking-modal-title"
+        hideClose
       >
         {!user ? (
           <AuthPrompt

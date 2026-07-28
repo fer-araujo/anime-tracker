@@ -649,6 +649,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
           onClose={handleTrackingClose}
           variant={modalVariant}
           aria-labelledby="tracking-modal-title"
+          hideClose
         >
           {!user ? (
             <AuthPrompt

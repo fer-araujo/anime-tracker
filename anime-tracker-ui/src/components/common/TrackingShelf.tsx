@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { useBatchAnimeEntries } from "@/hooks/useBatchAnimeEntries";
+import { useUserLists } from "@/hooks/useUserLists";
 import { MinimalShelf } from "@/components/Shelf";
 import { AnimeCard } from "@/components/AnimeCard";
 import { Modal } from "@/components/custom/Modal";
@@ -32,6 +33,18 @@ export function TrackingShelf({ title, items, className }: TrackingShelfProps) {
   const router = useRouter();
   const animeIds = items.map((a) => a.id.anilist);
   const { entriesMap } = useBatchAnimeEntries(animeIds);
+  const { lists } = useUserLists();
+
+  // Count how many user lists each anime appears in
+  const listCountMap = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const list of lists) {
+      for (const id of list.anime_ids) {
+        map.set(id, (map.get(id) ?? 0) + 1);
+      }
+    }
+    return map;
+  }, [lists]);
 
   const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
   const variant = useResponsiveModalVariant();
@@ -92,6 +105,7 @@ export function TrackingShelf({ title, items, className }: TrackingShelfProps) {
             onAddToList={handleAddToList}
             onToggleFavorite={handleToggleFavorite}
             animeEntry={entriesMap.get(anime.id.anilist) ?? null}
+            listCount={listCountMap.get(anime.id.anilist) ?? 0}
             variant="default"
           />
         )}
@@ -102,6 +116,7 @@ export function TrackingShelf({ title, items, className }: TrackingShelfProps) {
         onClose={handleClose}
         variant={variant}
         aria-labelledby="tracking-modal-title"
+        hideClose
       >
         {selectedAnime && !user ? (
           <AuthPrompt

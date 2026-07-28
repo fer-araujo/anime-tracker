@@ -46,6 +46,9 @@ coverage/
 package-lock.json
 # yarn.lock
 
+# Next.js build output
+.next/
+
 # AI / Tooling — internal config, NOT for public repos
 # Directories (ensure they're caught even when nested)
 .atl/
