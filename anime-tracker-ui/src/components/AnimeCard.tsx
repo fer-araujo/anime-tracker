@@ -134,8 +134,9 @@ export function AnimeCard({
             </span>
           )}
 
-          {/* Score badge — show for any status */}
-          {animeEntry?.score != null && (
+          {/* Score badge when completed */}
+          {animeEntry?.status === "completed" &&
+            animeEntry.score != null && (
             <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
               {animeEntry.score}/10
             </span>
@@ -254,13 +255,12 @@ export function AnimeCard({
                   }}
                   icon={<Icon name="Plus" size={14} />}
                 >
-                  {listCount != null && listCount > 0
-                    ? `Añadir (${listCount})`
-                    : "Añadir"}
+                  {listCount != null && listCount > 0 ? `Añadir (${listCount})` : "Añadir"}
                 </ActionButton>
 
-                {/* Score badge — show for any status */}
-                {animeEntry?.score != null && (
+                {/* Score badge when completed */}
+                {animeEntry?.status === "completed" &&
+                  animeEntry.score != null && (
                   <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
                     {animeEntry.score}/10
                   </span>
