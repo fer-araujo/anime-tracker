@@ -98,13 +98,15 @@ async function _fetchFanartTvArtwork(
 
   try {
     const url = `${FANART_BASE}/tv/${tvdbId}`;
+    logger.info({ url, keyLen: apiKey.length }, "[fanart] Fetching artwork");
     const res = await fetchWithRetry(url, {
       headers: { "api-key": apiKey },
     });
 
     if (!res.ok) {
+      const body = await res.text().catch(() => "");
       logger.warn(
-        { status: res.status, tvdbId },
+        { status: res.status, tvdbId, body: body.slice(0, 200) },
         "[fanart] API returned non-200",
       );
       return null;
