@@ -118,6 +118,62 @@ describe("AddToListModal", () => {
     expect(mockRefetchLists).toHaveBeenCalled();
   });
 
+  it("reports the added/removed list diff via onListsChanged on confirm", async () => {
+    vi.mocked(addToTracking).mockResolvedValue({ success: true });
+    vi.mocked(addToList).mockResolvedValue({ success: true });
+
+    const onListsChanged = vi.fn();
+    render(
+      <AddToListModal
+        animeId={1}
+        currentEntry={null}
+        onClose={vi.fn()}
+        onListsChanged={onListsChanged}
+      />,
+    );
+    const user = userEvent.setup();
+
+    const listButton = await screen.findByText("Favoritas de verano");
+    await user.click(listButton);
+    await user.click(screen.getByRole("radio", { name: /plan para ver/i }));
+    await user.click(
+      screen.getByRole("button", { name: /añadir a mi lista/i }),
+    );
+
+    await waitFor(() =>
+      expect(onListsChanged).toHaveBeenCalledWith({
+        added: ["list-1"],
+        removed: [],
+      }),
+    );
+  });
+
+  it("does not call onListsChanged when only the status changes", async () => {
+    vi.mocked(addToTracking).mockResolvedValue({ success: true });
+
+    const onListsChanged = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <AddToListModal
+        animeId={1}
+        currentEntry={null}
+        onClose={onClose}
+        onListsChanged={onListsChanged}
+      />,
+    );
+    const user = userEvent.setup();
+
+    await user.click(
+      screen.getByRole("radio", { name: /plan para ver/i }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: /añadir a mi lista/i }),
+    );
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(onListsChanged).not.toHaveBeenCalled();
+  });
+
   it("cancel does not write status or list changes", async () => {
     const onClose = vi.fn();
     render(<AddToListModal animeId={1} currentEntry={null} onClose={onClose} />);

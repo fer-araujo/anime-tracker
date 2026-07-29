@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/providers/AuthProvider";
 import { fetchAnimeBatch } from "@/lib/fetchAnimeBatch";
 import { AnimeCard } from "@/components/AnimeCard";
@@ -10,6 +11,8 @@ import { AuthPrompt } from "@/components/common/AuthPrompt";
 import { AddToListModal } from "@/components/common/AddToListModal";
 import { useResponsiveModalVariant } from "@/hooks/useResponsiveModalVariant";
 import { useBatchAnimeEntries } from "@/hooks/useBatchAnimeEntries";
+import { useUserLists } from "@/hooks/useUserLists";
+import { toggleFavorite as toggleFavoriteAction } from "@/actions/tracking";
 import Icon from "@/components/custom/Icon";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -25,9 +28,11 @@ const STATUS_TABS: { key: TrackingStatus | "all"; label: string }[] = [
 ];
 
 export function CollectionDetail({
+  listId,
   listName,
   animeIds,
 }: {
+  listId?: string;
   listName: string;
   animeIds: number[];
 }) {
@@ -40,6 +45,51 @@ export function CollectionDetail({
   const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
   const modalVariant = useResponsiveModalVariant();
   const { entriesMap } = useBatchAnimeEntries(animeIds);
+  const { lists, refetch: refetchLists } = useUserLists();
+
+  const listCountMap = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const list of lists) {
+      for (const id of list.anime_ids) {
+        map.set(id, (map.get(id) ?? 0) + 1);
+      }
+    }
+    return map;
+  }, [lists]);
+
+  const handleAddToList = useCallback(
+    (anime: Anime) => {
+      if (!user) {
+        try {
+          if (sessionStorage.getItem("auth_prompt_seen")) return;
+        } catch {
+          // noop
+        }
+      }
+      setSelectedAnime(anime);
+    },
+    [user],
+  );
+
+  const handleToggleFavorite = useCallback(
+    (anime: Anime, next: boolean) => {
+      if (!user) {
+        try {
+          if (sessionStorage.getItem("auth_prompt_seen")) return;
+        } catch {
+          // noop
+        }
+        setSelectedAnime(anime);
+        return;
+      }
+      toggleFavoriteAction(anime.id.anilist, next);
+    },
+    [user],
+  );
+
+  const prefersReduced =
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const filtered = useMemo(
     () =>
@@ -168,15 +218,35 @@ export function CollectionDetail({
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {filtered.map((anime) => (
-                <AnimeCard
-                  key={anime.id.anilist}
-                  anime={anime}
-                  showTitleBelow
-                  onOpen={() => router.push(`/anime/${anime.id.anilist}`)}
-                  onAddToList={() => setSelectedAnime(anime)}
-                />
-              ))}
+              <AnimatePresence mode="popLayout">
+                {filtered.map((anime) => (
+                  <motion.div
+                    key={anime.id.anilist}
+                    layout={!prefersReduced}
+                    initial={prefersReduced ? false : { opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={
+                      prefersReduced
+                        ? { opacity: 0 }
+                        : { opacity: 0, scale: 0.85 }
+                    }
+                    transition={{
+                      duration: prefersReduced ? 0.1 : 0.2,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                  >
+                    <AnimeCard
+                      anime={anime}
+                      showTitleBelow
+                      onOpen={() => router.push(`/anime/${anime.id.anilist}`)}
+                      onAddToList={handleAddToList}
+                      onToggleFavorite={handleToggleFavorite}
+                      animeEntry={entriesMap.get(anime.id.anilist) ?? null}
+                      listCount={listCountMap.get(anime.id.anilist) ?? 0}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
           </>
         )}
@@ -200,6 +270,15 @@ export function CollectionDetail({
               animeId={selectedAnime.id.anilist}
               currentEntry={entriesMap.get(selectedAnime.id.anilist) ?? null}
               onClose={() => setSelectedAnime(null)}
+              onListsChanged={({ removed }) => {
+                refetchLists();
+                if (listId && removed.includes(listId)) {
+                  const removedId = selectedAnime.id.anilist;
+                  setAnimeList((prev) =>
+                    prev.filter((a) => a.id.anilist !== removedId),
+                  );
+                }
+              }}
             />
           )}
         </Modal>

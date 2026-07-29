@@ -24,12 +24,14 @@ interface AddToListModalProps {
   animeId: number;
   currentEntry: AnimeEntry | null;
   onClose: () => void;
+  onListsChanged?: (changes: { added: string[]; removed: string[] }) => void;
 }
 
 export function AddToListModal({
   animeId,
   currentEntry,
   onClose,
+  onListsChanged,
 }: AddToListModalProps) {
   const [selectedStatus, setSelectedStatus] = useState<TrackingStatus | null>(
     currentEntry?.status ?? null,
@@ -97,7 +99,10 @@ export function AddToListModal({
         setError("No se pudo guardar. Intenta de nuevo.");
         setIsSubmitting(false);
       } else {
-        if (listsChanged) refetchLists();
+        if (listsChanged) {
+          refetchLists();
+          onListsChanged?.({ added: listsToAdd, removed: listsToRemove });
+        }
         onClose();
       }
     } catch {
@@ -112,6 +117,7 @@ export function AddToListModal({
     initialListIds,
     isSubmitting,
     onClose,
+    onListsChanged,
     refetchLists,
   ]);
 
