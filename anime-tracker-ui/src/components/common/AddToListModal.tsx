@@ -40,7 +40,7 @@ export function AddToListModal({
 
   const { lists, refetch: refetchLists } = useUserLists();
   const [selectedLists, setSelectedLists] = useState<Set<string>>(new Set());
-  const [togglingLists, setTogglingLists] = useState<Set<string>>(new Set());
+  const [initialListIds, setInitialListIds] = useState<Set<string>>(new Set());
 
   // Pre-select lists that already contain this anime
   useEffect(() => {
@@ -51,7 +51,9 @@ export function AddToListModal({
       .eq("anime_id", animeId)
       .then(({ data, error }) => {
         if (!error && data) {
-          setSelectedLists(new Set(data.map((e) => e.list_id)));
+          const ids = new Set(data.map((e) => e.list_id));
+          setSelectedLists(ids);
+          setInitialListIds(ids);
         }
       });
   }, [animeId]);
@@ -60,7 +62,15 @@ export function AddToListModal({
     if (isSubmitting || !selectedStatus) return;
 
     const statusChanged = selectedStatus !== (currentEntry?.status ?? null);
-    if (!statusChanged) {
+    const listsToAdd = [...selectedLists].filter(
+      (id) => !initialListIds.has(id),
+    );
+    const listsToRemove = [...initialListIds].filter(
+      (id) => !selectedLists.has(id),
+    );
+    const listsChanged = listsToAdd.length > 0 || listsToRemove.length > 0;
+
+    if (!statusChanged && !listsChanged) {
       onClose();
       return;
     }
@@ -69,21 +79,41 @@ export function AddToListModal({
     setError(null);
 
     try {
-      const result = currentEntry
-        ? await updateStatus(animeId, selectedStatus)
-        : await addToTracking(animeId, selectedStatus);
+      const statusResult = statusChanged
+        ? currentEntry
+          ? await updateStatus(animeId, selectedStatus)
+          : await addToTracking(animeId, selectedStatus)
+        : { success: true };
 
-      if (!result.success) {
+      const listResults = await Promise.all([
+        ...listsToAdd.map((id) => addToList(id, animeId)),
+        ...listsToRemove.map((id) => removeFromList(id, animeId)),
+      ]);
+
+      const allSucceeded =
+        statusResult.success && listResults.every((r) => r.success);
+
+      if (!allSucceeded) {
         setError("No se pudo guardar. Intenta de nuevo.");
         setIsSubmitting(false);
       } else {
+        if (listsChanged) refetchLists();
         onClose();
       }
     } catch {
       setError("No se pudo guardar. Intenta de nuevo.");
       setIsSubmitting(false);
     }
-  }, [animeId, currentEntry, selectedStatus, isSubmitting, onClose]);
+  }, [
+    animeId,
+    currentEntry,
+    selectedStatus,
+    selectedLists,
+    initialListIds,
+    isSubmitting,
+    onClose,
+    refetchLists,
+  ]);
 
   const handleRemove = useCallback(async () => {
     setIsSubmitting(true);
@@ -237,31 +267,20 @@ export function AddToListModal({
             >
               {lists.map((list) => {
                 const isSelected = selectedLists.has(list.id);
-                const isToggling = togglingLists.has(list.id);
                 return (
                   <button
                     key={list.id}
                     type="button"
-                    disabled={isToggling}
-                    onClick={async () => {
-                      setTogglingLists((prev) => new Set(prev).add(list.id));
-                      if (isSelected) {
-                        await removeFromList(list.id, animeId);
-                        setSelectedLists((prev) => {
-                          const next = new Set(prev);
-                          next.delete(list.id);
-                          return next;
-                        });
-                      } else {
-                        await addToList(list.id, animeId);
-                        setSelectedLists((prev) => new Set(prev).add(list.id));
-                      }
-                      setTogglingLists((prev) => {
+                    onClick={() => {
+                      setSelectedLists((prev) => {
                         const next = new Set(prev);
-                        next.delete(list.id);
+                        if (isSelected) {
+                          next.delete(list.id);
+                        } else {
+                          next.add(list.id);
+                        }
                         return next;
                       });
-                      refetchLists();
                     }}
                     className={cn(
                       "flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl border transition-colors duration-200 cursor-pointer text-left group",
@@ -280,13 +299,7 @@ export function AddToListModal({
                     >
                       {list.name}
                     </span>
-                    {isToggling ? (
-                      <Icon
-                        name="Loader2"
-                        size={14}
-                        className="animate-spin text-white/40"
-                      />
-                    ) : isSelected ? (
+                    {isSelected ? (
                       <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center">
                         <Icon name="Check" size={10} className="text-white" />
                       </div>
