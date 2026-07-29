@@ -19,5 +19,7 @@ export default async function CollectionDetailPage({
 
   const animeIds = (entries ?? []).map((e) => e.anime_id);
 
-  return <CollectionDetail listName={list.name} animeIds={animeIds} />;
+  return (
+    <CollectionDetail listId={list.id} listName={list.name} animeIds={animeIds} />
+  );
 }

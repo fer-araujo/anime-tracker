@@ -33,7 +33,7 @@ export function TrackingShelf({ title, items, className }: TrackingShelfProps) {
   const router = useRouter();
   const animeIds = items.map((a) => a.id.anilist);
   const { entriesMap } = useBatchAnimeEntries(animeIds);
-  const { lists } = useUserLists();
+  const { lists, refetch: refetchLists } = useUserLists();
 
   // Count how many user lists each anime appears in
   const listCountMap = useMemo(() => {
@@ -83,7 +83,8 @@ export function TrackingShelf({ title, items, className }: TrackingShelfProps) {
 
   const handleClose = useCallback(() => {
     setSelectedAnime(null);
-  }, []);
+    refetchLists();
+  }, [refetchLists]);
 
   const handleLoginNavigate = useCallback(() => {
     router.push("/login");

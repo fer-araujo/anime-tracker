@@ -13,7 +13,7 @@ import type { Anime, StreamingEpisode } from "@/types/anime";
 import { cn, formatNextAiring } from "@/lib/utils";
 import { ActionButton } from "@/components/common/Buttons";
 import { GalleryLightbox } from "./common/Gallery";
-import { MinimalShelf } from "./Shelf";
+import { TrackingShelf } from "@/components/common/TrackingShelf";
 import { ImagePlaceholder } from "./common/ImagePlaceholder";
 import AnimeTrackingSection from "./AnimeTrackingSection";
 import { fetchAnimeRating } from "@/lib/api";
@@ -281,7 +281,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     {!entry ? (
                       <ActionButton
                         onClick={() => setShowTrackingModal(true)}
-                        variant="primary"
+                        variant="soft"
                         icon={<Icon name="Plus" size={16} />}
                         size="md"
                       >
@@ -631,7 +631,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                 </div>
                 {anime.meta?.recommendations &&
                 anime.meta?.recommendations.length > 0 ? (
-                  <MinimalShelf items={anime.meta?.recommendations} title="" />
+                  <TrackingShelf items={anime.meta?.recommendations} title="" />
                 ) : (
                   <div className="border border-dashed border-white/10 p-12 rounded-xl flex items-center justify-center bg-white/[0.01]">
                     <p className="text-white/30 text-sm font-medium">
