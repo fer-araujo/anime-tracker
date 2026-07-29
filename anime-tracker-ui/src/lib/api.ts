@@ -44,7 +44,7 @@ export async function fetchSeason(opts?: {
 
   // Note: `next` options are silently ignored in client components (SeasonPageClient).
   // Page-level ISR (`export const revalidate`) covers caching for server components.
-  const res = await fetch(u.toString());
+  const res = await fetch(u.toString(), { signal: AbortSignal.timeout(8000) });
   if (!res.ok) throw new Error(`season ${res.status}`);
   const json = await res.json();
   const parsed = SeasonRespSchema.safeParse(json);
@@ -69,7 +69,10 @@ export async function fetchSeason(opts?: {
 
 export async function fetchHomeHero(): Promise<HeroResponse> {
   const url = `${API_BASE}/home/hero`;
-  const res = await fetch(url, { next: { revalidate: 21600 } });
+  const res = await fetch(url, {
+    next: { revalidate: 21600 },
+    signal: AbortSignal.timeout(8000),
+  });
   if (!res.ok) throw new Error("Failed to fetch home hero");
   const json = await res.json();
   const parsed = HeroResponseSchema.safeParse(json);
@@ -93,21 +96,31 @@ export async function fetchAnimeDetails(
 }
 
 export async function fetchAiringToday(): Promise<Anime[]> {
-  const res = await fetch(`${API_BASE}/schedule?type=airing`, {
-    next: { revalidate: 1800 },
-  });
-  if (!res.ok) return [];
-  const json = await res.json();
-  return json.data as Anime[];
+  try {
+    const res = await fetch(`${API_BASE}/schedule?type=airing`, {
+      next: { revalidate: 1800 },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data as Anime[];
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchComingSoon(): Promise<Anime[]> {
-  const res = await fetch(`${API_BASE}/schedule?type=coming`, {
-    next: { revalidate: 3600 },
-  });
-  if (!res.ok) return [];
-  const json = await res.json();
-  return json.data as Anime[];
+  try {
+    const res = await fetch(`${API_BASE}/schedule?type=coming`, {
+      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data as Anime[];
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchAnimeRating(animeId: number): Promise<{
