@@ -10,6 +10,7 @@ import type { Anime } from "@/types/anime";
 
 export const revalidate = 21600;
 export const dynamic = "force-dynamic";
+export const maxDuration = 15;
 
 export default async function HomePage() {
   const [heroResp, popularResp, trendingResp, airingData, comingData] =
