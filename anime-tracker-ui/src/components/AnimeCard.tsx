@@ -5,25 +5,13 @@ import React, { useState, useEffect } from "react";
 import { ProviderBadge } from "./ProviderBadge";
 import { uniqueNormalizedProviders } from "@/lib/providers";
 import { cn, handleImageLoad } from "@/lib/utils";
-import type { AnimeCardProps, TrackingStatus } from "@/types/anime";
+import type { AnimeCardProps } from "@/types/anime";
 import { Pill } from "./common/Pills";
 import { ScoreBadge } from "./common/ScoreBadge";
 import { ActionButton, FavButton } from "./common/Buttons";
 import { PosterSkeleton } from "./Loaders/PosterSkeleton";
 import Tooltip from "@/components/custom/Tooltip";
 import Icon from "@/components/custom/Icon";
-import {
-  STATUS_LABELS,
-} from "@/constants/tracking";
-
-// Thin pill variant derived from the shared active colors, but with subtle opacity
-const STATUS_PILL_COLORS: Record<TrackingStatus, string> = {
-  plan_to_watch: "border-white/20 text-white/60 bg-white/5",
-  watching: "border-sky-500/50 text-sky-300 bg-sky-500/10",
-  completed: "border-emerald-500/50 text-emerald-300 bg-emerald-500/10",
-  on_hold: "border-amber-500/50 text-amber-300 bg-amber-500/10",
-  dropped: "border-red-500/50 text-red-300 bg-red-500/10",
-};
 
 /* -------------------------------------------------------------------------- */
 /*  AnimeCard                                                                  */
@@ -119,18 +107,6 @@ export function AnimeCard({
           >
             <Icon name="Plus" size={16} className="text-white/80" />
           </button>
-
-          {/* Status pill */}
-          {animeEntry?.status && (
-            <span
-              className={cn(
-                "px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border",
-                STATUS_PILL_COLORS[animeEntry.status],
-              )}
-            >
-              {STATUS_LABELS[animeEntry.status]}
-            </span>
-          )}
 
           {/* Score badge when completed */}
           {animeEntry?.status === "completed" && animeEntry.score != null && (

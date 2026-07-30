@@ -65,6 +65,7 @@ describe("AddToListModal", () => {
     vi.mocked(useUserLists).mockReturnValue({
       lists: mockLists,
       loading: false,
+      error: null,
       refetch: mockRefetchLists,
     });
   });
