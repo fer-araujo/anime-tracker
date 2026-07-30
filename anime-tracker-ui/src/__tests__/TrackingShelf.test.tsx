@@ -13,8 +13,12 @@ vi.mock("@/providers/AuthProvider", () => ({
   }),
 }));
 
+const mockRefetchEntries = vi.fn();
 vi.mock("@/hooks/useBatchAnimeEntries", () => ({
-  useBatchAnimeEntries: () => ({ entriesMap: new Map() }),
+  useBatchAnimeEntries: () => ({
+    entriesMap: new Map(),
+    refetch: mockRefetchEntries,
+  }),
 }));
 
 vi.mock("@/hooks/useResponsiveModalVariant", () => ({
@@ -69,5 +73,6 @@ describe("TrackingShelf", () => {
     await user.click(await screen.findByText(/close-modal/i));
 
     expect(mockRefetchLists).toHaveBeenCalled();
+    expect(mockRefetchEntries).toHaveBeenCalled();
   });
 });

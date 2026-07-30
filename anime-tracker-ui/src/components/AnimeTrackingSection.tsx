@@ -69,6 +69,7 @@ export default function AnimeTrackingSection({
   const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [showScorePicker, setShowScorePicker] = useState(false);
   const [showListExpanded, setShowListExpanded] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const { lists } = useAnimeLists(animeId, refreshKey);
 
   if (authLoading) return null;
@@ -109,15 +110,39 @@ export default function AnimeTrackingSection({
   const isFavorite = entry?.favorite ?? false;
   const currentScore = entry?.score ?? null;
 
-  const handleSelectStatus = (s: TrackingStatus) => {
+  const handleSelectStatus = async (s: TrackingStatus) => {
     setShowStatusPicker(false);
     if (currentStatus === s) return;
-    void (currentStatus ? onUpdateStatus(s) : onAddToList(s));
+    setActionError(null);
+    const result = await (currentStatus ? onUpdateStatus(s) : onAddToList(s));
+    if (!result.success) {
+      setActionError(result.error ?? "No se pudo actualizar el estado.");
+    }
   };
 
-  const handleSelectScore = (n: number) => {
+  const handleSelectScore = async (n: number) => {
     setShowScorePicker(false);
-    onSetScore(currentScore === n ? null : n);
+    setActionError(null);
+    const result = await onSetScore(currentScore === n ? null : n);
+    if (!result.success) {
+      setActionError(result.error ?? "No se pudo guardar la calificación.");
+    }
+  };
+
+  const handleToggleFavoriteClick = async () => {
+    setActionError(null);
+    const result = await onToggleFavorite(!isFavorite);
+    if (!result.success) {
+      setActionError(result.error ?? "No se pudo actualizar favoritos.");
+    }
+  };
+
+  const handleRemoveClick = async () => {
+    setActionError(null);
+    const result = await onRemove();
+    if (!result.success) {
+      setActionError(result.error ?? "No se pudo eliminar de tu lista.");
+    }
   };
 
   const listCount = lists.length;
@@ -230,7 +255,7 @@ export default function AnimeTrackingSection({
         {/* Favorite */}
         <button
           type="button"
-          onClick={() => onToggleFavorite(!isFavorite)}
+          onClick={handleToggleFavoriteClick}
           className={cn(
             "flex items-center justify-center w-9 h-9 rounded-lg border transition-colors duration-200 cursor-pointer",
             isFavorite
@@ -253,7 +278,7 @@ export default function AnimeTrackingSection({
         {entry && (
           <button
             type="button"
-            onClick={() => onRemove()}
+            onClick={handleRemoveClick}
             className="flex items-center justify-center w-9 h-9 rounded-lg border border-red-500/10 text-red-400/80 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition-colors cursor-pointer"
             title="Eliminar de mi lista"
           >
@@ -261,6 +286,22 @@ export default function AnimeTrackingSection({
           </button>
         )}
       </div>
+
+      {/* ===== ERROR MESSAGE ===== */}
+      <AnimatePresence>
+        {actionError && (
+          <motion.p
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            role="alert"
+            className="text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-lg flex items-center gap-2"
+          >
+            <Icon name="AlertCircle" size={14} />
+            {actionError}
+          </motion.p>
+        )}
+      </AnimatePresence>
 
       {/* ===== EXPANDED STATUS PICKER ===== */}
       <AnimatePresence initial={false}>

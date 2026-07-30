@@ -75,6 +75,15 @@ export async function removeFromList(listId: string, animeId: number) {
   if (!user) return { success: false, error: "Not authenticated" };
   if (!checkRateLimit(`lists:${user.id}`)) return { success: false, error: "Too many requests. Try again later" };
 
+  const { data: list } = await supabase
+    .from("user_lists")
+    .select("id")
+    .eq("id", listId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!list) return { success: false, error: "List not found" };
+
   const { error } = await supabase
     .from("list_entries")
     .delete()

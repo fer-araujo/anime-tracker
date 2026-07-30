@@ -19,7 +19,7 @@ type Props = {
 export function TrackableAnimeCard({ anime, onOpen }: Props) {
   const { user } = useAuth();
   const router = useRouter();
-  const { entry, toggleFavorite } = useAnimeEntry(anime.id.anilist);
+  const { entry, toggleFavorite, refetch } = useAnimeEntry(anime.id.anilist);
   const [showModal, setShowModal] = useState(false);
   const variant = useResponsiveModalVariant();
 
@@ -52,7 +52,8 @@ export function TrackableAnimeCard({ anime, onOpen }: Props) {
 
   const handleClose = useCallback(() => {
     setShowModal(false);
-  }, []);
+    refetch();
+  }, [refetch]);
 
   const handleLoginNavigate = useCallback(() => {
     router.push("/login");

@@ -19,23 +19,27 @@ export function useUserLists() {
   const { user } = useAuth();
   const [lists, setLists] = useState<UserList[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     if (!user) {
       setLists([]);
+      setError(null);
       setLoading(false);
       return;
     }
     setLoading(true);
+    setError(null);
     const supabase = createClient();
 
-    const { data: raw, error } = await supabase
+    const { data: raw, error: fetchError } = await supabase
       .from("user_lists")
       .select("id, name, color, list_entries(anime_id)")
       .eq("user_id", user.id)
       .order("sort_order");
 
-    if (error) {
+    if (fetchError) {
+      setError(fetchError.message);
       setLoading(false);
       return;
     }
@@ -83,5 +87,5 @@ export function useUserLists() {
     fetch();
   }, [fetch]);
 
-  return { lists, loading, refetch: fetch };
+  return { lists, loading, error, refetch: fetch };
 }
