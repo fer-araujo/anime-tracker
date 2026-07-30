@@ -7,7 +7,8 @@ const TMDB = "https://api.themoviedb.org/3";
 const TMDB_KEY = ENV.TMDB_KEY || process.env.TMDB_KEY || "";
 
 async function fetchImages(kind: "tv" | "movie", id: number, langs: string) {
-  const url = `${TMDB}/${kind}/${id}/images?include_image_language=${langs}`;
+  const url = new URL(`${TMDB}/${kind}/${id}/images`);
+  url.searchParams.set("include_image_language", langs);
   const r = await fetch(url, {
     headers: { Authorization: `Bearer ${TMDB_KEY}` },
   });

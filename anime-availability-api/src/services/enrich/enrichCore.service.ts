@@ -15,7 +15,7 @@ export async function enrichAnimeCore(
   // 3) Providers reales
   let providers = core.providers ?? [];
 
-  if (!providers.length && core.ids?.tmdb) {
+  if (!providers.length) {
     // Tomamos el ID de AniList (asumo que está en core.id o core.ids.anilist)
     // Si en tu interfaz se llama diferente, ajústalo aquí.
     const anilistId = core.ids?.anilist || 0;

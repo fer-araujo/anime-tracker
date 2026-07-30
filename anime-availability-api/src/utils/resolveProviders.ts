@@ -160,20 +160,28 @@ export async function resolveProvidersForAnimeDetailed(
 
         let saItems: StreamingAvailabilityItem[] = [];
 
-        for (const variant of titleVariants) {
-          // V4 FIX: Pasamos el 'kind' para afinar la búsqueda
-          saItems = await fetchStreamingAvailabilityByTitle(
-            variant,
-            upperCountry,
-            kind,
-          );
-          if (saItems && saItems.length > 0) {
-            logger.info(`[RapidAPI] Éxito con la variación: "${variant}"`);
-            break;
+        if (RAPIDAPI_KEY) {
+          for (const variant of titleVariants) {
+            // V4 FIX: Pasamos el 'kind' para afinar la búsqueda
+            saItems = await fetchStreamingAvailabilityByTitle(
+              variant,
+              upperCountry,
+              kind,
+            );
+            if (saItems && saItems.length > 0) {
+              logger.info(`[RapidAPI] Éxito con la variación: "${variant}"`);
+              break;
+            }
           }
+          // We only made a real check if a key was configured — otherwise
+          // fetchStreamingAvailabilityByTitle short-circuits to [] and this
+          // would look indistinguishable from "checked, found nothing".
+          saOk = true;
+        } else {
+          logger.warn(
+            "[resolveProviders] RAPIDAPI_KEY not configured — skipping SA fallback",
+          );
         }
-
-        saOk = true;
 
         const best = pickBestStreamingAvailItem(saItems, tmdbId);
         if (best) {
@@ -204,7 +212,16 @@ export async function resolveProvidersForAnimeDetailed(
 
   const payload: ProvidersResolved = { providers, usedSource, tmdbOk, saOk };
 
-  memoryCache.set(cacheKey, payload, 1000 * 60 * 60 * 24 * 7);
+  // A "Pirata" result only deserves the full 7-day cache when at least one
+  // source was genuinely checked. If neither ran (missing tmdbId + no key,
+  // or a transient failure), cache briefly so the next request retries
+  // instead of being stuck on a fallback nobody actually verified.
+  const genuinelyChecked = tmdbOk || saOk;
+  const ttlMs = genuinelyChecked
+    ? 1000 * 60 * 60 * 24 * 7
+    : 1000 * 60 * 10;
+
+  memoryCache.set(cacheKey, payload, ttlMs);
 
   return payload;
 }

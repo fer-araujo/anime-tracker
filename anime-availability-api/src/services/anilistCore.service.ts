@@ -7,7 +7,7 @@ import type {
   ArtworkCandidate,
   AnimeTitleSet,
 } from "../types/animeCore.js";
-import { htmlToText, shorten } from "../utils/sanitize.js";
+import { htmlToText, shorten, sanitizeSynopsisHtml } from "../utils/sanitize.js";
 
 const STREAMING_SITES = new Set([
   "Crunchyroll",
@@ -217,7 +217,7 @@ export async function searchAnimeFromAnilist(
         nextEpisodeAt: nextAt,
       },
       synopses: {
-        synopsisHtml: rawHtml,
+        synopsisHtml: sanitizeSynopsisHtml(rawHtml),
         synopsisText: plain,
         synopsisShort: short,
       },

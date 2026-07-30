@@ -106,6 +106,7 @@ export async function anilistFetch<T = AniListDefaultResponse>(
         Accept: "application/json",
       },
       body: JSON.stringify({ query, variables }),
+      signal: AbortSignal.timeout(8000),
     });
 
     // 4. Handle 429 Too Many Requests
@@ -124,6 +125,7 @@ export async function anilistFetch<T = AniListDefaultResponse>(
           Accept: "application/json",
         },
         body: JSON.stringify({ query, variables }),
+        signal: AbortSignal.timeout(8000),
       });
 
       if (!retryRes.ok) {

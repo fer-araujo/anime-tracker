@@ -15,6 +15,6 @@ jobs:
             echo "RENDER_HEALTH_URL repo variable is not set — skipping ping." >&2
             exit 1
           fi
-          curl -fsS --max-time 20 "${RENDER_HEALTH_URL%/}/health"
+          curl -fsS --max-time 90 "${RENDER_HEALTH_URL%/}/health"
         env:
           RENDER_HEALTH_URL: ${{ vars.RENDER_HEALTH_URL }}
