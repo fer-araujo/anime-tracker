@@ -18,10 +18,8 @@ router.post("/batch", (req, res, next) => {
   next();
 }, getAnimeBatch);
 
-// GET /v1/anime/:id/rating — community rating (MUST be before /:id param middleware)
-router.get("/:id/rating", getAnimeRating);
-
-// Validate that :id is a positive integer
+// Validate that :id is a positive integer — registered before any /:id* route
+// so it covers both /:id and /:id/rating (router.use matches by prefix).
 router.use("/:id", (req, res, next) => {
   const result = z
     .object({ id: z.coerce.number().int().positive() })
@@ -37,6 +35,9 @@ router.use("/:id", (req, res, next) => {
   }
   next();
 });
+
+// GET /v1/anime/:id/rating — community rating
+router.get("/:id/rating", getAnimeRating);
 
 router.get("/:id", getAnimeDetails);
 

@@ -1,3 +1,20 @@
+import sanitizeHtmlLib from "sanitize-html";
+
+const SYNOPSIS_HTML_OPTIONS: sanitizeHtmlLib.IOptions = {
+  allowedTags: ["b", "i", "em", "strong", "br", "p"],
+  allowedAttributes: {},
+};
+
+/**
+ * Sanitizes AniList's raw description HTML (community-editable, untrusted)
+ * down to a small formatting allowlist before it's stored/served as
+ * `synopsisHtml`. Never trust `<script>`/`<img onerror>`/etc. from AniList.
+ */
+export function sanitizeSynopsisHtml(raw?: string | null): string | null {
+  if (!raw) return null;
+  return sanitizeHtmlLib(raw, SYNOPSIS_HTML_OPTIONS);
+}
+
 export function htmlToText(raw?: string | null): string {
   if (!raw) return "";
   let s = String(raw);

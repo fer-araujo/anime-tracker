@@ -26,11 +26,13 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.6.1",
     "fuse.js": "^7.1.0",
     "helmet": "^8.1.0",
     "morgan": "^1.10.1",
     "p-limit": "^7.1.1",
     "pino": "^10.3.1",
+    "sanitize-html": "^2.17.6",
     "zod": "^4.1.12"
   },
   "devDependencies": {
@@ -40,6 +42,7 @@
     "@types/helmet": "^0.0.48",
     "@types/morgan": "^1.9.10",
     "@types/node": "^24.7.0",
+    "@types/sanitize-html": "^2.16.1",
     "@types/supertest": "^7.2.0",
     "eslint": "^10.7.0",
     "eslint-config-prettier": "^10.1.8",

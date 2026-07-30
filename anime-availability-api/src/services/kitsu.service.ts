@@ -25,7 +25,7 @@ export async function kitsuSearchAnime(
   url.searchParams.set("filter[text]", title);
   url.searchParams.set("page[limit]", "1");
 
-  const res = await fetch(url.toString());
+  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(5000) });
   if (!res.ok) return null;
 
   const data = await res.json();
