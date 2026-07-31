@@ -27,6 +27,24 @@ const STATUS_TABS: { key: TrackingStatus | "all"; label: string }[] = [
   { key: "dropped", label: "Abandonados" },
 ];
 
+// Solid swatch variant of the same semantic status palette AnimeCard.tsx
+// already uses for its (soft) pill treatment — for a status breakdown bar.
+const STATUS_BAR_COLORS: Record<TrackingStatus, string> = {
+  watching: "bg-sky-500",
+  completed: "bg-emerald-500",
+  plan_to_watch: "bg-white/40",
+  on_hold: "bg-amber-500",
+  dropped: "bg-red-500",
+};
+
+const STATUS_BAR_ORDER: TrackingStatus[] = [
+  "watching",
+  "completed",
+  "plan_to_watch",
+  "on_hold",
+  "dropped",
+];
+
 export function CollectionDetail({
   listId,
   listName,
@@ -56,6 +74,26 @@ export function CollectionDetail({
     }
     return map;
   }, [lists]);
+
+  const avgScore = useMemo(() => {
+    const scores = animeList
+      .map((a) => entriesMap.get(a.id.anilist)?.score)
+      .filter((score): score is number => score != null);
+    if (scores.length === 0) return null;
+    return scores.reduce((sum, s) => sum + s, 0) / scores.length;
+  }, [animeList, entriesMap]);
+
+  const statusBreakdown = useMemo(() => {
+    const counts = new Map<TrackingStatus, number>();
+    for (const a of animeList) {
+      const status = entriesMap.get(a.id.anilist)?.status;
+      if (status) counts.set(status, (counts.get(status) ?? 0) + 1);
+    }
+    return STATUS_BAR_ORDER.map((status) => ({
+      status,
+      count: counts.get(status) ?? 0,
+    })).filter((s) => s.count > 0);
+  }, [animeList, entriesMap]);
 
   const handleAddToList = useCallback(
     (anime: Anime) => {
@@ -199,6 +237,32 @@ export function CollectionDetail({
           </div>
         ) : (
           <>
+            <div className="mb-8">
+              <div className="flex items-center gap-4 flex-wrap text-sm text-white/50">
+                <span>
+                  {animeList.length}{" "}
+                  {animeList.length === 1 ? "anime" : "animes"}
+                </span>
+                {avgScore != null && (
+                  <span className="inline-flex items-center gap-1 font-semibold text-emerald-300">
+                    <Icon name="Star" size={14} />
+                    {avgScore.toFixed(1)} promedio
+                  </span>
+                )}
+              </div>
+              {statusBreakdown.length > 0 && (
+                <div className="flex h-1.5 w-full max-w-sm rounded-full overflow-hidden bg-white/5 mt-3">
+                  {statusBreakdown.map(({ status, count }) => (
+                    <span
+                      key={status}
+                      className={STATUS_BAR_COLORS[status]}
+                      style={{ width: `${(count / animeList.length) * 100}%` }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="flex flex-wrap gap-2 mb-8">
               {STATUS_TABS.map((tab) => (
                 <button

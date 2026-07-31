@@ -39,7 +39,9 @@ vi.mock("@/lib/fetchAnimeBatch", () => ({
 
 vi.mock("@/hooks/useBatchAnimeEntries", () => ({
   useBatchAnimeEntries: () => ({
-    entriesMap: new Map([[1, { status: "watching", favorite: false }]]),
+    entriesMap: new Map([
+      [1, { status: "watching", favorite: false, score: 8 }],
+    ]),
   }),
 }));
 
@@ -119,6 +121,30 @@ describe("CollectionDetail", () => {
     expect(screen.getByTestId("listcount-1")).toHaveTextContent("1");
     expect(screen.getByTestId("status-1")).toHaveTextContent("watching");
     expect(screen.getByTestId("listcount-2")).toHaveTextContent("0");
+  });
+
+  it("shows the anime count and average score derived from entriesMap", async () => {
+    render(
+      <CollectionDetail listId="list-1" listName="Mi colección" animeIds={[1, 2]} />,
+    );
+
+    await screen.findByTestId("card-1");
+    expect(screen.getByText("2 animes")).toBeInTheDocument();
+    expect(screen.getByText("8.0 promedio")).toBeInTheDocument();
+  });
+
+  it("updates the count and drops the average once the scored anime is removed", async () => {
+    render(
+      <CollectionDetail listId="list-1" listName="Mi colección" animeIds={[1, 2]} />,
+    );
+    const user = userEvent.setup();
+
+    await screen.findByTestId("card-1");
+    await user.click(screen.getByText("trigger-add-1"));
+    await user.click(await screen.findByText("remove-from-this-list"));
+
+    await waitFor(() => expect(screen.getByText("1 anime")).toBeInTheDocument());
+    expect(screen.queryByText(/promedio/)).not.toBeInTheDocument();
   });
 
   it("removes the anime locally when this list is unchecked in the modal", async () => {
