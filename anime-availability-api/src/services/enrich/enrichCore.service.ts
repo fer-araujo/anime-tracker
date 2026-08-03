@@ -15,7 +15,13 @@ export async function enrichAnimeCore(
   // 3) Providers reales
   let providers = core.providers ?? [];
 
-  if (!providers.length) {
+  // The `core.ids?.tmdb` guard is a COST LIMITER, not dead code.
+  // searchAnimeUnified fans this out over ~12 results in a Promise.all, and
+  // resolveProvidersForAnimeDetailed loops title variations against a paid
+  // RapidAPI endpoint. Dropping the guard turned every search into ~12xN
+  // upstream calls, which burned quota and made /search crawl.
+  // Only paths that already resolved a TMDB id (detail/season) may enrich.
+  if (!providers.length && core.ids?.tmdb) {
     // Tomamos el ID de AniList (asumo que está en core.id o core.ids.anilist)
     // Si en tu interfaz se llama diferente, ajústalo aquí.
     const anilistId = core.ids?.anilist || 0;
