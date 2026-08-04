@@ -4,6 +4,7 @@ import { memoryCache } from "../utils/cache.js";
 import { normalizeProviderNames } from "../utils/providers.js";
 import { tmdbWatchProviders } from "../services/tmdb.service.js";
 import { getTitleVariations } from "./tmdb.enrich.js";
+import { tryConsumeRapidApiCall } from "./quotaGuard.js";
 
 const RAPIDAPI_KEY =
   process.env.STREAMING_AVAILABILITY_KEY ||
@@ -37,6 +38,10 @@ async function fetchStreamingAvailabilityByTitle(
   kind: "tv" | "movie",
 ): Promise<StreamingAvailabilityItem[]> {
   if (!RAPIDAPI_KEY) return [];
+
+  // Billing backstop. Checked here rather than at the call site so no future
+  // caller can reach the paid endpoint without passing through the budget.
+  if (!tryConsumeRapidApiCall()) return [];
 
   // Endpoint de búsqueda por título
   const url = new URL(`${SA_BASE_URL}/shows/search/title`);

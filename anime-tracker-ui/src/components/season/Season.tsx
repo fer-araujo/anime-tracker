@@ -6,6 +6,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { fetchSeason } from "@/lib/api";
 import type { Anime } from "@/types/anime";
 import { TrackableAnimeCard } from "@/components/season/TrackableAnimeCard";
+import { useBatchAnimeEntries } from "@/hooks/useBatchAnimeEntries";
+import { useUserLists } from "@/hooks/useUserLists";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
 import Select, { type SelectOption } from "@/components/custom/Select";
 import { Pagination } from "@/components/custom/Pagination";
@@ -197,6 +199,34 @@ export default function SeasonPage({
     () => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize),
     [filtered, currentPage, pageSize],
   );
+
+  /* ---- Tracking state, batched for the visible page ----
+   * Scoped to `paginated` rather than the full season so the query stays
+   * proportional to what's on screen. useBatchAnimeEntries keys off
+   * animeIds.join(","), so this recomputes only when the page actually
+   * changes — paging, filtering or sorting, not on every render. */
+  const pageAnimeIds = useMemo(
+    () => paginated.map((a) => a.id.anilist),
+    [paginated],
+  );
+  const { entriesMap, refetch: refetchEntries } =
+    useBatchAnimeEntries(pageAnimeIds);
+  const { lists, refetch: refetchLists } = useUserLists();
+
+  const listCountMap = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const list of lists) {
+      for (const id of list.anime_ids) {
+        map.set(id, (map.get(id) ?? 0) + 1);
+      }
+    }
+    return map;
+  }, [lists]);
+
+  const handleTrackingChange = useCallback(() => {
+    refetchEntries();
+    refetchLists();
+  }, [refetchEntries, refetchLists]);
 
   const seasonOptions = useMemo(() => buildSeasonOptions(), []);
   const yearOptions = useMemo(() => buildYearOptions(), []);
@@ -447,6 +477,9 @@ export default function SeasonPage({
                   key={anime.id.anilist}
                   anime={anime}
                   onOpen={handleCardOpen}
+                  animeEntry={entriesMap.get(anime.id.anilist) ?? null}
+                  listCount={listCountMap.get(anime.id.anilist) ?? 0}
+                  onTrackingChange={handleTrackingChange}
                 />
               ))}
             </div>
