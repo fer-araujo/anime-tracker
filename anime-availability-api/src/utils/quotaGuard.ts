@@ -19,7 +19,17 @@ import { logger } from "./logger.js";
  * multiplies by the replica count.
  */
 
-const DAILY_LIMIT = Number(process.env.RAPIDAPI_DAILY_LIMIT ?? 40);
+/**
+ * Derived from the BASIC plan's 1000 calls/month, which RapidAPI meters over a
+ * rolling 30-day window rather than a calendar month. 1000/31 = 32/day is the
+ * break-even, so 25 leaves ~22% headroom: 25 x 31 = 775 worst case.
+ *
+ * The headroom is not padding — this counter lives in process memory, so a
+ * redeploy resets the window and a day with several deploys could spend more
+ * than one budget. The 7-day provider cache is what keeps that theoretical
+ * worst case from being the actual one.
+ */
+const DAILY_LIMIT = Number(process.env.RAPIDAPI_DAILY_LIMIT ?? 25);
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 
 let callTimestamps: number[] = [];
