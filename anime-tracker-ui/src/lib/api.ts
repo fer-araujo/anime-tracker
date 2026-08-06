@@ -42,9 +42,22 @@ export async function fetchSeason(opts?: {
   if (opts?.year) u.searchParams.set("year", String(opts.year));
   if (opts?.rank) u.searchParams.set("rank", opts.rank);
 
-  // Note: `next` options are silently ignored in client components (SeasonPageClient).
-  // Page-level ISR (`export const revalidate`) covers caching for server components.
-  const res = await fetch(u.toString(), { signal: AbortSignal.timeout(8000) });
+  // The revalidate window is mandatory here, not decorative. The homepage sets
+  // `fetchCache = "default-cache"`, which promotes any fetch without an explicit
+  // cache option to `force-cache` — i.e. cached until the next deployment. This
+  // call had none, so Populares and Trending kept serving pre-fix provider data
+  // while the detail page (which does declare one) had already refreshed.
+  //
+  // One hour is deliberate: the backend already caches provider resolution
+  // aggressively, so this layer only needs to be short enough that a corrected
+  // upstream reaches users the same day.
+  //
+  // Note: `next` options are ignored in client components (SeasonPageClient),
+  // which fetch on demand and are unaffected by this.
+  const res = await fetch(u.toString(), {
+    next: { revalidate: 3600 },
+    signal: AbortSignal.timeout(8000),
+  });
   if (!res.ok) throw new Error(`season ${res.status}`);
   const json = await res.json();
   const parsed = SeasonRespSchema.safeParse(json);
