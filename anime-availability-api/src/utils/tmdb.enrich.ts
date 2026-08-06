@@ -48,7 +48,20 @@ export function isSeasonSequel(title: string): boolean {
   return SEASON_SEQUEL_RE.test(title);
 }
 
-// 2. NUEVO: Generador de cascada inteligente (El corta-subtítulos)
+/**
+ * Search candidates for TMDB, ordered from most faithful to most permissive.
+ *
+ * Stripping punctuation is not free: TMDB indexes titles as written, so
+ * "jojo's" and "jojos" are different queries and only the first one matches.
+ * That cost us every apostrophised title — JoJo's Bizarre Adventure, Kino's
+ * Journey, Girls' Last Tour all reported no legal provider, because the search
+ * that would have found them was never issued. We were asking TMDB for a title
+ * we had corrupted ourselves.
+ *
+ * The stripped form still earns its place as a fallback, for when AniList and
+ * TMDB punctuate the same title differently (dashes, interpuncts, stylised
+ * marks). It just can't be the only attempt.
+ */
 export function getTitleVariations(title: string): string[] {
   if (!title) return [];
 
@@ -60,7 +73,12 @@ export function getTitleVariations(title: string): string[] {
 
   const variations = new Set<string>();
 
-  // Variación A: Título completo limpio (Para "Bleach Thousand Year Blood War")
+  // Variación A: Título tal cual lo indexa TMDB, con puntuación intacta.
+  const verbatim = clean.replace(/\s+/g, " ").trim();
+  if (verbatim) variations.add(verbatim);
+
+  // Variación B: Sin puntuación — cubre las discrepancias de estilo entre
+  // AniList y TMDB, pero solo después de haber intentado el título real.
   const fullTitle = clean
     .replace(/[\/\-\:]/g, " ")
     .replace(/[^\w\s]/g, "")
@@ -68,14 +86,20 @@ export function getTitleVariations(title: string): string[] {
     .trim();
   if (fullTitle) variations.add(fullTitle);
 
-  // Variación B: Título recortado antes del ':' (Para "Yu Yu Hakusho: Ghostfiles")
+  // Variación C: Recorte antes del ':' (Para "Yu Yu Hakusho: Ghostfiles").
+  // Se emiten ambas formas por la misma razón que arriba — sin esto,
+  // "Kino's Journey: The Beautiful World" se recortaría a "kinos journey".
   if (clean.includes(":")) {
-    const splitTitle = clean
-      .split(":")[0]
+    const head = clean.split(":")[0];
+
+    const headVerbatim = head.replace(/\s+/g, " ").trim();
+    if (headVerbatim) variations.add(headVerbatim);
+
+    const headStripped = head
       .replace(/[^\w\s]/g, "")
       .replace(/\s+/g, " ")
       .trim();
-    if (splitTitle) variations.add(splitTitle);
+    if (headStripped) variations.add(headStripped);
   }
 
   return Array.from(variations);
