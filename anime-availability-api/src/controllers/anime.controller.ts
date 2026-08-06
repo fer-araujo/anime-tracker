@@ -16,6 +16,7 @@ import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
 import { bayesianAverage } from "../utils/rating.js";
 import { createSupabaseAdmin } from "../utils/supabase.js";
+import { tmdbKindsFor } from "../utils/animeFormat.js";
 
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
@@ -59,15 +60,22 @@ export async function getAnimeDetails(
       media.title?.native ??
       "Untitled";
       
-    const kind = media.format === "MOVIE" ? "movie" : "tv";
+    // AniList formats don't map 1:1 to TMDB catalogues — a SPECIAL or OVA can
+    // live under either. Hand resolveHeroArtwork every plausible candidate and
+    // let the match decide, rather than guessing wrong and finding nothing.
+    const kindCandidates = tmdbKindsFor(media.format);
     const isReleasing = media.status === "RELEASING";
 
     // Pasamos el title directo + startDate para artwork de temporada específica
-    const { backdrop, logo, artworkCandidates, tmdbId } =
-      await resolveHeroArtwork(title, kind, {
+    const { backdrop, logo, artworkCandidates, tmdbId, resolvedKind } =
+      await resolveHeroArtwork(title, kindCandidates, {
         bannerImage: media.bannerImage,
         coverImage: media.coverImage,
       }, media.startDate, { allowSeasonBackdrop: true });
+
+    // Provider lookups must use the catalogue that actually matched, not the
+    // initial guess, or they query the wrong side of TMDB and come back empty.
+    const kind = resolvedKind;
 
     const providersData = await resolveProvidersForAnimeDetailed(
       anilistId,

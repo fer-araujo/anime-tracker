@@ -2,6 +2,7 @@
 import { logger } from "../utils/logger.js";
 import type { ArtworkCandidate } from "../types/animeCore.js";
 import type { TMDBSearchTVItem } from "../types/types.js";
+import type { TmdbKind } from "./animeFormat.js";
 import {
   tmdbSearch,
   tmdbBackdropUrl,
@@ -41,6 +42,13 @@ interface ResolveHeroResult {
   logo: string | null;
   artworkCandidates: ArtworkCandidateEntry[];
   tmdbId: number | null;
+  /**
+   * Which TMDB catalogue actually produced the match. Callers must forward
+   * this to provider resolution instead of their own guess: an AniList SPECIAL
+   * can turn out to be a TMDB movie, and querying providers under the wrong
+   * catalogue is a guaranteed miss.
+   */
+  resolvedKind: TmdbKind;
 }
 
 export type BasicAniListMedia = {
@@ -99,7 +107,7 @@ const tmdbImageUrl = (path: string | null, size = "original") =>
  */
 export async function resolveHeroArtwork(
   searchTitle: string,
-  kind: "tv" | "movie",
+  kind: TmdbKind | TmdbKind[],
   media: {
     bannerImage?: string | null;
     coverImage?: { extraLarge?: string | null; large?: string | null } | null;
@@ -113,18 +121,30 @@ export async function resolveHeroArtwork(
   let artworkCandidates: ArtworkCandidateEntry[] = [];
   let bestTmdb: TMDBSearchTVItem | undefined;
 
+  // Candidate catalogues, likeliest first. A single `kind` is still accepted so
+  // existing callers keep working unchanged.
+  const kindCandidates: TmdbKind[] = Array.isArray(kind) ? kind : [kind];
+  let resolvedKind: TmdbKind = kindCandidates[0];
+
   try {
     // Búsqueda TMDB (siempre necesitamos el tmdbId para providers)
     const titleVariants = getTitleVariations(searchTitle);
 
-    for (const variant of titleVariants) {
-      const tmdbResults = await tmdbSearch(kind, variant);
-      if (tmdbResults && tmdbResults.length > 0) {
-        bestTmdb = tmdbResults.find(isAnimeCandidate) ?? tmdbResults[0];
+    // Catalogue is the outer loop so the likelier one exhausts its title
+    // variants first — a movie usually matches on the first attempt.
+    outer: for (const candidateKind of kindCandidates) {
+      for (const variant of titleVariants) {
+        const tmdbResults = await tmdbSearch(candidateKind, variant);
+        if (tmdbResults && tmdbResults.length > 0) {
+          bestTmdb = tmdbResults.find(isAnimeCandidate) ?? tmdbResults[0];
 
-        if (bestTmdb) {
-          logger.info(`[artwork] Match encontrado usando: "${variant}"`);
-          break;
+          if (bestTmdb) {
+            resolvedKind = candidateKind;
+            logger.info(
+              `[artwork] Match encontrado en /${candidateKind} usando: "${variant}"`,
+            );
+            break outer;
+          }
         }
       }
     }
@@ -135,7 +155,7 @@ export async function resolveHeroArtwork(
       // ----------------------------------------------------------------
       // PASO 1: BACKDROPS + LOGO BASE — Siempre desde /tv/{id}/images (raíz)
       // ----------------------------------------------------------------
-      const imagesData = await getTmdbImages(tmdbId, kind);
+      const imagesData = await getTmdbImages(tmdbId, resolvedKind);
 
       if (imagesData) {
         // Backdrops root level
@@ -192,7 +212,7 @@ export async function resolveHeroArtwork(
       // ----------------------------------------------------------------
       // PASO 1.5: fanart.tv — Additional artwork for TV shows
       // ----------------------------------------------------------------
-      if (kind === "tv" && tmdbId) {
+      if (resolvedKind === "tv" && tmdbId) {
         try {
           const extIds = await getTmdbExternalIds(tmdbId);
           const tvdbId = extIds?.tvdb_id;
@@ -273,7 +293,7 @@ export async function resolveHeroArtwork(
       // ----------------------------------------------------------------
       // PASO 2: SECUELA — Solo override de logo desde temporada específica
       // ----------------------------------------------------------------
-      if (isSeasonSequel(searchTitle) && kind === "tv" && tmdbId) {
+      if (isSeasonSequel(searchTitle) && resolvedKind === "tv" && tmdbId) {
         const seasonNumber = await resolveTmdbSeasonNumber(
           tmdbId,
           aniStartDate?.year,
@@ -303,7 +323,7 @@ export async function resolveHeroArtwork(
       // ----------------------------------------------------------------
       // PASO 3: BACKDROP DE TEMPORADA — Siempre activo
       // ----------------------------------------------------------------
-      if (kind === "tv" && tmdbId) {
+      if (resolvedKind === "tv" && tmdbId) {
         const seasonNumber = await resolveTmdbSeasonNumber(
           tmdbId,
           aniStartDate?.year,
@@ -347,5 +367,5 @@ export async function resolveHeroArtwork(
     backdrop = media.bannerImage ?? null;
   }
 
-  return { backdrop, logo, artworkCandidates, tmdbId };
+  return { backdrop, logo, artworkCandidates, tmdbId, resolvedKind };
 }
