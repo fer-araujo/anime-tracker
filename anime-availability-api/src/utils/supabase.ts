@@ -11,10 +11,17 @@ let _adminClient: ReturnType<typeof createClient> | null = null;
 export function createSupabaseAdmin() {
   if (_adminClient) return _adminClient;
 
-  if (!ENV.SUPABASE_URL || !ENV.SUPABASE_SERVICE_KEY) {
-    throw new Error(
-      "Missing Supabase admin credentials. Check SUPABASE_URL and SUPABASE_SERVICE_KEY.",
-    );
+  // Name the missing variable specifically. The previous message listed both,
+  // so a deployment that had one of them still pointed at the wrong thing —
+  // and the usual cause is a naming mismatch, not an absent value.
+  const missing: string[] = [];
+  if (!ENV.SUPABASE_URL) missing.push("SUPABASE_URL");
+  if (!ENV.SUPABASE_SERVICE_KEY) {
+    missing.push("SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY / SUPABASE_SERVICE_KEY)");
+  }
+
+  if (missing.length > 0) {
+    throw new Error(`Missing Supabase admin credentials: ${missing.join(", ")}`);
   }
 
   _adminClient = createClient(ENV.SUPABASE_URL, ENV.SUPABASE_SERVICE_KEY, {
