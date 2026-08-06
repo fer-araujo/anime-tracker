@@ -20,16 +20,22 @@ import { logger } from "./logger.js";
  */
 
 /**
- * Derived from the BASIC plan's 1000 calls/month, which RapidAPI meters over a
- * rolling 30-day window rather than a calendar month. 1000/31 = 32/day is the
- * break-even, so 25 leaves ~22% headroom: 25 x 31 = 775 worst case.
+ * This is a circuit breaker, not a budget. The BASIC plan allows 1000 calls per
+ * rolling 30-day window (~32/day at break-even), but what actually keeps usage
+ * under that is the 7-day provider cache — not this counter.
  *
- * The headroom is not padding — this counter lives in process memory, so a
- * redeploy resets the window and a day with several deploys could spend more
- * than one budget. The 7-day provider cache is what keeps that theoretical
- * worst case from being the actual one.
+ * 25/day was set first and proved too tight: one season page resolves 20-100
+ * titles, so the ceiling was hit on the first page load, and every lookup after
+ * that returned empty and got cached as "no providers". The number has to clear
+ * normal daily use or it manufactures the very bug it was added to prevent.
+ *
+ * 35 clears a day's legitimate traffic while still cutting off a runaway loop
+ * (the incident that prompted this guard issued ~12xN calls per search). It
+ * cannot enforce the monthly quota on its own: this counter lives in process
+ * memory and resets on redeploy. Persisting resolved providers is what fixes
+ * that properly.
  */
-const DAILY_LIMIT = Number(process.env.RAPIDAPI_DAILY_LIMIT ?? 25);
+const DAILY_LIMIT = Number(process.env.RAPIDAPI_DAILY_LIMIT ?? 35);
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 
 let callTimestamps: number[] = [];

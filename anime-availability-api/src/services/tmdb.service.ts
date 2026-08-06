@@ -361,20 +361,34 @@ async function _getTmdbSeasonImages(
   }
 }
 
-export async function tmdbWatchProviders(
+/**
+ * Same lookup as `tmdbWatchProviders`, but reports whether TMDB actually
+ * answered. Callers that cache a "no providers" verdict need that distinction:
+ * a 401/404/429 yields the same empty list as a title genuinely unavailable in
+ * the region, and treating the two alike is how a transient failure gets
+ * persisted as fact.
+ */
+export async function tmdbWatchProvidersDetailed(
   kind: "tv" | "movie",
   id: number,
   region = "MX",
-): Promise<ProviderInfo[]> {
+): Promise<{ ok: boolean; providers: ProviderInfo[] }> {
   const cacheKey = `providers:${kind}:${id}:${region}`;
   const cached = await hybridCache.get<ProviderInfo[]>(cacheKey);
-  if (cached) return cached;
+  if (cached) return { ok: true, providers: cached };
 
   const url = `${TMDB_BASE}/${kind}/${id}/watch/providers`;
   const res = await fetchWithRetry(url, {
     headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
   });
-  if (!res.ok) return [];
+
+  if (!res.ok) {
+    logger.warn(
+      { status: res.status, kind, id, region },
+      "[tmdb] watch/providers failed — result is unverified, not empty",
+    );
+    return { ok: false, providers: [] };
+  }
 
   const data = (await res.json()) as TMDBProvidersResponse;
   const regionData = data.results?.[region];
@@ -385,8 +399,23 @@ export async function tmdbWatchProviders(
     name,
   }));
 
+  // Only successful lookups are cached; a failure must stay retryable.
   await hybridCache.set(cacheKey, normalized, 1000 * 60 * 60 * 12);
-  return normalized;
+  return { ok: true, providers: normalized };
+}
+
+/**
+ * Back-compat wrapper. Existing callers (e.g. the /providers endpoint) treat an
+ * empty array as "nothing found" and would turn a thrown error into a 500, so
+ * the original signature is preserved deliberately.
+ */
+export async function tmdbWatchProviders(
+  kind: "tv" | "movie",
+  id: number,
+  region = "MX",
+): Promise<ProviderInfo[]> {
+  const { providers } = await tmdbWatchProvidersDetailed(kind, id, region);
+  return providers;
 }
 
 // 👇 sin scoring, solo filtro booleano

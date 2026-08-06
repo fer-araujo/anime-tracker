@@ -16,6 +16,7 @@ import {
 } from "../services/shikimori.service.js";
 import { htmlToText, shorten } from "./sanitize.js";
 import { extractStudio } from "./extractStudio.js";
+import { tmdbKindsFor, type TmdbKind } from "./animeFormat.js";
 
 const limit = pLimit(10);
 
@@ -33,7 +34,11 @@ export async function formatAnimeList(
         const title =
           titleObj.english ?? titleObj.romaji ?? titleObj.native ?? "Untitled";
 
-        const kind = anime.format === "MOVIE" ? "movie" : "tv";
+        // AniList formats don't map 1:1 onto TMDB catalogues: specials, OVAs
+        // and ONAs turn up under either. Search every plausible one instead of
+        // assuming "tv" for anything that isn't a theatrical film.
+        const kindCandidates = tmdbKindsFor(anime.format);
+        let kind: TmdbKind = kindCandidates[0];
 
         // 2. Búsqueda en TMDB (Con Cascada Inteligente)
         let tmdbId: number | null = null;
@@ -41,14 +46,19 @@ export async function formatAnimeList(
           const titleVariants = getTitleVariations(title);
           if (titleVariants.length === 0) titleVariants.push(title);
 
-          for (const variant of titleVariants) {
-            const tmdbResults = await tmdbSearch(kind, variant);
-            if (tmdbResults && tmdbResults.length > 0) {
-              const bestTmdb =
-                tmdbResults.find(isAnimeCandidate) ?? tmdbResults[0];
-              if (bestTmdb) {
-                tmdbId = bestTmdb.id;
-                break; // Encontramos match, rompemos el ciclo
+          outer: for (const candidateKind of kindCandidates) {
+            for (const variant of titleVariants) {
+              const tmdbResults = await tmdbSearch(candidateKind, variant);
+              if (tmdbResults && tmdbResults.length > 0) {
+                const bestTmdb =
+                  tmdbResults.find(isAnimeCandidate) ?? tmdbResults[0];
+                if (bestTmdb) {
+                  tmdbId = bestTmdb.id;
+                  // Downstream provider lookups must follow the catalogue that
+                  // matched, not the initial guess.
+                  kind = candidateKind;
+                  break outer;
+                }
               }
             }
           }
