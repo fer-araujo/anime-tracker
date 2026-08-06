@@ -5,6 +5,7 @@ import { normalizeProviderNames } from "../utils/providers.js";
 import { tmdbWatchProvidersDetailed } from "../services/tmdb.service.js";
 import { getTitleVariations } from "./tmdb.enrich.js";
 import { tryConsumeRapidApiCall } from "./quotaGuard.js";
+import { getStoredProviders, storeProviders } from "./providerStore.js";
 
 const RAPIDAPI_KEY =
   process.env.STREAMING_AVAILABILITY_KEY ||
@@ -145,9 +146,26 @@ export async function resolveProvidersForAnimeDetailed(
   const upperCountry = country.toUpperCase();
   const cacheKey = `providers:resolved:${anilistId}:${upperCountry}`;
 
-  // Revisar caché primero
+  // Lookup order is cheapest-first: process memory, then the durable store,
+  // then the paid upstreams. The middle tier is what stops a redeploy from
+  // sending us back to the APIs for titles already paid for.
   const cached = memoryCache.get(cacheKey);
   if (cached) return cached as ProvidersResolved;
+
+  const stored = await getStoredProviders(anilistId, upperCountry);
+  if (stored) {
+    // Only conclusive verdicts are ever written, so anything read back is
+    // trustworthy — including an empty list, which means "checked, nothing
+    // available in this country".
+    const payload: ProvidersResolved = {
+      providers: stored.providers.length ? stored.providers : ["Pirata"],
+      usedSource: (stored.source as ProvidersResolved["usedSource"]) ?? "none",
+      tmdbOk: true,
+      saOk: true,
+    };
+    memoryCache.set(cacheKey, payload, 1000 * 60 * 60 * 24 * 7);
+    return payload;
+  }
 
   let providers: string[] = [];
   let usedSource: "tmdb" | "sa" | "none" = "none";
@@ -284,6 +302,15 @@ export async function resolveProvidersForAnimeDetailed(
   }
 
   memoryCache.set(cacheKey, payload, ttlMs);
+
+  // Persist only what we're sure of. An unverified verdict written here would
+  // outlive every restart, turning a momentary failure into a permanent lie —
+  // the same mistake as the 7-day memory cache, but far harder to undo.
+  // "Pirata" is a presentation choice, so an empty array is stored instead.
+  if (conclusive) {
+    const verified = usedSource === "none" ? [] : providers;
+    void storeProviders(anilistId, upperCountry, verified, usedSource);
+  }
 
   return payload;
 }

@@ -27,6 +27,13 @@ vi.mock("../utils/tmdb.enrich.js", () => ({
   getTitleVariations: (t: string) => [t],
 }));
 
+const mockGetStored = vi.fn();
+const mockStore = vi.fn();
+vi.mock("../utils/providerStore.js", () => ({
+  getStoredProviders: (...a: unknown[]) => mockGetStored(...a),
+  storeProviders: (...a: unknown[]) => mockStore(...a),
+}));
+
 const { resolveProvidersForAnimeDetailed } = await import(
   "../utils/resolveProviders.js"
 );
@@ -40,6 +47,7 @@ describe("resolveProvidersForAnimeDetailed — verified vs unverified verdicts",
     vi.clearAllMocks();
     cacheStore.clear();
     global.fetch = vi.fn();
+    mockGetStored.mockResolvedValue(null);
   });
 
   it("does not cache a 'Pirata' verdict long when the RapidAPI budget blocked the lookup", async () => {
@@ -109,6 +117,76 @@ describe("resolveProvidersForAnimeDetailed — verified vs unverified verdicts",
     expect(result.usedSource).toBe("tmdb");
     expect(result.tmdbOk).toBe(true);
     expect(cachedTtlFor(4)).toBe(SEVEN_DAYS);
+  });
+
+  it("never persists an unverified verdict", async () => {
+    // Writing this to the durable store would outlive every restart, turning a
+    // momentary budget block into a permanent claim that nothing is available.
+    mockTmdbDetailed.mockResolvedValue({ ok: true, providers: [] });
+    mockTryConsume.mockReturnValue(false);
+
+    await resolveProvidersForAnimeDetailed(10, "MX", 555, "One Piece", 2024);
+
+    expect(mockStore).not.toHaveBeenCalled();
+  });
+
+  it("persists a confirmed provider so the next deploy doesn't re-buy it", async () => {
+    mockTmdbDetailed.mockResolvedValue({
+      ok: true,
+      providers: [{ id: 1, name: "Crunchyroll" }],
+    });
+
+    await resolveProvidersForAnimeDetailed(11, "MX", 555, "One Piece", 2024);
+
+    expect(mockStore).toHaveBeenCalledWith(11, "MX", ["Crunchyroll"], "tmdb");
+  });
+
+  it("stores an empty list rather than the 'Pirata' label", async () => {
+    // "Pirata" is how the UI presents an absence; the stored fact is simply
+    // that nothing was found. Persisting the label would leak presentation
+    // into the data and make it indistinguishable from a real provider name.
+    mockTmdbDetailed.mockResolvedValue({ ok: true, providers: [] });
+    mockTryConsume.mockReturnValue(true);
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ shows: [] }),
+    });
+
+    await resolveProvidersForAnimeDetailed(12, "MX", 555, "One Piece", 2024);
+
+    expect(mockStore).toHaveBeenCalledWith(12, "MX", [], "none");
+  });
+
+  it("serves a stored verdict without touching any upstream", async () => {
+    mockGetStored.mockResolvedValue({
+      providers: ["Netflix"],
+      source: "sa",
+      resolvedAt: new Date().toISOString(),
+    });
+
+    const result = await resolveProvidersForAnimeDetailed(
+      13,
+      "MX",
+      555,
+      "One Piece",
+      2024,
+    );
+
+    expect(result.providers).toEqual(["Netflix"]);
+    expect(mockTmdbDetailed).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("presents a stored empty result as 'Pirata'", async () => {
+    mockGetStored.mockResolvedValue({
+      providers: [],
+      source: "none",
+      resolvedAt: new Date().toISOString(),
+    });
+
+    const result = await resolveProvidersForAnimeDetailed(14, "MX", 555, "X");
+
+    expect(result.providers).toEqual(["Pirata"]);
   });
 
   it("trusts an empty answer that TMDB actually returned", async () => {
