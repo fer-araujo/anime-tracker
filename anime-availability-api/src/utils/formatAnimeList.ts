@@ -20,12 +20,38 @@ import { tmdbKindsFor, type TmdbKind } from "./animeFormat.js";
 
 const limit = pLimit(10);
 
+/**
+ * Single source of truth for how much synopsis the API sends over the wire.
+ * Three different values used to coexist (140 in season/schedule, 180 in the
+ * hero, 200 in the batch), which is why the same series read differently
+ * depending on the screen. Cards clamp visually with CSS anyway, so this only
+ * governs payload size — it is not a layout knob.
+ */
+export const SYNOPSIS_SHORT_LENGTH = 180;
+
+/**
+ * How much per-item enrichment a caller is willing to pay for.
+ *
+ * `full` is what season, schedule and the recommendation shelf have always
+ * done: every upstream is consulted for the richest possible record.
+ *
+ * `light` exists for the batch endpoint, which resolves up to 50 ids in one
+ * request and feeds cards rather than detail pages. It keeps the parts a card
+ * actually renders — crucially the provider badges — and drops the enrichments
+ * that cost several extra API round-trips per item to fill fields the card
+ * never shows.
+ */
+export type EnrichmentLevel = "full" | "light";
+
 export async function formatAnimeList(
   rawAnimeList: AniMedia[],
   country: string,
   baseSeason?: string,
   baseYear?: number,
+  level: EnrichmentLevel = "full",
 ) {
+  const isLight = level === "light";
+
   const items = await Promise.all(
     rawAnimeList.map(async (anime) => {
       return limit(async () => {
@@ -74,7 +100,11 @@ export async function formatAnimeList(
           ReturnType<typeof enrichFromMalAndKitsu>
         > | null = null;
         let shikiScreenshot: string | null = null;
-        if (!tmdbId) {
+        // Both fallbacks only supply *alternative* artwork and ratings when
+        // TMDB missed. They cost four extra API calls per item between them,
+        // which a 50-item batch cannot justify for a card that already has an
+        // AniList poster.
+        if (!tmdbId && !isLight) {
           malKitsuFallback = await enrichFromMalAndKitsu(title).catch(
             () => null,
           );
@@ -109,24 +139,31 @@ export async function formatAnimeList(
           yearFromSeason,
           kind,
           isRealeasing,
+          // TMDB is free, so a light caller still gets real provider badges.
+          // What it must not do is let 50 misses each hit the paid endpoint.
+          { skipPaidFallback: isLight },
         );
 
-        // Sinopsis en español — season-aware (si hay tmdbId)
-        const spanishSynopsis = tmdbId
-          ? await getTmdbSpecificSynopsis(
-              tmdbId,
-              kind,
-              "es-MX",
-              anime.seasonYear,
-              anime.startDate?.month,
-              anime.nextAiringEpisode?.airingAt,
-            )
-          : null;
+        // Sinopsis en español — season-aware (si hay tmdbId).
+        // Skipped in light mode: it costs one or two TMDB calls per item to
+        // produce text the cards don't render, and the AniList description
+        // below is already a serviceable fallback.
+        const spanishSynopsis =
+          tmdbId && !isLight
+            ? await getTmdbSpecificSynopsis(
+                tmdbId,
+                kind,
+                "es-MX",
+                anime.seasonYear,
+                anime.startDate?.month,
+                anime.nextAiringEpisode?.airingAt,
+              )
+            : null;
 
         // 4. Meta datos limpios
         const hasSpanish = !!spanishSynopsis;
         const synopsis = htmlToText(spanishSynopsis || anime.description || "");
-        const synopsisShort = shorten(synopsis, 140);
+        const synopsisShort = shorten(synopsis, SYNOPSIS_SHORT_LENGTH);
         const synopsisLang = synopsis ? (hasSpanish ? "es" : "en") : null;
         const mainStudio = extractStudio(anime.studios);
 
@@ -163,6 +200,14 @@ export async function formatAnimeList(
             year: anime.seasonYear ?? baseYear ?? null,
             season: anime.season ?? baseSeason ?? null,
             episodes: anime.episodes ?? malKitsuFallback?.episodes ?? null,
+            // Additive: the batch used to emit these two on its own. Keeping
+            // them here means the central formatter is a superset of what it
+            // replaces, so no consumer loses a field in the migration.
+            duration: anime.duration ?? null,
+            trailer:
+              anime.trailer?.site === "youtube" && anime.trailer.id
+                ? `https://www.youtube.com/watch?v=${anime.trailer.id}`
+                : null,
             isAdult: anime.isAdult ?? false,
             nextEpisode: anime.nextAiringEpisode?.episode ?? null,
             nextEpisodeAt: nextEpisodeAtISO,

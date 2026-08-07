@@ -134,6 +134,17 @@ export type ProvidersResolved = {
   saOk: boolean;
 };
 
+export type ResolveProvidersOptions = {
+  /**
+   * Skip the paid RapidAPI fallback entirely. Set by callers that resolve many
+   * titles in one go (the batch endpoint takes up to 50 ids), where letting
+   * every miss reach the paid endpoint would drain a monthly quota in a single
+   * request. The resulting verdict is deliberately treated as unverified — see
+   * where this is read below.
+   */
+  skipPaidFallback?: boolean;
+};
+
 export async function resolveProvidersForAnimeDetailed(
   anilistId: number,
   country: string,
@@ -142,6 +153,7 @@ export async function resolveProvidersForAnimeDetailed(
   year?: number | null,
   kind: "tv" | "movie" = "tv",
   isReleasing: boolean = false,
+  opts: ResolveProvidersOptions = {},
 ): Promise<ProvidersResolved> {
   const upperCountry = country.toUpperCase();
   const cacheKey = `providers:resolved:${anilistId}:${upperCountry}`;
@@ -208,7 +220,18 @@ export async function resolveProvidersForAnimeDetailed(
     const currentYear = new Date().getFullYear();
     const isRecent = !year || year >= currentYear - 6 || isReleasing;
 
-    if (isRecent) {
+    if (isRecent && opts.skipPaidFallback) {
+      // `saWasNeeded` stays true and `saOk` stays false on purpose. This is the
+      // whole mechanism: a source that should have run didn't, so the empty
+      // result below fails `allSourcesAnswered`, expires in ten minutes, and is
+      // never written to Supabase. Marking it conclusive to save a lookup is
+      // exactly how one exhausted budget turned into a catalogue-wide "Pirata".
+      saWasNeeded = true;
+      logger.info(
+        { anilistId, title: knownTitle },
+        "[resolveProviders] Paid fallback skipped by caller — result stays unverified",
+      );
+    } else if (isRecent) {
       saWasNeeded = true;
       try {
         logger.info(

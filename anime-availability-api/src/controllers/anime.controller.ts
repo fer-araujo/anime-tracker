@@ -6,17 +6,21 @@ import { logger } from "../utils/logger.js";
 import { ENV } from "../config/env.js";
 import { ANIME_DETAILS_GQL } from "../graphql/queries/animeDetails.gql.js";
 // Ya no necesitamos normalizeTitle aquí
-import { htmlToText } from "../utils/sanitize.js";
+import { htmlToText, shorten } from "../utils/sanitize.js";
 import { setCacheControl } from "../utils/cache.js";
 import { extractStudio } from "../utils/extractStudio.js";
 import { resolveProvidersForAnimeDetailed } from "../utils/resolveProviders.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
-import { formatAnimeList } from "../utils/formatAnimeList.js";
+import {
+  formatAnimeList,
+  SYNOPSIS_SHORT_LENGTH,
+} from "../utils/formatAnimeList.js";
 import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
 import { bayesianAverage } from "../utils/rating.js";
 import { createSupabaseAdmin } from "../utils/supabase.js";
 import { tmdbKindsFor } from "../utils/animeFormat.js";
+import type { AniMedia } from "../types/animeCore.js";
 
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
@@ -132,6 +136,19 @@ export async function getAnimeDetails(
     );
     const topRanking = bestRated || mostPopular;
 
+    // Same shape the central formatter emits, so the detail page can tell the
+    // reader when the text is English instead of silently presenting it as if
+    // it were the Spanish summary. The empty-string fallback matters: the
+    // "Sinopsis no disponible." placeholder is itself Spanish, so deriving the
+    // language from it would label an absent synopsis as translated.
+    const hasSpanishSynopsis = !!spanishSynopsis;
+    const synopsisText = htmlToText(spanishSynopsis || media.description || "");
+    const synopsisLang = synopsisText
+      ? hasSpanishSynopsis
+        ? "es"
+        : "en"
+      : null;
+
     // 5. RESPUESTA ESTRUCTURADA
     const result = {
       id: { anilist: media.id, tmdb: tmdbId },
@@ -151,9 +168,11 @@ export async function getAnimeDetails(
       meta: {
         genres: media.genres ?? [],
         rating: media.averageScore ? media.averageScore / 10 : null,
-        synopsis: htmlToText(
-          spanishSynopsis || media.description || "Sinopsis no disponible.",
-        ),
+        synopsis: synopsisText || "Sinopsis no disponible.",
+        synopsisShort: synopsisText
+          ? shorten(synopsisText, SYNOPSIS_SHORT_LENGTH)
+          : null,
+        synopsisLang,
         year: media.seasonYear ?? null,
         status: media.status ?? "UNKNOWN",
         episodes: media.episodes ?? null,
@@ -293,55 +312,32 @@ export async function getAnimeBatch(
     }
 
     // AniList returns { a1: Media, a2: Media, ... } — iterate by id instead of key lookup
-    const rawEntries = Object.values(aniJson.data) as Record<string, unknown>[];
-    const results: Record<number, Record<string, unknown>> = {};
     const idSet = new Set(uniqueIds);
+    const medias = (Object.values(aniJson.data) as (AniMedia | null)[]).filter(
+      (m): m is AniMedia =>
+        !!m && typeof m === "object" && typeof m.id === "number" && idSet.has(m.id),
+    );
 
-    for (const media of rawEntries) {
-      if (!media || typeof media !== "object") continue;
-      const mid = media.id as number | undefined;
-      if (!mid || !idSet.has(mid)) continue;
+    // This endpoint used to hand-roll its own mapping, and that is precisely
+    // why it shipped `providers: []` for every anime — a hardcoded empty list
+    // that the cards render as "Pirata", claiming no legal stream exists for
+    // titles that are streaming right now. Every other surface goes through
+    // formatAnimeList; this one is back on the same rail.
+    //
+    // Light mode because a batch is up to 50 ids: it keeps the TMDB lookup and
+    // provider resolution (free, and the whole point), and drops the per-item
+    // enrichments whose fields a card never renders.
+    const formatted = await formatAnimeList(
+      medias,
+      country,
+      undefined,
+      undefined,
+      "light",
+    );
 
-      const title = [media.title as { english?: string; romaji?: string; native?: string }]
-        .map((t) => t?.english ?? t?.romaji ?? t?.native)
-        .find(Boolean) ?? "Untitled";
-
-      const cover = media.coverImage as { extraLarge?: string; large?: string } | undefined;
-      const studios = media.studios as Parameters<typeof extractStudio>[0] | undefined;
-      const trailer = media.trailer as { id?: string; site?: string } | undefined;
-      const nextEp = media.nextAiringEpisode as { episode?: number; airingAt?: number } | undefined;
-      const desc = (media.description as string) || "";
-      const synopsisText = htmlToText(desc);
-
-      results[mid] = {
-        id: { anilist: mid, tmdb: null },
-        title,
-        providers: [],
-        images: {
-          poster: cover?.extraLarge ?? cover?.large ?? null,
-          backdrop: (media.bannerImage as string) ?? null,
-          banner: (media.bannerImage as string) ?? null,
-          logo: null,
-        },
-        meta: {
-          genres: (media.genres as string[]) ?? [],
-          rating: typeof media.averageScore === "number" ? (media.averageScore as number) / 10 : null,
-          year: (media.seasonYear as number) ?? null,
-          status: (media.status as string) ?? "UNKNOWN",
-          episodes: (media.episodes as number) ?? null,
-          duration: (media.duration as number) ?? null,
-          isAdult: (media.isAdult as boolean) ?? false,
-          studio: extractStudio(studios),
-          type: (media.format as string) ?? "TV",
-          synopsis: synopsisText || null,
-          synopsisShort: synopsisText ? synopsisText.slice(0, 200) + (synopsisText.length > 200 ? "..." : "") : null,
-          nextAiring: nextEp ? `Ep ${nextEp.episode}` : null,
-          nextEpisodeAt: nextEp?.airingAt ?? null,
-          trailer: trailer?.site === "youtube" && trailer.id
-            ? `https://www.youtube.com/watch?v=${trailer.id}`
-            : null,
-        },
-      };
+    const results: Record<number, (typeof formatted)[number]> = {};
+    for (const anime of formatted) {
+      results[anime.id.anilist] = anime;
     }
 
     setCacheControl(res, "anime");

@@ -5,6 +5,8 @@ import type { SearchQuery } from "../models/schema.js";
 import { searchAnimeUnified } from "../services/animeAggregate.service.js";
 import type { AnimeCore } from "../types/animeCore.js";
 import { normalizeProviderNames } from "../utils/providers.js";
+import { shorten } from "../utils/sanitize.js";
+import { SYNOPSIS_SHORT_LENGTH } from "../utils/formatAnimeList.js";
 
 // AniList usa otros nombres de status; los mapeamos al formato viejo
 function mapStatus(core: AnimeCore): "ongoing" | "finished" | null {
@@ -76,11 +78,19 @@ export async function searchTitle(
       const favourites = core.meta.favourites ?? null;
       const genres = core.meta.genres ?? [];
 
-      // En AnimeCore ya sanitizamos, así que reutilizamos:
+      // En AnimeCore ya sanitizamos, así que reutilizamos.
+      // These two were crossed: `synopsis` received the truncated string and
+      // `synopsisShort` received the full text, so any caller trusting the
+      // field names got the opposite of what it asked for.
       const synopsisHtml = core.synopses.synopsisHtml ?? null;
       const synopsis =
-        core.synopses.synopsisShort ?? core.synopses.synopsisText ?? null;
-      const synopsisShort = core.synopses.synopsisText ?? null;
+        core.synopses.synopsisText ?? core.synopses.synopsisShort ?? null;
+      const synopsisShort = synopsis
+        ? shorten(synopsis, SYNOPSIS_SHORT_LENGTH)
+        : null;
+      // AnimeCore is built from AniList alone here, and AniList descriptions
+      // are English — so the badge is accurate rather than guessed.
+      const synopsisLang = synopsis ? "en" : null;
 
       const startDate = core.meta.startDate ?? null;
       const isAdult =
@@ -112,6 +122,7 @@ export async function searchTitle(
           synopsisHtml,
           synopsis,
           synopsisShort,
+          synopsisLang,
           startDate,
           isAdult,
           nextEpisode,
