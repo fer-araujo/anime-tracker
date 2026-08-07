@@ -46,7 +46,9 @@ export type Anime = {
     synopsis?: string | null;
     synopsisShort?: string | null;
     synopsisLang?: "es" | "en" | null;
-    synopsisHTML?: string | null;
+    // The backend emits `synopsisHtml`; this was declared `synopsisHTML`, so
+    // the property could never match and always read as undefined.
+    synopsisHtml?: string | null;
     year?: number | null;
     season?: string | null;
     popularity?: number | null;
@@ -91,9 +93,11 @@ export type AnimeCardProps = {
 export interface AnimeMeta {
   genres?: string[];
   rating?: number | null;
-  synopsisHTML?: string | null;
+  // Same casing fix as on Anime["meta"] above: the wire field is `synopsisHtml`.
+  synopsisHtml?: string | null;
   synopsis?: string | null;
   synopsisShort?: string | null;
+  synopsisLang?: "es" | "en" | null;
 }
 
 export interface AnimeID {
