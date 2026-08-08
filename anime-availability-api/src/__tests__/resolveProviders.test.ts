@@ -212,3 +212,107 @@ describe("resolveProvidersForAnimeDetailed — verified vs unverified verdicts",
     expect(cachedTtlFor(5)).toBe(SEVEN_DAYS);
   });
 });
+
+describe("resolveProvidersForAnimeDetailed — skipPaidFallback", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    cacheStore.clear();
+    global.fetch = vi.fn();
+    mockGetStored.mockResolvedValue(null);
+  });
+
+  it("never calls the paid API when the caller opts out", async () => {
+    // The batch endpoint resolves up to 50 ids in one request; letting each
+    // miss reach RapidAPI would spend a monthly quota on a single page load.
+    mockTmdbDetailed.mockResolvedValue({ ok: true, providers: [] });
+    mockTryConsume.mockReturnValue(true);
+
+    await resolveProvidersForAnimeDetailed(
+      20,
+      "MX",
+      555,
+      "One Piece",
+      2024,
+      "tv",
+      true,
+      { skipPaidFallback: true },
+    );
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    // Not even the budget is touched — the call is skipped, not merely denied.
+    expect(mockTryConsume).not.toHaveBeenCalled();
+  });
+
+  it("leaves the empty verdict unverified instead of banking it", async () => {
+    // This is the whole point of the flag. Skipping a source that should have
+    // run means the resulting "nothing found" is a guess, so it must expire
+    // quickly and must never reach the durable store — otherwise the batch
+    // would poison the cache exactly the way the exhausted budget once did.
+    mockTmdbDetailed.mockResolvedValue({ ok: true, providers: [] });
+
+    const result = await resolveProvidersForAnimeDetailed(
+      21,
+      "MX",
+      555,
+      "One Piece",
+      2024,
+      "tv",
+      true,
+      { skipPaidFallback: true },
+    );
+
+    expect(result.providers).toEqual(["Pirata"]);
+    expect(result.saOk).toBe(false);
+    expect(cachedTtlFor(21)).toBeLessThan(SEVEN_DAYS);
+    expect(mockStore).not.toHaveBeenCalled();
+  });
+
+  it("still persists a provider TMDB actually confirmed", async () => {
+    // Opting out of the paid fallback must not weaken a positive result:
+    // TMDB answering with a real provider is conclusive on its own.
+    mockTmdbDetailed.mockResolvedValue({
+      ok: true,
+      providers: [{ id: 1, name: "Netflix" }],
+    });
+
+    const result = await resolveProvidersForAnimeDetailed(
+      22,
+      "MX",
+      555,
+      "One Piece",
+      2024,
+      "tv",
+      true,
+      { skipPaidFallback: true },
+    );
+
+    expect(result.providers).toEqual(["Netflix"]);
+    expect(cachedTtlFor(22)).toBe(SEVEN_DAYS);
+    expect(mockStore).toHaveBeenCalledWith(22, "MX", ["Netflix"], "tmdb");
+  });
+
+  it("serves a stored verdict, which is how the batch gets real badges", async () => {
+    // The batch relies on this path: anything another surface already resolved
+    // comes back for free, so collection cards stop claiming "Pirata".
+    mockGetStored.mockResolvedValue({
+      providers: ["Crunchyroll"],
+      source: "tmdb",
+      resolvedAt: new Date().toISOString(),
+    });
+
+    const result = await resolveProvidersForAnimeDetailed(
+      23,
+      "MX",
+      555,
+      "One Piece",
+      2024,
+      "tv",
+      true,
+      { skipPaidFallback: true },
+    );
+
+    expect(result.providers).toEqual(["Crunchyroll"]);
+    expect(mockTmdbDetailed).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+});

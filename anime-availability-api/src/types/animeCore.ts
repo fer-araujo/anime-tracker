@@ -82,6 +82,7 @@ export type AniMedia = {
   season?: string | null;
   seasonYear?: number | null;
   episodes?: number | null;
+  duration?: number | null;
   averageScore?: number | null;
   popularity?: number | null;
   favourites?: number | null;

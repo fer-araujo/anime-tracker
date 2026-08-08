@@ -1,91 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { useAuth } from "@/providers/AuthProvider";
-import { fetchAnimeBatch } from "@/lib/fetchAnimeBatch";
+import { useUserListsContext } from "@/providers/UserListsProvider";
 
-export type UserList = {
-  id: string;
-  name: string;
-  color: string | null;
-  anime_count: number;
-  anime_ids: number[];
-  poster_anime_ids: number[];
-  poster_urls: (string | null)[];
-};
+export type { UserList } from "@/providers/UserListsProvider";
 
+/**
+ * Reads the shared list state owned by UserListsProvider.
+ *
+ * The fetching logic used to live here, which meant it ran once per consumer —
+ * four identical Supabase queries and four identical /anime/batch POSTs on a
+ * single homepage load. The hook stays as the entry point so no call site had
+ * to change; what moved is who owns the data.
+ */
 export function useUserLists() {
-  const { user } = useAuth();
-  const [lists, setLists] = useState<UserList[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(async () => {
-    if (!user) {
-      setLists([]);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    const supabase = createClient();
-
-    const { data: raw, error: fetchError } = await supabase
-      .from("user_lists")
-      .select("id, name, color, list_entries(anime_id)")
-      .eq("user_id", user.id)
-      .order("sort_order");
-
-    if (fetchError) {
-      setError(fetchError.message);
-      setLoading(false);
-      return;
-    }
-
-    const mapped: UserList[] = (raw ?? []).map(
-      (l: {
-        id: string;
-        name: string;
-        color: string | null;
-        list_entries: { anime_id: number }[];
-      }) => {
-        const allAnimeIds = (l.list_entries ?? []).map((e) => e.anime_id);
-        return {
-          id: l.id,
-          name: l.name,
-          color: l.color,
-          anime_count: allAnimeIds.length,
-          anime_ids: allAnimeIds,
-          poster_anime_ids: allAnimeIds.slice(0, 3),
-          poster_urls: [],
-        };
-      },
-    );
-
-    // Batch fetch poster images
-    const allIds = [...new Set(mapped.flatMap((l) => l.poster_anime_ids))];
-    if (allIds.length > 0) {
-      try {
-        const batchData = await fetchAnimeBatch(allIds);
-        for (const list of mapped) {
-          list.poster_urls = list.poster_anime_ids.map(
-            (id) => batchData.get(id)?.poster ?? null,
-          );
-        }
-      } catch {
-        // Posters fail silently — cards show placeholders
-      }
-    }
-
-    setLists(mapped);
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  return { lists, loading, error, refetch: fetch };
+  return useUserListsContext();
 }

@@ -46,7 +46,9 @@ export type Anime = {
     synopsis?: string | null;
     synopsisShort?: string | null;
     synopsisLang?: "es" | "en" | null;
-    synopsisHTML?: string | null;
+    // The backend emits `synopsisHtml`; this was declared `synopsisHTML`, so
+    // the property could never match and always read as undefined.
+    synopsisHtml?: string | null;
     year?: number | null;
     season?: string | null;
     popularity?: number | null;
@@ -88,42 +90,8 @@ export type AnimeCardProps = {
   listCount?: number; // si > 0, muestra "Añadir (N)" en el botón
 };
 
-export interface AnimeMeta {
-  genres?: string[];
-  rating?: number | null;
-  synopsisHTML?: string | null;
-  synopsis?: string | null;
-  synopsisShort?: string | null;
-}
-
-export interface AnimeID {
-  anilist: number;
-  tmdb: number | null;
-  mal?: number | string | null;
-  kitsu?: number | string | null;
-}
-
-export interface AnimeItem {
-  id: AnimeID;
-  title: string;
-  poster: string | null;
-  providers: string[];
-  meta?: AnimeMeta;
-}
-
 export type ProviderLabel =
   "Crunchyroll" | "Netflix" | "HBO Max" | "Amazon" | "Disney+" | "Pirata";
-
-export interface SeasonResponse {
-  meta: {
-    country: string;
-    season: string;
-    year: number;
-    total: number;
-    source: string;
-  };
-  data: AnimeItem[];
-}
 
 export type AnimeCardMeta = {
   genres?: string[];

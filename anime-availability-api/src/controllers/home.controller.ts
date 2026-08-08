@@ -8,6 +8,8 @@ import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
 import { preferTitle } from "../utils/title.js";
 import { HOME_HERO_GQL } from "../graphql/queries/homeHero.gql.js";
 import { getCurrentSeasonYearLocal } from "../utils/season.js";
+import { shorten } from "../utils/sanitize.js";
+import { SYNOPSIS_SHORT_LENGTH } from "../utils/formatAnimeList.js";
 
 /* helpers */
 function stripHtml(input?: string | null) {
@@ -29,6 +31,7 @@ interface HeroPayload {
     meta: {
       synopsis: string;
       synopsisShort: string;
+      synopsisLang: "es" | "en" | null;
       year: number | null;
       rating: number | null;
       genres: string[];
@@ -122,10 +125,11 @@ export async function getHomeHero(
         : null;
 
       const synopsisText = synopsis || stripHtml(m.description) || "";
-      const synopsisShort =
-        synopsisText.length > 180
-          ? synopsisText.slice(0, 180) + "..."
-          : synopsisText;
+      const synopsisShort = shorten(synopsisText, SYNOPSIS_SHORT_LENGTH);
+      // The hero was the last surface that could show English text with no way
+      // for the UI to say so. `synopsis` here is the TMDB Spanish summary; when
+      // it is null the text below came from AniList, which is English.
+      const synopsisLang = synopsisText ? (synopsis ? "es" : "en") : null;
 
       const item = {
         id: { anilist: m.id, tmdb: tmdbId },
@@ -139,6 +143,7 @@ export async function getHomeHero(
         meta: {
           synopsis: synopsisText,
           synopsisShort,
+          synopsisLang,
           year: m.seasonYear,
           rating: m.averageScore
             ? Number((m.averageScore / 10).toFixed(1))

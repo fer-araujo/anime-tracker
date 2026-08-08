@@ -13,11 +13,16 @@ vi.mock("@/providers/AuthProvider", () => ({
   }),
 }));
 
+// Anime 1 carries providers, anime 2 does not — the batch endpoint used to
+// hardcode `providers: []` for every entry, so this fixture is what tells the
+// two cases apart at all.
+const PROVIDERS_BY_ID: Record<number, string[]> = { 1: ["Netflix"] };
+
 function makeAnime(id: number, title: string) {
   return {
     id: { anilist: id, tmdb: null },
     title,
-    providers: [],
+    providers: PROVIDERS_BY_ID[id] ?? [],
     images: { poster: null },
   };
 }
@@ -79,6 +84,9 @@ vi.mock("@/components/AnimeCard", () => ({
       <span data-testid={`status-${anime.id.anilist}`}>
         {animeEntry?.status ?? "none"}
       </span>
+      <span data-testid={`providers-${anime.id.anilist}`}>
+        {anime.providers?.length ? anime.providers.join(",") : "Pirata"}
+      </span>
       <button onClick={() => onAddToList(anime)}>
         trigger-add-{anime.id.anilist}
       </button>
@@ -121,6 +129,22 @@ describe("CollectionDetail", () => {
     expect(screen.getByTestId("listcount-1")).toHaveTextContent("1");
     expect(screen.getByTestId("status-1")).toHaveTextContent("watching");
     expect(screen.getByTestId("listcount-2")).toHaveTextContent("0");
+  });
+
+  it("renders the real providers the batch returned instead of 'Pirata'", async () => {
+    // The batch endpoint hardcoded `providers: []`, so every card in a
+    // collection claimed no legal stream existed — including for anime that
+    // were streaming. This pins the data path: whatever the batch resolves has
+    // to survive all the way to the card.
+    render(
+      <CollectionDetail listId="list-1" listName="Mi colección" animeIds={[1, 2]} />,
+    );
+
+    expect(await screen.findByTestId("providers-1")).toHaveTextContent(
+      "Netflix",
+    );
+    // Anime 2 genuinely has none, so the fallback label is still correct there.
+    expect(screen.getByTestId("providers-2")).toHaveTextContent("Pirata");
   });
 
   it("shows the anime count and average score derived from entriesMap", async () => {

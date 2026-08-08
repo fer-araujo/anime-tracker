@@ -94,3 +94,17 @@ vi.mock("@/providers/AuthProvider", () => ({
   }),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
+
+// Same treatment for UserListsProvider: the list state moved out of
+// useUserLists and into a provider, so components that read lists now need one
+// in the tree. Individual tests that mock "@/hooks/useUserLists" directly still
+// take precedence over this default.
+vi.mock("@/providers/UserListsProvider", () => ({
+  useUserListsContext: () => ({
+    lists: [],
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  UserListsProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
