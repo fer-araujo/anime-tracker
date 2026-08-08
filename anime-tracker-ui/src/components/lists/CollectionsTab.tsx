@@ -22,7 +22,9 @@ export function CollectionsTab() {
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
-            className="aspect-[4/3] rounded-2xl bg-white/5 animate-pulse"
+            // Geometry must mirror ListCard/CreateListCard exactly, otherwise
+            // the grid reflows the moment real data replaces the skeletons.
+            className="aspect-[3/2] rounded-[14px] bg-white/5 animate-pulse"
           />
         ))}
       </div>
