@@ -1,8 +1,6 @@
 import { cn } from "@/lib/utils";
 import Icon from "@/components/custom/Icon";
 
-type ActionButtonAs = "button" | "a";
-
 type ActionButtonProps =
   | {
       as?: "button";

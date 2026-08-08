@@ -1,32 +1,23 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Icon from "@/components/custom/Icon";
+import {
+  resolveListAccent,
+  resolveMosaicLayout,
+  MOSAIC_GRID_CLASS,
+  MOSAIC_POSTER_COUNT,
+} from "@/lib/lists";
 import type { UserList } from "@/hooks/useUserLists";
 
-const GLOW_MAP = [
-  "from-blue-500/10 to-blue-500/30",
-  "from-purple-500/10 to-purple-500/30",
-  "from-emerald-500/10 to-emerald-500/30",
-  "from-amber-500/10 to-amber-500/30",
-  "from-pink-500/10 to-pink-500/30",
-  "from-cyan-500/10 to-cyan-500/30",
-] as const;
-
-const GLOW_ORB_MAP = [
-  "bg-blue-500/10 group-hover:bg-blue-500/30",
-  "bg-purple-500/10 group-hover:bg-purple-500/30",
-  "bg-emerald-500/10 group-hover:bg-emerald-500/30",
-  "bg-amber-500/10 group-hover:bg-amber-500/30",
-  "bg-pink-500/10 group-hover:bg-pink-500/30",
-  "bg-cyan-500/10 group-hover:bg-cyan-500/30",
-] as const;
-
-function colorIndex(name: string) {
-  return name.length % GLOW_MAP.length;
-}
+/**
+ * A poster never fills more than half a card, and a card is a quarter of the
+ * row on wide screens — asking Next for viewport-wide images would ship
+ * several times the pixels the mosaic can actually show.
+ */
+const POSTER_SIZES =
+  "(min-width: 1280px) 13vw, (min-width: 1024px) 17vw, (min-width: 768px) 25vw, 50vw";
 
 export function ListCard({
   list,
@@ -36,101 +27,98 @@ export function ListCard({
   onDelete: (id: string) => void;
 }) {
   const router = useRouter();
-  const idx = colorIndex(list.name);
+  const accent = resolveListAccent(list.color);
+
+  /**
+   * The composition follows the poster slots the list owns, not the urls that
+   * have resolved so far: covers arrive from a later batch request, so keying
+   * off `poster_urls` would render an empty state first and then reflow the
+   * whole grid under the user's cursor.
+   */
+  const layout = resolveMosaicLayout(list.poster_anime_ids.length);
+
+  const open = () => router.push(`/lists/${list.id}`);
 
   return (
-    <motion.div
-      className="group relative flex flex-col justify-end w-full aspect-[4/3] p-5 rounded-2xl bg-white/5 border border-white/10 overflow-hidden cursor-pointer hover:bg-white/10 transition-colors duration-300"
-      whileHover="hover"
-      onClick={() => router.push(`/lists/${list.id}`)}
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={list.name}
+      onClick={open}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          // Space scrolls the page by default; this div is standing in for a button.
+          event.preventDefault();
+          open();
+        }
+      }}
+      className={`group relative isolate w-full aspect-[3/2] rounded-[14px] overflow-hidden border border-white/10 bg-white/5 cursor-pointer transition-colors duration-300 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 ${accent.ring}`}
     >
-      {/* Glow orb */}
-      <div
-        className={`absolute -top-10 -right-10 w-40 h-40 blur-[50px] rounded-full transition-colors duration-500 ${GLOW_ORB_MAP[idx]}`}
-      />
-
-      {/* Stacked poster fan */}
-      {list.poster_anime_ids.length > 0 && (
-        <div className="absolute top-5 right-5 w-20 h-28">
-          {list.poster_anime_ids
-            .slice(0, 3)
-            .reverse()
-            .map((_, i, arr) => {
-              const pos = arr.length - 1 - i;
-              const baseRotate = pos * 5;
-              const baseOpacity = 0.3 + pos * 0.2;
-              const posterUrl = list.poster_urls?.[arr.length - 1 - i] ?? null;
-              return (
-                <motion.div
-                  key={i}
-                  className="absolute inset-0 w-full h-full rounded-lg border border-white/5 overflow-hidden"
-                  variants={{
-                    hover: {
-                      x: pos * 25 + 5,
-                      y: -(pos * 8),
-                      rotate: pos * 10 + 5,
-                      opacity: 0.4 + pos * 0.3,
-                    },
-                  }}
-                  style={{
-                    zIndex: arr.length - i,
-                    opacity: baseOpacity,
-                    rotate: `${baseRotate}deg`,
-                  }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 20,
-                  }}
-                >
-                  {posterUrl ? (
-                    <Image
-                      src={posterUrl}
-                      alt=""
-                      fill
-                      sizes="80px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-white/10" />
-                  )}
-                </motion.div>
-              );
-            })}
+      {/* Mosaic — edge to edge, so the covers are the card rather than an ornament on it. */}
+      {layout === "empty" ? (
+        <div
+          className={`absolute inset-0 z-0 grid place-items-center bg-radial-[circle_at_50%_45%] ${accent.glow} to-transparent`}
+        >
+          <Icon name="ImageIcon" size={36} className="text-white/10" />
+        </div>
+      ) : (
+        <div
+          className={`absolute inset-0 z-0 grid gap-px bg-white/5 transition-transform duration-500 ease-out [@media(hover:hover)]:group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:transform-none ${MOSAIC_GRID_CLASS[layout]}`}
+        >
+          {Array.from({ length: MOSAIC_POSTER_COUNT[layout] }, (_, index) => {
+            const posterUrl = list.poster_urls?.[index] ?? null;
+            return (
+              <div key={index} className="relative overflow-hidden bg-white/10">
+                {posterUrl && (
+                  <Image
+                    src={posterUrl}
+                    alt=""
+                    fill
+                    sizes={POSTER_SIZES}
+                    className="object-cover"
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Empty state — no posters */}
-      {list.poster_anime_ids.length === 0 && (
-        <div className="absolute top-5 right-5 w-20 h-28 rounded-lg border border-dashed border-white/10 flex items-center justify-center">
-          <span className="text-white/15 text-xl">?</span>
-        </div>
-      )}
+      {/* Scrim — one layer buys AA contrast for the title, the other carries the list's colour. */}
+      <div className="absolute inset-0 z-[1] pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/10" />
+        <div
+          className={`absolute inset-0 bg-gradient-to-bl ${accent.tint} to-transparent`}
+        />
+      </div>
 
-      {/* Delete button */}
+      {/* Body */}
+      <div className="absolute inset-0 z-[3] flex flex-col justify-end gap-2 p-4 pointer-events-none">
+        <h3 className="text-lg font-bold leading-snug text-white line-clamp-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+          {list.name}
+        </h3>
+        <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-white/75">
+          <Icon name="List" size={12} />
+          {list.anime_count} {list.anime_count === 1 ? "anime" : "animes"}
+        </span>
+      </div>
+
+      {/* Accent hairline — sits above the scrim so the colour stays saturated. */}
+      <div className={`absolute top-0 inset-x-0 z-[4] h-[2px] ${accent.line}`} />
+
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
           onDelete(list.id);
         }}
-        className="absolute top-3 right-3 z-20 flex items-center justify-center w-7 h-7 rounded-full bg-black/40 hover:bg-red-500/80 text-white/50 hover:text-white transition-colors md:opacity-0 md:group-hover:opacity-100 cursor-pointer"
+        // Without this, Enter on the button bubbles to the card's key handler and navigates away.
+        onKeyDown={(e) => e.stopPropagation()}
+        className="absolute top-2.5 right-2.5 z-[5] flex items-center justify-center w-7 h-7 rounded-full bg-black/50 text-white/60 backdrop-blur-sm transition-[opacity,background-color,color] duration-200 motion-reduce:transition-none hover:bg-red-500/80 hover:text-white cursor-pointer [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         aria-label={`Eliminar ${list.name}`}
       >
         <Icon name="X" size={12} />
       </button>
-
-      {/* Info */}
-      <div className="relative z-10 w-[60%]">
-        <h3 className="text-lg font-bold text-white drop-shadow-md truncate">
-          {list.name}
-        </h3>
-        <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-medium bg-black/40 text-white/70 border border-white/10 backdrop-blur-md mt-1.5">
-          <Icon name="List" size={12} className="mr-1" />
-          {list.anime_count}{" "}
-          {list.anime_count === 1 ? "anime" : "animes"}
-        </span>
-      </div>
-    </motion.div>
+    </div>
   );
 }

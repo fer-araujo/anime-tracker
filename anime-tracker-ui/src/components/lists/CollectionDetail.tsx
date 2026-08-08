@@ -16,6 +16,7 @@ import { toggleFavorite as toggleFavoriteAction } from "@/actions/tracking";
 import Icon from "@/components/custom/Icon";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { ListsBackdrop } from "./ListsBackdrop";
 import type { Anime, TrackingStatus } from "@/types/anime";
 
 const STATUS_TABS: { key: TrackingStatus | "all"; label: string }[] = [
@@ -177,6 +178,9 @@ export function CollectionDetail({
   if (loading) {
     return (
       <div className="min-h-screen pt-24 px-6 md:px-10 lg:px-16 pb-16 bg-background">
+        {/* Also on the early returns: without it the backdrop pops in only once
+            the data lands, which reads as the page changing colour mid-load. */}
+        <ListsBackdrop />
         <div className="max-w-7xl mx-auto">
           <div className="h-8 w-48 bg-white/5 rounded-lg animate-pulse mb-8" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -192,6 +196,7 @@ export function CollectionDetail({
   if (fetchError) {
     return (
       <div className="min-h-screen pt-24 px-6 md:px-10 lg:px-16 pb-16 bg-background">
+        <ListsBackdrop />
         <div className="max-w-7xl mx-auto">
           <Link
             href="/lists"
@@ -214,6 +219,8 @@ export function CollectionDetail({
 
   return (
     <div className="min-h-screen pt-24 px-6 md:px-10 lg:px-16 pb-16 bg-background">
+      <ListsBackdrop />
+
       <div className="max-w-7xl mx-auto">
         <Link
           href="/lists"
