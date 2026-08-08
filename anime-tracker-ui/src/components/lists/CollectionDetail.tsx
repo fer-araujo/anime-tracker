@@ -17,6 +17,10 @@ import Icon from "@/components/custom/Icon";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { ListsBackdrop } from "./ListsBackdrop";
+// The bar's colours, its reading order and the counting are shared with
+// ListCard. They used to be local constants here, which is exactly how two
+// surfaces showing the same list end up disagreeing about it.
+import { STATUS_BAR_COLORS, buildStatusBreakdown } from "@/lib/lists";
 import type { Anime, TrackingStatus } from "@/types/anime";
 
 const STATUS_TABS: { key: TrackingStatus | "all"; label: string }[] = [
@@ -26,24 +30,6 @@ const STATUS_TABS: { key: TrackingStatus | "all"; label: string }[] = [
   { key: "plan_to_watch", label: "Pendientes" },
   { key: "on_hold", label: "En pausa" },
   { key: "dropped", label: "Abandonados" },
-];
-
-// Solid swatch variant of the same semantic status palette AnimeCard.tsx
-// already uses for its (soft) pill treatment — for a status breakdown bar.
-const STATUS_BAR_COLORS: Record<TrackingStatus, string> = {
-  watching: "bg-sky-500",
-  completed: "bg-emerald-500",
-  plan_to_watch: "bg-white/40",
-  on_hold: "bg-amber-500",
-  dropped: "bg-red-500",
-};
-
-const STATUS_BAR_ORDER: TrackingStatus[] = [
-  "watching",
-  "completed",
-  "plan_to_watch",
-  "on_hold",
-  "dropped",
 ];
 
 export function CollectionDetail({
@@ -85,15 +71,17 @@ export function CollectionDetail({
   }, [animeList, entriesMap]);
 
   const statusBreakdown = useMemo(() => {
-    const counts = new Map<TrackingStatus, number>();
-    for (const a of animeList) {
-      const status = entriesMap.get(a.id.anilist)?.status;
-      if (status) counts.set(status, (counts.get(status) ?? 0) + 1);
+    // Same counting the provider runs for the cards, so a list's bar reads the
+    // same here as it does on /lists. `entriesMap` is keyed the way
+    // buildStatusBreakdown expects, minus the entry wrapper.
+    const statusByAnimeId = new Map<number, TrackingStatus>();
+    for (const [animeId, entry] of entriesMap) {
+      if (entry?.status) statusByAnimeId.set(animeId, entry.status);
     }
-    return STATUS_BAR_ORDER.map((status) => ({
-      status,
-      count: counts.get(status) ?? 0,
-    })).filter((s) => s.count > 0);
+    return buildStatusBreakdown(
+      statusByAnimeId,
+      animeList.map((a) => a.id.anilist),
+    );
   }, [animeList, entriesMap]);
 
   const handleAddToList = useCallback(

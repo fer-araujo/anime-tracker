@@ -18,13 +18,16 @@ export function CollectionsTab() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
             // Geometry must mirror ListCard/CreateListCard exactly, otherwise
             // the grid reflows the moment real data replaces the skeletons.
-            className="aspect-[3/2] rounded-[14px] bg-white/5 animate-pulse"
+            // That includes the responsive aspect: two cards share a row on
+            // phones, so the tile is shorter there and only returns to 3:2
+            // from `md` up, where 3-4 cards split the row.
+            className="aspect-[16/10] md:aspect-[3/2] rounded-[14px] bg-white/5 animate-pulse"
           />
         ))}
       </div>
@@ -33,7 +36,7 @@ export function CollectionsTab() {
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
         {lists.map((list) => (
           <ListCard key={list.id} list={list} onDelete={handleDelete} />
         ))}

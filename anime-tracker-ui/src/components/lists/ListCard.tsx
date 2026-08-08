@@ -8,6 +8,7 @@ import {
   resolveMosaicLayout,
   MOSAIC_GRID_CLASS,
   MOSAIC_POSTER_COUNT,
+  STATUS_BAR_COLORS,
 } from "@/lib/lists";
 import type { UserList } from "@/hooks/useUserLists";
 
@@ -52,7 +53,10 @@ export function ListCard({
           open();
         }
       }}
-      className={`group relative isolate w-full aspect-[3/2] rounded-[14px] overflow-hidden border border-white/10 bg-white/5 cursor-pointer transition-colors duration-300 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 ${accent.ring}`}
+      // Shorter on phones: two cards share a row there, and a 3:2 tile at that
+      // width turned the tab into an endless scroll. Must stay identical to the
+      // CollectionsTab skeletons and CreateListCard or the grid reflows on load.
+      className={`group relative isolate w-full aspect-[16/10] md:aspect-[3/2] rounded-[14px] overflow-hidden border border-white/10 bg-white/5 cursor-pointer transition-colors duration-300 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 ${accent.ring}`}
     >
       {/* Mosaic — edge to edge, so the covers are the card rather than an ornament on it. */}
       {layout === "empty" ? (
@@ -101,6 +105,24 @@ export function ListCard({
           <Icon name="List" size={12} />
           {list.anime_count} {list.anime_count === 1 ? "anime" : "animes"}
         </span>
+
+        {/*
+          Segments are sized against the list's total, not against the tracked
+          subset, so animes with no status leave the rail showing through
+          instead of inflating the others. Same rule the collection detail uses,
+          which is what lets both surfaces agree on the same list.
+        */}
+        {list.status_breakdown.length > 0 && (
+          <div className="flex h-[3px] w-full overflow-hidden rounded-full bg-white/15">
+            {list.status_breakdown.map(({ status, count }) => (
+              <div
+                key={status}
+                className={STATUS_BAR_COLORS[status]}
+                style={{ width: `${(count / list.anime_count) * 100}%` }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Accent hairline — sits above the scrim so the colour stays saturated. */}

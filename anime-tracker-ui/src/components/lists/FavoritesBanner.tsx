@@ -7,7 +7,7 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 import { fetchAnimeBatch } from "@/lib/fetchAnimeBatch";
-import { resolveRailColumnWidth } from "@/lib/lists";
+import { resolveRailWidth } from "@/lib/lists";
 import Icon from "@/components/custom/Icon";
 
 /**
@@ -17,9 +17,14 @@ import Icon from "@/components/custom/Icon";
  *
  * The radius matches the list cards (`rounded-[14px]`); the banner sits right
  * above them and a softer `rounded-3xl` read as a different family of surface.
+ *
+ * The height came down one step (was `h-40 sm:h-48 lg:h-56`). Now that the rail
+ * spans up to two thirds of the width, the old height left a tall column of
+ * empty background above the title — the copy floated instead of sitting on a
+ * base. A shorter, wider box reads as one banner.
  */
 const BANNER_SHELL =
-  "relative w-full h-40 sm:h-48 lg:h-56 rounded-[14px] overflow-hidden border border-white/10";
+  "relative w-full h-36 sm:h-44 lg:h-52 rounded-[14px] overflow-hidden border border-white/10";
 
 /** How many favorites the rail previews. Drives the batch slice below too. */
 const RAIL_SIZE = 5;
@@ -117,33 +122,55 @@ export function FavoritesBanner() {
       }}
     >
       {/* Rail of complete covers, adjacent and bleeding off the right edge.
-          The column width comes from the poster count so a short favorites
-          list still fills the banner instead of leaving a bald right side. */}
-      <motion.div
-        className="absolute inset-y-0 right-0 z-[1] grid grid-flow-col gap-[2px]"
-        style={{ gridAutoColumns: resolveRailColumnWidth(posters.length) }}
-        // 8s meant the zoom never finished before the pointer left, so the
-        // interaction read as broken. 400ms lands inside a normal hover.
-        variants={prefersReducedMotion ? undefined : { hover: { scale: 1.04 } }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-      >
-        {posters.map((poster, index) => (
-          <div key={`${poster}-${index}`} className="relative h-full">
-            <Image
-              src={poster}
-              alt=""
-              fill
-              sizes="120px"
-              className="object-cover"
-            />
-          </div>
-        ))}
-      </motion.div>
+          The wrapper takes a PERCENTAGE of the banner, so the rail scales with
+          the container instead of the old fixed rem-per-poster width that left
+          ~60% of a 1280px banner as an empty black field.
 
-      {/* Scrim: nearly opaque on the left so the title keeps AA contrast over
-          any cover, fading out to the right so the far posters stay visible. */}
+          The mask is what kills the hard vertical seam where the rail used to
+          start: the artwork dissolves into the background over its first 18%
+          rather than being cut by an edge. `overflow-hidden` keeps the hover
+          zoom inside the masked box — a gradient mask defaults to `repeat`, so
+          content spilling past the box would pick up a second fade. */}
+      <div
+        className="absolute inset-y-0 right-0 z-[1] overflow-hidden"
+        style={{
+          width: resolveRailWidth(posters.length),
+          maskImage: "linear-gradient(to right, transparent, black 18%)",
+          WebkitMaskImage: "linear-gradient(to right, transparent, black 18%)",
+        }}
+      >
+        <motion.div
+          className="grid h-full w-full grid-flow-col gap-[2px]"
+          // Even columns: the rail already owns a known share of the width, so
+          // the posters divide it instead of each claiming a fixed size.
+          style={{ gridAutoColumns: "minmax(0, 1fr)" }}
+          // 8s meant the zoom never finished before the pointer left, so the
+          // interaction read as broken. 400ms lands inside a normal hover.
+          variants={prefersReducedMotion ? undefined : { hover: { scale: 1.04 } }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        >
+          {posters.map((poster, index) => (
+            <div key={`${poster}-${index}`} className="relative h-full">
+              <Image
+                src={poster}
+                alt=""
+                fill
+                // Columns are now a share of the viewport, not a fixed 120px;
+                // the old hint made Next serve an image too small to stay sharp.
+                sizes="20vw"
+                className="object-cover"
+              />
+            </div>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* Scrim: opaque under the title so it keeps AA contrast over any cover,
+          then off entirely by the middle. With the rail this wide the old
+          `via-background/75` sat on top of most of the artwork and flattened it
+          into grey; the fade now ends where the title's text box ends. */}
       <div className="absolute inset-0 z-[2] pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-r from-background from-20% via-background/75 to-background/10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background from-22% via-background/55 via-45% to-transparent to-70%" />
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
       </div>
 

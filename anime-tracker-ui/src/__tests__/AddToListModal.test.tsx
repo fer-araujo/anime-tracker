@@ -54,6 +54,7 @@ const mockLists = [
     anime_ids: [],
     poster_anime_ids: [],
     poster_urls: [],
+    status_breakdown: [],
   },
 ];
 
