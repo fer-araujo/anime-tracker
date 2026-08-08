@@ -89,7 +89,11 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
           color: l.color,
           anime_count: allAnimeIds.length,
           anime_ids: allAnimeIds,
-          poster_anime_ids: allAnimeIds.slice(0, 3),
+          // Four, not three: the card's mosaic composes 1/2/3/4 posters and a
+          // three-poster ceiling made its densest layout unreachable. This is
+          // how many covers a card displays, not how much data the app uses —
+          // the ids come from a query that already loaded every entry.
+          poster_anime_ids: allAnimeIds.slice(0, 4),
           poster_urls: [],
         };
       },
