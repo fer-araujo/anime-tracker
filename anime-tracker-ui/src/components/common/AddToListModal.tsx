@@ -364,6 +364,19 @@ export function AddToListModal({
         </div>
 
         <div className="flex items-center gap-2">
+          {/*
+            Saving requires a status, but the only sign of that was a dimmed
+            button. Ticking a list and pressing a button that does nothing reads
+            as a broken feature, so the requirement says so out loud.
+          */}
+          {!selectedStatus && !isSubmitting && (
+            <span
+              id="status-required-hint"
+              className="text-[11px] font-medium text-amber-300/80 text-right leading-tight"
+            >
+              Elige un estado para guardar
+            </span>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -376,6 +389,7 @@ export function AddToListModal({
             type="button"
             onClick={handleConfirm}
             disabled={isSubmitting || !selectedStatus}
+            aria-describedby={!selectedStatus ? "status-required-hint" : undefined}
             className="px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold shadow-[0_4px_15px_rgba(var(--primary),0.2)] hover:brightness-110 active:scale-95 transition-[filter,transform] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isSubmitting ? (

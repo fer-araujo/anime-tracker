@@ -74,6 +74,69 @@ export async function updateStatus(
   return { success: true };
 }
 
+/**
+ * Status a row gets when it is created by favouriting or scoring an anime the
+ * user was not tracking yet. `user_anime.status` is NOT NULL, so a row cannot
+ * exist without one, and "I marked it a favourite" is a statement of intent to
+ * watch.
+ */
+const IMPLICIT_STATUS: TrackingStatus = "plan_to_watch";
+
+/**
+ * Apply a partial change to the user's entry, creating the row if it is the
+ * first thing they ever recorded about this anime.
+ *
+ * A plain `.update()` filtered by user + anime matches zero rows when no entry
+ * exists and Supabase reports **no error** for that, so every caller was told
+ * the write succeeded while nothing had been written. That is why favouriting
+ * an anime did nothing until you had first given it a status: only
+ * `addToTracking` upserts, so only it ever created the row.
+ *
+ * The update comes first and the insert is the fallback, rather than an upsert,
+ * because an upsert would have to send `status` and would overwrite the status
+ * of an anime the user is already tracking.
+ */
+async function patchEntry(
+  userId: string,
+  animeId: number,
+  patch: Record<string, unknown>,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("user_anime")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("anime_id", animeId)
+    .select("id");
+
+  if (error) return { success: false, error: error.message };
+  if (data && data.length > 0) return { success: true };
+
+  const { error: insertError } = await supabase.from("user_anime").insert({
+    user_id: userId,
+    anime_id: animeId,
+    status: IMPLICIT_STATUS,
+    ...patch,
+  });
+
+  // 23505 = unique violation: a concurrent call created the row between our
+  // update and our insert, so the update we already tried is now valid.
+  if (insertError?.code === "23505") {
+    const { error: retryError } = await supabase
+      .from("user_anime")
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .eq("anime_id", animeId);
+
+    if (retryError) return { success: false, error: retryError.message };
+    return { success: true };
+  }
+
+  if (insertError) return { success: false, error: insertError.message };
+  return { success: true };
+}
+
 export async function toggleFavorite(
   animeId: number,
   next: boolean,
@@ -82,19 +145,7 @@ export async function toggleFavorite(
   if (!userId) return unauthorized();
   if (!checkRateLimit(`tracking:${userId}`)) return rateLimited();
 
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("user_anime")
-    .update({ favorite: next, updated_at: new Date().toISOString() })
-    .eq("user_id", userId)
-    .eq("anime_id", animeId);
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  return { success: true };
+  return patchEntry(userId, animeId, { favorite: next });
 }
 
 export async function setScore(
@@ -105,19 +156,9 @@ export async function setScore(
   if (!userId) return unauthorized();
   if (!checkRateLimit(`tracking:${userId}`)) return rateLimited();
 
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("user_anime")
-    .update({ score, updated_at: new Date().toISOString() })
-    .eq("user_id", userId)
-    .eq("anime_id", animeId);
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  return { success: true };
+  // Same silent no-op as favourites: scoring an untracked anime used to report
+  // success and write nothing.
+  return patchEntry(userId, animeId, { score });
 }
 
 export async function removeFromTracking(

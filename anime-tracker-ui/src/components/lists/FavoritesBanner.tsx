@@ -131,6 +131,13 @@ export function FavoritesBanner() {
           rather than being cut by an edge. `overflow-hidden` keeps the hover
           zoom inside the masked box — a gradient mask defaults to `repeat`, so
           content spilling past the box would pick up a second fade. */}
+      {/* If the poster request failed the user still has favorites, so the
+          banner keeps a pink wash rather than collapsing to a bare panel that
+          looks like the empty state — the count below already says otherwise. */}
+      {posters.length === 0 && (
+        <div className="absolute inset-0 z-0 bg-radial-[circle_at_78%_50%] from-pink-500/18 to-transparent" />
+      )}
+
       <div
         className="absolute inset-y-0 right-0 z-[1] overflow-hidden"
         style={{

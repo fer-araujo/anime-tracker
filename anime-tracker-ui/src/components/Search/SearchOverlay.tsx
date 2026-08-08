@@ -75,6 +75,10 @@ export default function SearchOverlay({
     return () => {
       window.removeEventListener("scroll", updatePosition, true);
       window.removeEventListener("resize", updatePosition);
+      // Drop the measurement on close so the next open cannot paint a frame at
+      // a stale position — the header changes height on scroll, so the anchor
+      // it was measured against may no longer be where it was.
+      setRect({ top: 0, left: 0, width: 0 });
     };
   }, [open, anchorRef]);
 
@@ -121,8 +125,15 @@ export default function SearchOverlay({
     );
   };
 
-  // Si no está abierto o no ha montado el cliente, no regresamos nada
-  if (!open || !mounted) return null;
+  // Nothing is painted until the anchor has actually been measured.
+  //
+  // `rect` starts at {0,0} and the measuring effect runs *after* the first
+  // paint, so the panel used to be drawn once in the top-left corner of the
+  // screen and only then jump under the input. The enter animation began at
+  // that wrong position, which is what made the overlay appear to fly in from
+  // the left. Skipping the unmeasured frame lets the animation play where the
+  // panel actually belongs: a straight fade, zoom and short drop from the input.
+  if (!open || !mounted || rect.width === 0) return null;
 
   // 3. RENDERIZAMOS EN EL PORTAL (document.body)
   return createPortal(
