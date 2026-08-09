@@ -116,16 +116,18 @@ export function ListCard({
           artwork still arguing with the list name; it now stays heavy enough that
           the title wins everywhere and the covers stay a backdrop. */}
       <div className="absolute inset-0 z-[1] pointer-events-none">
-        {/* The top stop went from /15 to /50. The accent gradient below runs
-            `to-bl`, so its colour peaks at the TOP-RIGHT — exactly where the
-            veil used to be thinnest. That pairing is what made the tint read as
-            loud on real artwork even at a low alpha: the two were fighting at
-            the same corner. Darkening the top is what "más oscuro, menos color"
-            actually needs; lowering the tint alone would have left the corner
-            just as bright. */}
+        {/* The top stop went from /15 to /50: the accent used to peak exactly
+            where the veil was thinnest, so the two fought over the same corner
+            and the tint read loud even at a low alpha. */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 to-black/50" />
+        {/* The accent originates at the TOP-LEFT (`to-br`), not the top-right.
+            Two reasons. The card's content — name, count, status bar — lives
+            bottom-left, so a top-right accent sat diagonally opposite the only
+            place the eye goes, reading as a stray glow rather than as this
+            list's colour. And the delete button occupies the top-right, so the
+            colour was pooling behind a control instead of behind content. */}
         <div
-          className={`absolute inset-0 bg-gradient-to-bl ${accent.tint} to-transparent`}
+          className={`absolute inset-0 bg-gradient-to-br ${accent.tint} to-transparent`}
         />
       </div>
 
@@ -157,9 +159,6 @@ export function ListCard({
           </div>
         )}
       </div>
-
-      {/* Accent hairline — sits above the scrim so the colour stays saturated. */}
-      <div className={`absolute top-0 inset-x-0 z-[4] h-[2px] `} />
 
       <button
         type="button"

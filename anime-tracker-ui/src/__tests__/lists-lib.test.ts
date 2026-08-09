@@ -47,15 +47,15 @@ describe("buildStatusBreakdown", () => {
 
 describe("resolveListAccent", () => {
   it("honours the colour the user picked", () => {
-    expect(resolveListAccent("pink").line).toBe("bg-pink-500");
-    expect(resolveListAccent("emerald").line).toBe("bg-emerald-500");
+    expect(resolveListAccent("pink").tint).toContain("pink");
+    expect(resolveListAccent("emerald").tint).toContain("emerald");
   });
 
   it("falls back for lists created before the picker existed", () => {
     // The regression this guards: the card used to derive colour from
     // `name.length % 6`, so renaming a list silently changed it.
-    expect(resolveListAccent(null).line).toBe("bg-sky-500");
-    expect(resolveListAccent("chartreuse").line).toBe("bg-sky-500");
+    expect(resolveListAccent(null).tint).toContain("sky");
+    expect(resolveListAccent("chartreuse").tint).toContain("sky");
   });
 });
 

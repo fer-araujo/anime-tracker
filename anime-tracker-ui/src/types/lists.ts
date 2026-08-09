@@ -15,8 +15,6 @@ export type ListAccentKey = "blue" | "purple" | "emerald" | "amber" | "pink";
  * `bg-${color}-500` would be purged from the bundle and render as nothing.
  */
 export type ListAccent = {
-  /** Hairline at the top edge of the card. */
-  line: string;
   /** Tint mixed into the readability scrim, so one element carries identity and contrast. */
   tint: string;
   /** Radial wash for the empty state, where there are no posters to tint. */

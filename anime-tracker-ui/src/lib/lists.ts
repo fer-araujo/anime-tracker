@@ -15,46 +15,39 @@ import type {
  *
  * `tint` sits on top of the posters and its job is to say which list this is,
  * not to repaint the artwork; the dark bottom-up gradient underneath it is what
- * guarantees the title's contrast. `line` stays fully saturated because two
- * pixels of colour need the saturation to register, and `glow` stays stronger
- * because in the empty state there is no poster for the colour to sit against.
+ * guarantees the title's contrast. `glow` stays stronger because in the empty
+ * state there is no poster for the colour to sit against.
  *
- * Why `tint` moved from /15 to /25: the card's four knobs — veil, seam,
- * poster saturation and accent — only work as a set. Raising the veil alone
- * kills the card; desaturating the posters alone leaves it grey. Desaturated
- * artwork is precisely what lets the list's own colour come back up without
- * turning strident, and that colour being the ONLY chromatic thing on the card
- * is the whole point of the redesign — a point that was lost the moment five
- * full-colour covers competed with it.
+ * The card's knobs — veil, seam, poster saturation and accent — only work as a
+ * set. Raising the veil alone kills the card; desaturating the posters alone
+ * leaves it grey. Desaturated artwork is precisely what lets the list's own
+ * colour come back up without turning strident, and that colour being the ONLY
+ * chromatic thing on the card is the whole point of the redesign — a point lost
+ * the moment five full-colour covers competed with it.
  */
 const LIST_ACCENTS: Record<ListAccentKey, ListAccent> = {
   blue: {
-    line: "bg-sky-500",
-    tint: "from-sky-500/12",
+    tint: "from-sky-500/16",
     glow: "from-sky-500/25",
     ring: "[@media(hover:hover)]:hover:border-sky-400/40 focus-visible:border-sky-400/40",
   },
   purple: {
-    line: "bg-purple-500",
-    tint: "from-purple-500/12",
+    tint: "from-purple-500/16",
     glow: "from-purple-500/25",
     ring: "[@media(hover:hover)]:hover:border-purple-400/40 focus-visible:border-purple-400/40",
   },
   emerald: {
-    line: "bg-emerald-500",
-    tint: "from-emerald-500/12",
+    tint: "from-emerald-500/16",
     glow: "from-emerald-500/25",
     ring: "[@media(hover:hover)]:hover:border-emerald-400/40 focus-visible:border-emerald-400/40",
   },
   amber: {
-    line: "bg-amber-500",
-    tint: "from-amber-500/12",
+    tint: "from-amber-500/16",
     glow: "from-amber-500/25",
     ring: "[@media(hover:hover)]:hover:border-amber-400/40 focus-visible:border-amber-400/40",
   },
   pink: {
-    line: "bg-pink-500",
-    tint: "from-pink-500/12",
+    tint: "from-pink-500/16",
     glow: "from-pink-500/25",
     ring: "[@media(hover:hover)]:hover:border-pink-400/40 focus-visible:border-pink-400/40",
   },
