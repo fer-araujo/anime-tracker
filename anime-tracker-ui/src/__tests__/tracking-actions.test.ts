@@ -125,9 +125,12 @@ describe("Tracking Server Actions — auth guard", () => {
       );
     });
 
-    it("toggleFavorite does not invent a status for the new row", async () => {
+    it("toggleFavorite writes an explicit null status, not an invented one", async () => {
       // `status` became nullable precisely so the app would stop claiming the
-      // user plans to watch something when all they did was like it.
+      // user plans to watch something when all they did was like it. Omitting
+      // the column is not enough: DROP NOT NULL leaves any DEFAULT in place, so
+      // Postgres would supply `plan_to_watch` itself and the claim would come
+      // back through the database instead of through the code.
       const insert = vi.fn().mockResolvedValue({ error: null });
       mockFrom.mockReturnValue({
         update: patchUpdateChain([]),
@@ -135,7 +138,7 @@ describe("Tracking Server Actions — auth guard", () => {
       });
 
       await toggleFavorite(7, true);
-      expect(insert.mock.calls[0][0]).not.toHaveProperty("status");
+      expect(insert.mock.calls[0][0]).toHaveProperty("status", null);
     });
 
     it("toggleFavorite retries the update when a concurrent call won the insert", async () => {

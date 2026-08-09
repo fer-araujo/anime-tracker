@@ -112,6 +112,12 @@ async function patchEntry(
   const { error: insertError } = await supabase.from("user_anime").insert({
     user_id: userId,
     anime_id: animeId,
+    // Explicitly null, not merely omitted. Dropping NOT NULL from the column
+    // does not drop its DEFAULT, so leaving `status` out of the payload lets
+    // Postgres fill in `plan_to_watch` on its own — the app ends up making the
+    // same false claim it stopped making in code. Sending null overrides the
+    // default. `...patch` still wins if a caller ever does supply a status.
+    status: null,
     ...patch,
   });
 
