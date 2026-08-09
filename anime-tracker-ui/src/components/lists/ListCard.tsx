@@ -127,7 +127,7 @@ export function ListCard({
             list's colour. And the delete button occupies the top-right, so the
             colour was pooling behind a control instead of behind content. */}
         <div
-          className={`absolute inset-0 bg-gradient-to-br ${accent.tint} to-transparent`}
+          className={`absolute inset-0 bg-gradient-to-bl ${accent.tint} to-transparent`}
         />
       </div>
 

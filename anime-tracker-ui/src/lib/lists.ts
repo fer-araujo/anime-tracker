@@ -27,27 +27,27 @@ import type {
  */
 const LIST_ACCENTS: Record<ListAccentKey, ListAccent> = {
   blue: {
-    tint: "from-sky-500/16",
+    tint: "from-sky-500/8",
     glow: "from-sky-500/25",
     ring: "[@media(hover:hover)]:hover:border-sky-400/40 focus-visible:border-sky-400/40",
   },
   purple: {
-    tint: "from-purple-500/16",
+    tint: "from-purple-500/8",
     glow: "from-purple-500/25",
     ring: "[@media(hover:hover)]:hover:border-purple-400/40 focus-visible:border-purple-400/40",
   },
   emerald: {
-    tint: "from-emerald-500/16",
+    tint: "from-emerald-500/12",
     glow: "from-emerald-500/25",
     ring: "[@media(hover:hover)]:hover:border-emerald-400/40 focus-visible:border-emerald-400/40",
   },
   amber: {
-    tint: "from-amber-500/16",
+    tint: "from-amber-500/8",
     glow: "from-amber-500/25",
     ring: "[@media(hover:hover)]:hover:border-amber-400/40 focus-visible:border-amber-400/40",
   },
   pink: {
-    tint: "from-pink-500/16",
+    tint: "from-pink-500/8",
     glow: "from-pink-500/25",
     ring: "[@media(hover:hover)]:hover:border-pink-400/40 focus-visible:border-pink-400/40",
   },
