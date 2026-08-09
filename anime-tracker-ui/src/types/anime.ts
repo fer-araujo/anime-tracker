@@ -117,7 +117,13 @@ export type AnimeEntry = {
   id: string;
   user_id: string;
   anime_id: number;
-  status: TrackingStatus;
+  /**
+   * Optional: a row means "this anime means something to me", and where it sits
+   * in the library is a separate question from whether it is a favourite or has
+   * a score. Marking something a favourite must not have to claim you plan to
+   * watch it.
+   */
+  status: TrackingStatus | null;
   favorite: boolean;
   score: number | null;
   progress: number;

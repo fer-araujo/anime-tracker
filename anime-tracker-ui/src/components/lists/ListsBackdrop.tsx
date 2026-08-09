@@ -22,11 +22,24 @@
  * the previous orb relied on `blur-[120px]`, a filter pass that is expensive to
  * paint on a full-screen layer. A radial-gradient is already soft by
  * construction and needs no filter at all.
+ *
+ * Why `z-0` and NOT a negative z-index:
+ * the CSS painting algorithm paints negative-z-index descendants at step 3, but
+ * the backgrounds of in-flow, non-positioned block boxes at step 4 — i.e. AFTER.
+ * This backdrop is a child of the lists page container, so ANY opaque
+ * `bg-background` on that container (or on any plain block ancestor) would paint
+ * straight over it and the gradient would never be seen. That is exactly what
+ * happened to the orb this replaced, which is why it read as "casi invisible".
+ * At `z-0` the backdrop is a positioned descendant painted at step 8, above
+ * those block backgrounds; the page content then needs `relative z-10` to stay
+ * on top of it. Ownership of the opaque base moves here: the first child below
+ * paints `bg-background` across the full viewport, so the page container must
+ * NOT repeat it.
  */
 export function ListsBackdrop() {
   return (
     <div
-      className="fixed inset-0 -z-10 overflow-hidden pointer-events-none"
+      className="fixed inset-0 z-0 overflow-hidden pointer-events-none"
       aria-hidden="true"
     >
       <div className="absolute inset-0 bg-background" />

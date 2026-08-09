@@ -75,14 +75,6 @@ export async function updateStatus(
 }
 
 /**
- * Status a row gets when it is created by favouriting or scoring an anime the
- * user was not tracking yet. `user_anime.status` is NOT NULL, so a row cannot
- * exist without one, and "I marked it a favourite" is a statement of intent to
- * watch.
- */
-const IMPLICIT_STATUS: TrackingStatus = "plan_to_watch";
-
-/**
  * Apply a partial change to the user's entry, creating the row if it is the
  * first thing they ever recorded about this anime.
  *
@@ -95,6 +87,10 @@ const IMPLICIT_STATUS: TrackingStatus = "plan_to_watch";
  * The update comes first and the insert is the fallback, rather than an upsert,
  * because an upsert would have to send `status` and would overwrite the status
  * of an anime the user is already tracking.
+ *
+ * A row created this way carries no status. Favouriting something is not a
+ * statement that you plan to watch it, and since `status` became optional the
+ * schema no longer forces the app to invent one.
  */
 async function patchEntry(
   userId: string,
@@ -116,7 +112,6 @@ async function patchEntry(
   const { error: insertError } = await supabase.from("user_anime").insert({
     user_id: userId,
     anime_id: animeId,
-    status: IMPLICIT_STATUS,
     ...patch,
   });
 
@@ -137,6 +132,54 @@ async function patchEntry(
   return { success: true };
 }
 
+/**
+ * Delete the entry when nothing is left on it.
+ *
+ * Now that a row can be created just by favouriting something, un-favouriting
+ * it can leave a row that records nothing at all — no status, no score, no
+ * progress, no note. Those would accumulate silently and, worse, count as
+ * "tracked" to anything that checks for the row's existence rather than its
+ * contents.
+ *
+ * Best-effort: a failure here leaves a harmless empty row, so it never turns
+ * the caller's successful write into a reported error.
+ */
+async function discardEmptyEntry(userId: string, animeId: number) {
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("user_anime")
+    .select("status, score, favorite, progress, notes")
+    .eq("user_id", userId)
+    .eq("anime_id", animeId)
+    .maybeSingle();
+
+  if (!data) return;
+
+  const entry = data as {
+    status: string | null;
+    score: number | null;
+    favorite: boolean | null;
+    progress: number | null;
+    notes: string | null;
+  };
+
+  const saysSomething =
+    !!entry.status ||
+    entry.score != null ||
+    entry.favorite === true ||
+    (entry.progress ?? 0) > 0 ||
+    !!entry.notes;
+
+  if (saysSomething) return;
+
+  await supabase
+    .from("user_anime")
+    .delete()
+    .eq("user_id", userId)
+    .eq("anime_id", animeId);
+}
+
 export async function toggleFavorite(
   animeId: number,
   next: boolean,
@@ -145,7 +188,11 @@ export async function toggleFavorite(
   if (!userId) return unauthorized();
   if (!checkRateLimit(`tracking:${userId}`)) return rateLimited();
 
-  return patchEntry(userId, animeId, { favorite: next });
+  const result = await patchEntry(userId, animeId, { favorite: next });
+
+  if (result.success && !next) await discardEmptyEntry(userId, animeId);
+
+  return result;
 }
 
 export async function setScore(
@@ -158,7 +205,12 @@ export async function setScore(
 
   // Same silent no-op as favourites: scoring an untracked anime used to report
   // success and write nothing.
-  return patchEntry(userId, animeId, { score });
+  const result = await patchEntry(userId, animeId, { score });
+
+  // Clearing a score can empty the row for the same reason un-favouriting can.
+  if (result.success && score === null) await discardEmptyEntry(userId, animeId);
+
+  return result;
 }
 
 export async function removeFromTracking(

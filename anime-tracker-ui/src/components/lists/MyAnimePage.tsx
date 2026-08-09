@@ -28,11 +28,16 @@ export default function MyAnimePage() {
   }
 
   return (
-    <div className="min-h-screen pt-24 px-6 md:px-10 lg:px-16 pb-16 bg-background">
-      {/* Background */}
+    <div className="min-h-screen pt-24 px-6 md:px-10 lg:px-16 pb-16">
+      {/* Background — no `bg-background` on the container above: an opaque block
+          background here paints at step 4 of the CSS painting algorithm and would
+          hide the backdrop. `body` already supplies the base colour, and the
+          backdrop paints its own full-viewport base on top of that. */}
       <ListsBackdrop />
 
-      <div className="max-w-7xl mx-auto">
+      {/* `relative z-10` lifts the content above the backdrop, which now sits at
+          `z-0` instead of behind the page. */}
+      <div className="relative z-10 max-w-7xl mx-auto">
         <h1 className="text-2xl md:text-3xl font-semibold text-foreground mb-6">
           Mis listas
         </h1>

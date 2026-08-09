@@ -121,9 +121,21 @@ describe("Tracking Server Actions — auth guard", () => {
           user_id: "test-user-id",
           anime_id: 7,
           favorite: true,
-          status: "plan_to_watch",
         }),
       );
+    });
+
+    it("toggleFavorite does not invent a status for the new row", async () => {
+      // `status` became nullable precisely so the app would stop claiming the
+      // user plans to watch something when all they did was like it.
+      const insert = vi.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValue({
+        update: patchUpdateChain([]),
+        insert,
+      });
+
+      await toggleFavorite(7, true);
+      expect(insert.mock.calls[0][0]).not.toHaveProperty("status");
     });
 
     it("toggleFavorite retries the update when a concurrent call won the insert", async () => {

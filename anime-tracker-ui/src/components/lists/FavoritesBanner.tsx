@@ -146,8 +146,12 @@ export function FavoritesBanner() {
           WebkitMaskImage: "linear-gradient(to right, transparent, black 18%)",
         }}
       >
+        {/* `gap-0`: the old 2px gutter let the page background through between
+            covers, so every series announced its own edge — the loudest source
+            of noise on the banner. Butted together they read as one strip of
+            texture, which is all the rail is meant to be. */}
         <motion.div
-          className="grid h-full w-full grid-flow-col gap-[2px]"
+          className="grid h-full w-full grid-flow-col gap-0"
           // Even columns: the rail already owns a known share of the width, so
           // the posters divide it instead of each claiming a fixed size.
           style={{ gridAutoColumns: "minmax(0, 1fr)" }}
@@ -157,7 +161,14 @@ export function FavoritesBanner() {
           transition={{ duration: 0.4, ease: "easeOut" }}
         >
           {posters.map((poster, index) => (
-            <div key={`${poster}-${index}`} className="relative h-full">
+            /* Same desaturation the list mosaic uses: the rail is texture behind
+               the title, not a gallery, and the pink identity below has to be
+               the only saturated thing in the banner. */
+            <div
+              key={`${poster}-${index}`}
+              className="relative h-full"
+              style={{ filter: "saturate(.6) brightness(.88)" }}
+            >
               <Image
                 src={poster}
                 alt=""
@@ -175,10 +186,16 @@ export function FavoritesBanner() {
       {/* Scrim: opaque under the title so it keeps AA contrast over any cover,
           then off entirely by the middle. With the rail this wide the old
           `via-background/75` sat on top of most of the artwork and flattened it
-          into grey; the fade now ends where the title's text box ends. */}
+          into grey; the fade now ends where the title's text box ends.
+
+          Both layers were raised by the same proportion as the list card's veil
+          so the two surfaces stay in the same register — a lighter banner beside
+          heavily veiled cards would read as a different family. The mid-stop
+          carries most of that increase: that is where the covers were still
+          bright enough to pull the eye off the title. */}
       <div className="absolute inset-0 z-[2] pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-r from-background from-22% via-background/55 via-45% to-transparent to-70%" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background from-22% via-background/70 via-45% to-transparent to-70%" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
       </div>
 
       <div className="absolute inset-0 z-[3] p-6 md:p-8 flex flex-col justify-end">
