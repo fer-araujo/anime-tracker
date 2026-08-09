@@ -53,10 +53,14 @@ export function ListCard({
           open();
         }
       }}
-      // Shorter on phones: two cards share a row there, and a 3:2 tile at that
-      // width turned the tab into an endless scroll. Must stay identical to the
-      // CollectionsTab skeletons and CreateListCard or the grid reflows on load.
-      className={`group relative isolate w-full aspect-[16/10] md:aspect-[3/2] rounded-[14px] overflow-hidden border border-white/10 bg-white/5 cursor-pointer transition-colors duration-300 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 ${accent.ring}`}
+      // On phones the grid is a single column and the card takes the favorites
+      // banner's exact height (`h-36 sm:h-44`), so the two surfaces read as the
+      // same object stacked. A ratio cannot do that — it would derive height
+      // from the full-width column and overshoot the banner. From `md`, where
+      // the grid goes multi-column, height comes back from the 3:2 ratio.
+      // Must stay identical to the CollectionsTab skeletons and CreateListCard,
+      // or the grid reflows the moment data lands.
+      className={`group relative isolate w-full h-36 sm:h-44 md:h-auto md:aspect-[3/2] rounded-[14px] overflow-hidden border border-white/10 bg-white/5 cursor-pointer transition-colors duration-300 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 ${accent.ring}`}
     >
       {/*
         Mosaic — edge to edge, so the covers are the card rather than an
@@ -155,7 +159,7 @@ export function ListCard({
       </div>
 
       {/* Accent hairline — sits above the scrim so the colour stays saturated. */}
-      <div className={`absolute top-0 inset-x-0 z-[4] h-[2px] ${accent.line}`} />
+      <div className={`absolute top-0 inset-x-0 z-[4] h-[2px] `} />
 
       <button
         type="button"

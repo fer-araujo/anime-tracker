@@ -47,8 +47,16 @@ export function ListsBackdrop() {
           the same raw-hsl arbitrary-value syntax as AuthBackground.tsx. */}
       {/* Alpha came down from 0.10: the gradient was calibrated while it was
           still buried under an opaque background, so the first time it actually
-          rendered it read far stronger than intended. */}
-      <div className="absolute inset-0 bg-[radial-gradient(85%_50%_at_50%_106%,hsl(142_72%_45%/0.055)_0%,transparent_72%)]" />
+          rendered it read far stronger than intended.
+
+          Two sizes, because the radii are percentages OF THE VIEWPORT and the
+          same numbers describe different shapes on different screens. At 85%
+          of a ~390px phone the ellipse is only ~330px across — squat, and
+          bunched into the very bottom edge. The mobile variant is wider than
+          the screen so the wash spans it fully, and taller so it climbs into
+          the content instead of hugging the bottom. Slightly higher alpha
+          there too: the same colour spread over less surface reads weaker. */}
+      <div className="absolute inset-0 bg-[radial-gradient(150%_55%_at_50%_104%,hsl(142_72%_45%/0.07)_0%,transparent_75%)] md:bg-[radial-gradient(85%_50%_at_50%_106%,hsl(142_72%_45%/0.055)_0%,transparent_72%)]" />
     </div>
   );
 }
