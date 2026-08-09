@@ -22,17 +22,41 @@
  * the previous orb relied on `blur-[120px]`, a filter pass that is expensive to
  * paint on a full-screen layer. A radial-gradient is already soft by
  * construction and needs no filter at all.
+ *
+ * Why `z-0` and NOT a negative z-index:
+ * the CSS painting algorithm paints negative-z-index descendants at step 3, but
+ * the backgrounds of in-flow, non-positioned block boxes at step 4 — i.e. AFTER.
+ * This backdrop is a child of the lists page container, so ANY opaque
+ * `bg-background` on that container (or on any plain block ancestor) would paint
+ * straight over it and the gradient would never be seen. That is exactly what
+ * happened to the orb this replaced, which is why it read as "casi invisible".
+ * At `z-0` the backdrop is a positioned descendant painted at step 8, above
+ * those block backgrounds; the page content then needs `relative z-10` to stay
+ * on top of it. Ownership of the opaque base moves here: the first child below
+ * paints `bg-background` across the full viewport, so the page container must
+ * NOT repeat it.
  */
 export function ListsBackdrop() {
   return (
     <div
-      className="fixed inset-0 -z-10 overflow-hidden pointer-events-none"
+      className="fixed inset-0 z-0 overflow-hidden pointer-events-none"
       aria-hidden="true"
     >
       <div className="absolute inset-0 bg-background" />
       {/* Primary green (--color-primary: hsl(142 72% 45%)) at low alpha, using
           the same raw-hsl arbitrary-value syntax as AuthBackground.tsx. */}
-      <div className="absolute inset-0 bg-[radial-gradient(85%_50%_at_50%_106%,hsl(142_72%_45%/0.10)_0%,transparent_72%)]" />
+      {/* Alpha came down from 0.10: the gradient was calibrated while it was
+          still buried under an opaque background, so the first time it actually
+          rendered it read far stronger than intended.
+
+          Two sizes, because the radii are percentages OF THE VIEWPORT and the
+          same numbers describe different shapes on different screens. At 85%
+          of a ~390px phone the ellipse is only ~330px across — squat, and
+          bunched into the very bottom edge. The mobile variant is wider than
+          the screen so the wash spans it fully, and taller so it climbs into
+          the content instead of hugging the bottom. Slightly higher alpha
+          there too: the same colour spread over less surface reads weaker. */}
+      <div className="absolute inset-0 bg-[radial-gradient(150%_55%_at_50%_104%,hsl(142_72%_45%/0.07)_0%,transparent_75%)] md:bg-[radial-gradient(85%_50%_at_50%_106%,hsl(142_72%_45%/0.055)_0%,transparent_72%)]" />
     </div>
   );
 }

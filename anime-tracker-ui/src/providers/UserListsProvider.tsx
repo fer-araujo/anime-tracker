@@ -12,6 +12,9 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 import { fetchAnimeBatch } from "@/lib/fetchAnimeBatch";
+import { buildStatusBreakdown } from "@/lib/lists";
+import type { ListStatusSlice } from "@/types/lists";
+import type { TrackingStatus } from "@/types/anime";
 
 export type UserList = {
   id: string;
@@ -21,6 +24,8 @@ export type UserList = {
   anime_ids: number[];
   poster_anime_ids: number[];
   poster_urls: (string | null)[];
+  /** How the list's animes split across tracking statuses; drives the card's bar. */
+  status_breakdown: ListStatusSlice[];
 };
 
 export type UserListsContextValue = {
@@ -75,6 +80,24 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // One query for the whole page, not one per list: `user_anime` holds every
+    // anime this user tracks, so a single fetch plus a local lookup covers all
+    // the lists at once. The tracking status lives here and nowhere in
+    // `user_lists`, which is why /lists could not draw a status bar before.
+    // A failure here is not fatal — the cards simply render without their bar.
+    const { data: trackedRows } = await supabase
+      .from("user_anime")
+      .select("anime_id, status")
+      .eq("user_id", user.id);
+
+    const statusByAnimeId = new Map<number, TrackingStatus>();
+    for (const row of (trackedRows ?? []) as {
+      anime_id: number;
+      status: TrackingStatus | null;
+    }[]) {
+      if (row.status) statusByAnimeId.set(row.anime_id, row.status);
+    }
+
     const mapped: UserList[] = (raw ?? []).map(
       (l: {
         id: string;
@@ -95,6 +118,7 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
           // the ids come from a query that already loaded every entry.
           poster_anime_ids: allAnimeIds.slice(0, 4),
           poster_urls: [],
+          status_breakdown: buildStatusBreakdown(statusByAnimeId, allAnimeIds),
         };
       },
     );

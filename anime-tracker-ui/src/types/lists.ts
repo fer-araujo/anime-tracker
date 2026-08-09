@@ -1,6 +1,9 @@
+import type { TrackingStatus } from "@/types/anime";
+
 /**
  * Shared shapes for the lists surface. Kept out of the components so the card,
- * the banner and the page shell all agree on the same vocabulary.
+ * the banner, the collection detail and the page shell all agree on the same
+ * vocabulary.
  */
 
 /** The five colours CreateListDialog offers and `user_lists.color` stores. */
@@ -12,8 +15,6 @@ export type ListAccentKey = "blue" | "purple" | "emerald" | "amber" | "pink";
  * `bg-${color}-500` would be purged from the bundle and render as nothing.
  */
 export type ListAccent = {
-  /** Hairline at the top edge of the card. */
-  line: string;
   /** Tint mixed into the readability scrim, so one element carries identity and contrast. */
   tint: string;
   /** Radial wash for the empty state, where there are no posters to tint. */
@@ -24,3 +25,12 @@ export type ListAccent = {
 
 /** Which mosaic composition a card uses, derived from how many posters exist. */
 export type MosaicLayout = "empty" | "one" | "two" | "three" | "four";
+
+/**
+ * One segment of a list's status bar. The collection detail already rendered
+ * this shape from a local `useMemo`; now both surfaces read the same type.
+ */
+export type ListStatusSlice = {
+  status: TrackingStatus;
+  count: number;
+};
