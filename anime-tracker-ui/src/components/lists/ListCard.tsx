@@ -112,7 +112,14 @@ export function ListCard({
           artwork still arguing with the list name; it now stays heavy enough that
           the title wins everywhere and the covers stay a backdrop. */}
       <div className="absolute inset-0 z-[1] pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/15" />
+        {/* The top stop went from /15 to /50. The accent gradient below runs
+            `to-bl`, so its colour peaks at the TOP-RIGHT — exactly where the
+            veil used to be thinnest. That pairing is what made the tint read as
+            loud on real artwork even at a low alpha: the two were fighting at
+            the same corner. Darkening the top is what "más oscuro, menos color"
+            actually needs; lowering the tint alone would have left the corner
+            just as bright. */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 to-black/50" />
         <div
           className={`absolute inset-0 bg-gradient-to-bl ${accent.tint} to-transparent`}
         />

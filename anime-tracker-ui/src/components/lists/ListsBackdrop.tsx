@@ -45,7 +45,10 @@ export function ListsBackdrop() {
       <div className="absolute inset-0 bg-background" />
       {/* Primary green (--color-primary: hsl(142 72% 45%)) at low alpha, using
           the same raw-hsl arbitrary-value syntax as AuthBackground.tsx. */}
-      <div className="absolute inset-0 bg-[radial-gradient(85%_50%_at_50%_106%,hsl(142_72%_45%/0.10)_0%,transparent_72%)]" />
+      {/* Alpha came down from 0.10: the gradient was calibrated while it was
+          still buried under an opaque background, so the first time it actually
+          rendered it read far stronger than intended. */}
+      <div className="absolute inset-0 bg-[radial-gradient(85%_50%_at_50%_106%,hsl(142_72%_45%/0.055)_0%,transparent_72%)]" />
     </div>
   );
 }

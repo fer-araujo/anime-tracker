@@ -169,7 +169,7 @@ export function CollectionDetail({
         {/* Also on the early returns: without it the backdrop pops in only once
             the data lands, which reads as the page changing colour mid-load. */}
         <ListsBackdrop />
-        <div className="max-w-7xl mx-auto">
+        <div className="relative z-10 max-w-7xl mx-auto">
           <div className="h-8 w-48 bg-white/5 rounded-lg animate-pulse mb-8" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -185,7 +185,7 @@ export function CollectionDetail({
     return (
       <div className="min-h-screen pt-24 px-6 md:px-10 lg:px-16 pb-16 bg-background">
         <ListsBackdrop />
-        <div className="max-w-7xl mx-auto">
+        <div className="relative z-10 max-w-7xl mx-auto">
           <Link
             href="/lists"
             className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors mb-6"
@@ -209,7 +209,7 @@ export function CollectionDetail({
     <div className="min-h-screen pt-24 px-6 md:px-10 lg:px-16 pb-16 bg-background">
       <ListsBackdrop />
 
-      <div className="max-w-7xl mx-auto">
+      <div className="relative z-10 max-w-7xl mx-auto">
         <Link
           href="/lists"
           className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors mb-6"
