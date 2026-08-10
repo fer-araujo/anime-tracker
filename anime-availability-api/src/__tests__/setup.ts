@@ -78,9 +78,122 @@ function mockFetch(url: string | URL | Request, init?: RequestInit) {
   );
 }
 
+/** Minimal media record shared by the mock branches below. */
+function mockMedia(id: number, overrides: Record<string, unknown> = {}) {
+  return {
+    id,
+    title: { romaji: `Anime ${id}`, english: `Anime ${id}`, native: "テスト" },
+    coverImage: {
+      extraLarge: `https://example.com/cover${id}.jpg`,
+      large: null,
+    },
+    bannerImage: null,
+    description: "<p>Test</p>",
+    episodes: 12,
+    duration: 24,
+    status: "RELEASING",
+    season: "WINTER",
+    seasonYear: 2024,
+    format: "TV",
+    genres: ["Action"],
+    averageScore: 75,
+    popularity: 1000,
+    favourites: 500,
+    source: "MANGA",
+    isAdult: false,
+    studios: { edges: [{ isMain: true, node: { name: "Studio" } }] },
+    startDate: { year: 2024, month: 1, day: 1 },
+    nextAiringEpisode: null,
+    trailer: null,
+    externalLinks: [],
+    relations: { edges: [] },
+    ...overrides,
+  };
+}
+
 function mockAniListResponse(url: string, init?: RequestInit): unknown {
   const body = init?.body ? JSON.parse(init.body as string) : {};
   const query = (body.query || "") as string;
+
+  // Season archive: four aliased Page selections in one document. Must be
+  // matched before the generic POPULARITY_DESC branch below, which would
+  // otherwise swallow it and hand back an un-aliased shape.
+  if (/WINTER:\s*Page\(/.test(query)) {
+    const data: Record<string, unknown> = {};
+    for (const [i, season] of ["WINTER", "SPRING", "SUMMER", "FALL"].entries()) {
+      data[season] = {
+        pageInfo: { total: 90 + i },
+        media: [
+          {
+            id: 100 + i,
+            title: { romaji: `${season} Hit`, english: `${season} Hit` },
+            coverImage: {
+              extraLarge: `https://example.com/${season}.jpg`,
+              large: null,
+            },
+            bannerImage: null,
+          },
+        ],
+      };
+    }
+    return { data };
+  }
+
+  // Weekly airing schedule. Timestamps are derived from the variables the
+  // controller computed, so entries always land inside the window it asked
+  // for — a fixed date would fall outside it the moment the clock moved.
+  if (query.includes("airingSchedules")) {
+    const greater = Number(body.variables?.greater ?? 0);
+    const lesser = Number(body.variables?.lesser ?? 0);
+    const span = Math.max(lesser - greater, 1);
+
+    return {
+      data: {
+        Page: {
+          pageInfo: { hasNextPage: false },
+          airingSchedules: [
+            // First and last day of the window, plus a repeat of the same
+            // series later in the week — the case a naive dedupe would drop.
+            { id: 1, airingAt: greater + 3600, episode: 5, media: mockMedia(31) },
+            {
+              id: 2,
+              airingAt: greater + span - 3600,
+              episode: 6,
+              media: mockMedia(32),
+            },
+            {
+              id: 3,
+              airingAt: greater + span - 1800,
+              episode: 6,
+              media: mockMedia(31),
+            },
+          ],
+        },
+      },
+    };
+  }
+
+  // Upcoming media, feeding both `type=coming` and `type=tba`. The mix is the
+  // point: one entry has a real premiere date, the other only a year.
+  if (query.includes("NOT_YET_RELEASED")) {
+    return {
+      data: {
+        Page: {
+          pageInfo: { hasNextPage: false },
+          media: [
+            mockMedia(41, {
+              status: "NOT_YET_RELEASED",
+              startDate: { year: 2027, month: 1, day: 10 },
+            }),
+            mockMedia(42, {
+              status: "NOT_YET_RELEASED",
+              startDate: { year: 2027, month: null, day: null },
+            }),
+          ],
+        },
+      },
+    };
+  }
 
   // Batch anime query (aliases: a21, a22, a23)
   if (query.includes("a") && /a\d+:/.test(query)) {

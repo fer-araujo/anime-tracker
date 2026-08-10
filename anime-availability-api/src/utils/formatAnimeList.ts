@@ -16,6 +16,7 @@ import {
 } from "../services/shikimori.service.js";
 import { htmlToText, shorten } from "./sanitize.js";
 import { extractStudio } from "./extractStudio.js";
+import { extractContinuationOf } from "./extractRelations.js";
 import { tmdbKindsFor, type TmdbKind } from "./animeFormat.js";
 
 const limit = pLimit(10);
@@ -166,6 +167,7 @@ export async function formatAnimeList(
         const synopsisShort = shorten(synopsis, SYNOPSIS_SHORT_LENGTH);
         const synopsisLang = synopsis ? (hasSpanish ? "es" : "en") : null;
         const mainStudio = extractStudio(anime.studios);
+        const continuationOf = extractContinuationOf(anime.relations);
 
         const nextEpisodeAtISO = anime.nextAiringEpisode?.airingAt
           ? new Date(anime.nextAiringEpisode.airingAt * 1000).toISOString()
@@ -209,6 +211,31 @@ export async function formatAnimeList(
                 ? `https://www.youtube.com/watch?v=${anime.trailer.id}`
                 : null,
             isAdult: anime.isAdult ?? false,
+            // What the card prints under the title when there is no prequel to
+            // name: "Source • Manga". Derived here rather than in the client so
+            // both stay one concept in one place.
+            source: anime.source ?? null,
+            continuationOf,
+            // Ranking inputs. `popularity` drives the "#N" position and
+            // `favourites` the heart count; both are absolute AniList numbers,
+            // so whoever renders a rank computes it against the set it is
+            // showing — a global rank means nothing inside one season.
+            popularity: anime.popularity ?? null,
+            favourites: anime.favourites ?? null,
+            // Official and streaming links straight from AniList, `color` and
+            // `icon` included so a client can brand them without keeping its
+            // own site-to-colour table. Distinct from `providers`: these are
+            // links AniList happens to store, while `providers` is a resolved
+            // answer about where the title is watchable in a given country.
+            externalLinks: (anime.externalLinks ?? [])
+              .filter((l) => l?.url)
+              .map((l) => ({
+                site: l.site ?? null,
+                url: l.url as string,
+                type: l.type ?? null,
+                color: l.color ?? null,
+                icon: l.icon ?? null,
+              })),
             nextEpisode: anime.nextAiringEpisode?.episode ?? null,
             nextEpisodeAt: nextEpisodeAtISO,
             status:

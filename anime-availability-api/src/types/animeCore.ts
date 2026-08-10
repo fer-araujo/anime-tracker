@@ -110,7 +110,44 @@ export type AniMedia = {
       | null;
     nodes?: { name?: string | null }[] | null;
   } | null;
-  externalLinks?: { site?: string | null; url?: string | null }[] | null;
+  /**
+   * `color` and `icon` are what turn these into recognisable brand chips
+   * instead of a row of identical grey links; AniList ships both, so there is
+   * no reason to maintain a local mapping of "Crunchyroll → orange".
+   */
+  externalLinks?:
+    | {
+        site?: string | null;
+        url?: string | null;
+        type?: string | null;
+        color?: string | null;
+        icon?: string | null;
+      }[]
+    | null;
   type?: string | null;
   trailer?: { id?: string | null; site?: string | null } | null;
+  /** What the anime was adapted from: MANGA, LIGHT_NOVEL, ORIGINAL, … */
+  source?: string | null;
+  relations?: {
+    edges?:
+      | {
+          relationType?: string | null;
+          node?: {
+            id?: number | null;
+            type?: string | null;
+            title?: {
+              romaji?: string | null;
+              english?: string | null;
+              native?: string | null;
+            } | null;
+          } | null;
+        }[]
+      | null;
+  } | null;
+};
+
+/** A neighbouring entry in the same franchise, already reduced to what a card shows. */
+export type RelatedMediaRef = {
+  id: number;
+  title: string;
 };
