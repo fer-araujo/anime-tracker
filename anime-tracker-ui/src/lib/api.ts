@@ -75,6 +75,7 @@ export async function fetchSeason(opts?: {
     return {
       meta: { country: "", season: "", year: 0, total: 0, source: "" },
       data: [],
+      leftovers: [],
     };
   }
   return parsed.data as SeasonResp;

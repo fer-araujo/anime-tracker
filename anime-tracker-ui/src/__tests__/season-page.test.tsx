@@ -7,7 +7,7 @@ import {
   filterBySearch,
   filterByGenre,
   sortAnime,
-} from "@/components/season/Season";
+} from "@/lib/season";
 import SeasonPage from "@/components/season/Season";
 
 /* -------------------------------------------------------------------------- */

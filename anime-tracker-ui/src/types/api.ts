@@ -10,6 +10,8 @@ export type SeasonResp = {
     source: string;
   };
   data: Anime[];
+  /** Still-airing series from an earlier season; see SeasonRespSchema below. */
+  leftovers: Anime[];
 };
 
 /* -------------------------------------------------------------------------- */
@@ -61,6 +63,10 @@ export const SeasonRespSchema = z.object({
     source: z.string().optional().default(""),
   }),
   data: z.array(z.any()),
+  // Series still airing from an earlier season. Defaulted rather than required:
+  // the key only appeared with the season-density release, and a client that
+  // insists on it would reject every cached response older than that.
+  leftovers: z.array(z.any()).optional().default([]),
 });
 
 /* -------------------------------------------------------------------------- */
