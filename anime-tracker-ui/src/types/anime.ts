@@ -1,3 +1,25 @@
+/** A neighbouring entry in the same franchise, reduced to what a card labels. */
+export type RelatedMediaRef = {
+  id: number;
+  title: string;
+};
+
+/**
+ * An official or streaming link as AniList stores it.
+ *
+ * Distinct from `Anime["providers"]`: these are links AniList happens to have,
+ * while `providers` is a resolved answer about where the title is watchable in
+ * a given country. `color` and `icon` come from AniList too, so nothing here
+ * needs a local site-to-brand table.
+ */
+export type ExternalLink = {
+  site: string | null;
+  url: string;
+  type: string | null;
+  color: string | null;
+  icon: string | null;
+};
+
 // --- NUEVOS TIPOS PARA LA PÁGINA DE DETALLES ---
 export type FranchiseItem = {
   id: number;
@@ -68,6 +90,16 @@ export type Anime = {
       | "COMPLETED";
     studio?: string | null;
     type?: string | null; // TV / ONA / Movie / OVA / Special ...
+    /** What it was adapted from: MANGA, LIGHT_NOVEL, ORIGINAL, … */
+    source?: string | null;
+    /**
+     * The earlier entry this one continues, resolved by the API from AniList's
+     * PREQUEL edge (falling back to PARENT for spin-offs). Pre-resolved on
+     * purpose: picking the right edge is subtle enough that two
+     * implementations would eventually disagree.
+     */
+    continuationOf?: RelatedMediaRef | null;
+    externalLinks?: ExternalLink[];
     trailer?: string | null;
     episodes?: number | null;
     duration?: number | null; // <-- NUEVO

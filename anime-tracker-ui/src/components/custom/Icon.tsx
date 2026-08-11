@@ -21,6 +21,7 @@ export type IconName =
   | "X"
   | "Play"
   | "List"
+  | "LayoutGrid"
   | "AlertCircle"
   | "Check"
   | "Trash2"
@@ -189,6 +190,18 @@ const paths: Record<IconName, { viewBox: string; children: ReactElement[] }> = {
   Play: {
     viewBox: "0 0 24 24",
     children: [<path key="play" d="M8 5v14l11-7z" fill="currentColor" />],
+  },
+  // Paired with List for the season view toggle: four equal panes read as
+  // "grid" at 16px, where a 3x3 of dots turns to mush.
+  LayoutGrid: {
+    viewBox: "0 0 24 24",
+    children: [
+      <path
+        key="grid"
+        d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"
+        fill="currentColor"
+      />,
+    ],
   },
   List: {
     viewBox: "0 0 24 24",

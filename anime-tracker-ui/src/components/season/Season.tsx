@@ -5,7 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { fetchSeason } from "@/lib/api";
 import type { Anime } from "@/types/anime";
-import type { SeasonCatalogue, SeasonFormatKey } from "@/types/season";
+import type {
+  SeasonCatalogue,
+  SeasonFormatKey,
+  SeasonViewMode,
+} from "@/types/season";
 import {
   buildFormatCounts,
   buildSeasonOptions,
@@ -16,6 +20,7 @@ import {
   getDefaultSeason,
   getDefaultYear,
   normalizeFormatKey,
+  normalizeViewMode,
   pickBackdrop,
   seasonLabel,
   selectByFormat,
@@ -24,6 +29,8 @@ import {
 } from "@/lib/season";
 import { TrackableAnimeCard } from "@/components/season/TrackableAnimeCard";
 import { SeasonFormatChips } from "@/components/season/SeasonFormatChips";
+import { SeasonListRow } from "@/components/season/SeasonListRow";
+import { SeasonViewToggle } from "@/components/season/SeasonViewToggle";
 import { useBatchAnimeEntries } from "@/hooks/useBatchAnimeEntries";
 import { useUserLists } from "@/hooks/useUserLists";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
@@ -134,6 +141,8 @@ export default function SeasonPage({
     [catalogue, activeFormat],
   );
 
+  const viewMode = normalizeViewMode(searchParams.get("view"));
+
   /* ---- Computed values ---- */
   // Genres come from the scoped list, not the whole season: offering a genre
   // that only exists among the movies while the TV chip is active produces a
@@ -209,6 +218,18 @@ export default function SeasonPage({
       const p = new URLSearchParams(searchParams.toString());
       if (key === "all") p.delete("format");
       else p.set("format", key);
+      router.replace(`/season?${p.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
+
+  // In the URL like every other filter, so the view survives a refresh and
+  // travels with a shared link. `grid` is the default and leaves no parameter.
+  const handleViewChange = useCallback(
+    (mode: SeasonViewMode) => {
+      const p = new URLSearchParams(searchParams.toString());
+      if (mode === "grid") p.delete("view");
+      else p.set("view", mode);
       router.replace(`/season?${p.toString()}`, { scroll: false });
     },
     [router, searchParams],
@@ -393,6 +414,8 @@ export default function SeasonPage({
 
             {/* Botones de Acción Rápida */}
             <div className="flex items-center gap-2">
+              <SeasonViewToggle value={viewMode} onChange={handleViewChange} />
+
               <button
                 type="button"
                 onClick={() => setGenrePanelOpen((prev) => !prev)}
@@ -464,18 +487,33 @@ export default function SeasonPage({
         {/* ===== 4. GRID DE ANIMES (Sin envolturas intrusivas) ===== */}
         {filtered.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
-              {paginated.map((anime) => (
-                <TrackableAnimeCard
-                  key={anime.id.anilist}
-                  anime={anime}
-                  onOpen={handleCardOpen}
-                  animeEntry={entriesMap.get(anime.id.anilist) ?? null}
-                  listCount={listCountMap.get(anime.id.anilist) ?? 0}
-                  onTrackingChange={handleTrackingChange}
-                />
-              ))}
-            </div>
+            {viewMode === "list" ? (
+              // One column on phones — the breakpoint this view was built for —
+              // and two from tablet up, where a full-width row would leave half
+              // the line empty.
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-3">
+                {paginated.map((anime) => (
+                  <SeasonListRow
+                    key={anime.id.anilist}
+                    anime={anime}
+                    onOpen={handleCardOpen}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
+                {paginated.map((anime) => (
+                  <TrackableAnimeCard
+                    key={anime.id.anilist}
+                    anime={anime}
+                    onOpen={handleCardOpen}
+                    animeEntry={entriesMap.get(anime.id.anilist) ?? null}
+                    listCount={listCountMap.get(anime.id.anilist) ?? 0}
+                    onTrackingChange={handleTrackingChange}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* ===== PAGINACIÓN ===== */}
             <div className="mt-12">
