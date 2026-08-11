@@ -43,6 +43,7 @@ export function AnimeCard({
   }, [animeEntry?.favorite]);
 
   const genres = anime.meta?.genres ?? [];
+  const continuationOf = anime.meta?.continuationOf ?? null;
   const ADULT_GENRES = new Set(["Hentai", "Ecchi"]);
   const adultByGenre = genres.some((g) => ADULT_GENRES.has(g));
   const isAdult = Boolean(anime.meta?.isAdult || adultByGenre);
@@ -168,6 +169,24 @@ export function AnimeCard({
                   ) : null}
                 </span>
               </div>
+              {/* What this entry continues.
+                  Its own line, not squeezed into the studio row: that row is
+                  `[estudio][tipo · eps]` and long studio names already truncate
+                  there without anything added ("TOHO animation STUDI…").
+                  No label and no colour — the title usually says "Season 2"
+                  already, so the useful part is *which* entry it follows, and
+                  at the frequency sequels appear a badge would read as noise. */}
+              {continuationOf && (
+                <p
+                  className="text-xs text-white/60 flex items-baseline gap-1 min-w-0"
+                  title={`Continúa ${continuationOf.title}`}
+                >
+                  <span className="shrink-0" aria-hidden="true">
+                    ↳
+                  </span>
+                  <span className="truncate">{continuationOf.title}</span>
+                </p>
+              )}
               {anime.meta?.nextAiring && (
                 <p className="text-xs text-white/70">
                   Next {anime.meta.nextAiring}
@@ -193,7 +212,17 @@ export function AnimeCard({
               >
                 <button
                   type="button"
-                  className="mt-2 px-3 w-full text-left text-[0.78rem] leading-[1.25rem] text-white/90 [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 rounded-sm"
+                  className={cn(
+                    "mt-2 px-3 w-full text-left text-[0.78rem] leading-[1.25rem] text-white/90 [display:-webkit-box] [-webkit-box-orient:vertical] overflow-hidden drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 rounded-sm",
+                    // The continuation line pays for itself out of the synopsis
+                    // rather than out of the card's height. Without this the
+                    // block below — provider badges, which run to two rows on
+                    // titles carried by five services — gets pushed down and
+                    // the overlay reflows only on sequels.
+                    continuationOf
+                      ? "[-webkit-line-clamp:2]"
+                      : "[-webkit-line-clamp:3]",
+                  )}
                 >
                   {anime.meta.synopsisShort}
                 </button>
