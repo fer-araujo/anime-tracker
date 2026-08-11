@@ -5,6 +5,7 @@ import pLimit from "p-limit";
 import { logger } from "../utils/logger.js";
 import { ENV } from "../config/env.js";
 import { ANIME_DETAILS_GQL } from "../graphql/queries/animeDetails.gql.js";
+import { ANIME_BATCH_GQL } from "../graphql/queries/animeBatch.gql.js";
 // Ya no necesitamos normalizeTitle aquí
 import { htmlToText, shorten } from "../utils/sanitize.js";
 import { setCacheControl } from "../utils/cache.js";
@@ -276,7 +277,7 @@ export async function getAnimeRating(
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Batch anime details — GraphQL aliases (max 50 IDs)                        */
+/*  Batch anime details — one id_in query (max 50 IDs)                        */
 /* -------------------------------------------------------------------------- */
 
 const BATCH_MAX_IDS = 50;
@@ -300,23 +301,14 @@ export async function getAnimeBatch(
       "MX"
     ).toUpperCase();
 
-    const aliases = uniqueIds
-      .map((id) => `a${id}: Media(id: ${id}, type: ANIME) { id title { romaji english native } coverImage { extraLarge large } bannerImage description episodes duration status season seasonYear format genres averageScore isAdult studios(isMain: true) { edges { isMain node { name } } } startDate { year month day } nextAiringEpisode { episode airingAt } trailer { id site } }`)
-      .join("\n");
-
-    const gql = `query { ${aliases} }`;
-    const aniJson = await anilistFetch(gql, {});
+    const aniJson = await anilistFetch(ANIME_BATCH_GQL, { ids: uniqueIds });
 
     if (!aniJson?.data) {
       return res.status(503).json({ error: "AniList unavailable" });
     }
 
-    // AniList returns { a1: Media, a2: Media, ... } — iterate by id instead of key lookup
-    const idSet = new Set(uniqueIds);
-    const medias = (Object.values(aniJson.data) as (AniMedia | null)[]).filter(
-      (m): m is AniMedia =>
-        !!m && typeof m === "object" && typeof m.id === "number" && idSet.has(m.id),
-    );
+    const medias = ((aniJson.data as { Page?: { media?: AniMedia[] } }).Page
+      ?.media ?? []) as AniMedia[];
 
     // This endpoint used to hand-roll its own mapping, and that is precisely
     // why it shipped `providers: []` for every anime — a hardcoded empty list
