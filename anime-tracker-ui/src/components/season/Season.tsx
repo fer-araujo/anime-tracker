@@ -5,7 +5,25 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { fetchSeason } from "@/lib/api";
 import type { Anime } from "@/types/anime";
+import type { SeasonCatalogue, SeasonFormatKey } from "@/types/season";
+import {
+  buildFormatCounts,
+  buildSeasonOptions,
+  buildYearOptions,
+  describeResults,
+  filterByGenre,
+  filterBySearch,
+  getDefaultSeason,
+  getDefaultYear,
+  normalizeFormatKey,
+  pickBackdrop,
+  seasonLabel,
+  selectByFormat,
+  sortAnime,
+  type SortKey,
+} from "@/lib/season";
 import { TrackableAnimeCard } from "@/components/season/TrackableAnimeCard";
+import { SeasonFormatChips } from "@/components/season/SeasonFormatChips";
 import { useBatchAnimeEntries } from "@/hooks/useBatchAnimeEntries";
 import { useUserLists } from "@/hooks/useUserLists";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
@@ -14,57 +32,11 @@ import { Pagination } from "@/components/custom/Pagination";
 import Icon from "@/components/custom/Icon";
 import { cn } from "@/lib/utils";
 
-/* -------------------------------------------------------------------------- */
-/* Filter/sort helpers                                                       */
-/* -------------------------------------------------------------------------- */
-
-export function filterBySearch(anime: Anime[], query: string): Anime[] {
-  if (!query.trim()) return anime;
-  const q = query.toLowerCase();
-  return anime.filter((a) => a.title.toLowerCase().includes(q));
-}
-
-export function filterByGenre(anime: Anime[], genres: Set<string>): Anime[] {
-  if (genres.size === 0) return anime;
-  return anime.filter((a) => a.meta?.genres?.some((g) => genres.has(g)));
-}
-
-export type SortKey = "rating" | "popularity" | "title";
-
 const SORT_OPTIONS: SelectOption[] = [
   { value: "rating", label: "Rating" },
   { value: "popularity", label: "Popularidad" },
   { value: "title", label: "Título (A-Z)" },
 ];
-
-export function sortAnime(anime: Anime[], sortBy: SortKey): Anime[] {
-  return [...anime].sort((a, b) => {
-    if (sortBy === "title") {
-      return a.title.localeCompare(b.title);
-    }
-    const aVal = sortBy === "rating" ? a.meta?.rating : a.meta?.popularity;
-    const bVal = sortBy === "rating" ? b.meta?.rating : b.meta?.popularity;
-    return (bVal ?? -Infinity) - (aVal ?? -Infinity);
-  });
-}
-
-export function pickBackdrop(animeList: Anime[]): string | null {
-  const sorted = [...animeList].sort(
-    (a, b) => (b.meta?.rating ?? -Infinity) - (a.meta?.rating ?? -Infinity),
-  );
-  return sorted.find((a) => a.images?.backdrop)?.images?.backdrop ?? null;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Season helpers                                                            */
-/* -------------------------------------------------------------------------- */
-
-const SEASON_NAMES: Record<string, string> = {
-  WINTER: "Invierno",
-  SPRING: "Primavera",
-  SUMMER: "Verano",
-  FALL: "Otoño",
-};
 
 // Colores base sutiles para el resplandor de temporada
 const SEASON_COLORS: Record<string, string> = {
@@ -73,41 +45,6 @@ const SEASON_COLORS: Record<string, string> = {
   SUMMER: "from-cyan-900/20 via-background to-background",
   FALL: "from-orange-900/20 via-background to-background",
 };
-
-function seasonLabel(season: string): string {
-  if (season === "ALL") return "Todo el año";
-  return SEASON_NAMES[season] ?? season;
-}
-
-function buildSeasonOptions(): SelectOption[] {
-  return [
-    { value: "ALL", label: "Todo el año" },
-    ...["WINTER", "SPRING", "SUMMER", "FALL"].map((s) => ({
-      value: s,
-      label: seasonLabel(s),
-    })),
-  ];
-}
-
-function buildYearOptions(): SelectOption[] {
-  const current = new Date().getFullYear();
-  return Array.from({ length: 7 }, (_, i) => {
-    const y = current - 5 + i;
-    return { value: String(y), label: String(y) };
-  });
-}
-
-function getDefaultYear(): string {
-  return String(new Date().getFullYear());
-}
-
-function getDefaultSeason(): string {
-  const m = new Date().getMonth();
-  if (m >= 0 && m <= 2) return "WINTER";
-  if (m >= 3 && m <= 5) return "SPRING";
-  if (m >= 6 && m <= 8) return "SUMMER";
-  return "FALL";
-}
 
 /* -------------------------------------------------------------------------- */
 /* SeasonPage                                                                */
@@ -130,7 +67,10 @@ export default function SeasonPage({
     (searchParams.get("season") ?? seasonProp ?? getDefaultSeason()).toUpperCase();
 
   /* ---- State ---- */
-  const [animeList, setAnimeList] = useState<Anime[]>([]);
+  const [catalogue, setCatalogue] = useState<SeasonCatalogue>({
+    seasonal: [],
+    leftovers: [],
+  });
   const [seasonMeta, setSeasonMeta] = useState<{
     season: string;
     year: number;
@@ -156,8 +96,10 @@ export default function SeasonPage({
       if (y) opts.year = Number(y);
       if (s) opts.season = s;
       const resp = await fetchSeason(opts);
-      const data = resp.data as Anime[];
-      setAnimeList(data);
+      setCatalogue({
+        seasonal: resp.data as Anime[],
+        leftovers: (resp.leftovers ?? []) as Anime[],
+      });
       setSeasonMeta({ season: resp.meta.season, year: resp.meta.year });
       setSelectedGenres(new Set());
       setSearchQuery("");
@@ -175,24 +117,44 @@ export default function SeasonPage({
     fetchData(urlYear, urlSeason);
   }, [urlYear, urlSeason, fetchData]);
 
+  /* ---- Format chips ----
+   * The chip lives in the URL next to `year` and `season` so a filtered season
+   * survives a refresh and travels with a shared link. It is normalised against
+   * the chips this response can actually serve: a bookmarked `?format=movie`
+   * for a season with no films would otherwise render an empty page with no
+   * control highlighted to explain why. */
+  const formatChips = useMemo(() => buildFormatCounts(catalogue), [catalogue]);
+  const activeFormat = normalizeFormatKey(
+    searchParams.get("format"),
+    formatChips,
+  );
+
+  const scoped = useMemo(
+    () => selectByFormat(catalogue, activeFormat),
+    [catalogue, activeFormat],
+  );
+
   /* ---- Computed values ---- */
+  // Genres come from the scoped list, not the whole season: offering a genre
+  // that only exists among the movies while the TV chip is active produces a
+  // filter combination that can only ever return nothing.
   const allGenres = useMemo(
-    () => [...new Set(animeList.flatMap((a) => a.meta?.genres ?? []))].sort(),
-    [animeList],
+    () => [...new Set(scoped.flatMap((a) => a.meta?.genres ?? []))].sort(),
+    [scoped],
   );
 
   const filtered = useMemo(() => {
-    let result = animeList;
+    let result = scoped;
     result = filterBySearch(result, searchQuery);
     result = filterByGenre(result, selectedGenres);
     result = sortAnime(result, sortBy);
     return result;
-  }, [animeList, searchQuery, selectedGenres, sortBy]);
+  }, [scoped, searchQuery, selectedGenres, sortBy]);
 
   // Reset to page 1 when data or filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [animeList, searchQuery, selectedGenres, sortBy]);
+  }, [scoped, searchQuery, selectedGenres, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = useMemo(
@@ -236,8 +198,21 @@ export default function SeasonPage({
     const p = new URLSearchParams(searchParams.toString());
     p.set("year", y);
     p.set("season", s);
+    // A format chip belongs to the season it was counted from. Carrying it
+    // across would land the user on a bucket that may not exist there.
+    p.delete("format");
     router.replace(`/season?${p.toString()}`, { scroll: false });
   }
+
+  const handleFormatChange = useCallback(
+    (key: SeasonFormatKey) => {
+      const p = new URLSearchParams(searchParams.toString());
+      if (key === "all") p.delete("format");
+      else p.set("format", key);
+      router.replace(`/season?${p.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
 
   /* ---- Handlers ---- */
   const handleCardOpen = useCallback(
@@ -274,7 +249,9 @@ export default function SeasonPage({
   /* ========================================================================= */
 
   const activeGlow = SEASON_COLORS[seasonMeta?.season ?? "WINTER"] || SEASON_COLORS.WINTER;
-  const heroImage = pickBackdrop(animeList);
+  // Always the season's own backdrop, never the scoped list's: the hero should
+  // not swap images every time a chip is pressed.
+  const heroImage = pickBackdrop(catalogue.seasonal);
   const seasonHeading = seasonMeta && seasonMeta.year > 0
     ? `${seasonLabel(seasonMeta.season || "Desconocida")} ${seasonMeta.year}`
     : "Temporada";
@@ -336,16 +313,32 @@ export default function SeasonPage({
             {seasonHeading}
           </h1>
           <p className="text-base md:text-lg text-white/60 mt-3 font-medium">
-            {animeList.length > 0 ? (
-              <>Mostrando <span className="text-white font-bold">{animeList.length}</span> lanzamientos.</>
+            {scoped.length > 0 ? (
+              <>Mostrando {describeResults(activeFormat, scoped.length)}.</>
             ) : (
               "No hay lanzamientos para esta temporada."
             )}
           </p>
         </motion.div>
 
+        {/* Formato: a ras del panel de filtros y de la rejilla de abajo, no de
+            los controles que el panel lleva dentro. Los tres comparten el
+            borde izquierdo del contenedor, así que la página conserva una sola
+            línea vertical en lugar de dos separadas por el padding del panel. */}
+        <SeasonFormatChips
+          chips={formatChips}
+          active={activeFormat}
+          onChange={handleFormatChange}
+          className="mb-6"
+        />
+
         {/* ===== 3. PANEL DE FILTROS ESTÁTICO Y LIMPIO (Cero ruido visual) ===== */}
-        <div className="mb-10 p-4 md:p-5 rounded-2xl bg-zinc-950/80 border border-white/5 shadow-xl">
+        {/* rounded-xl, no 2xl: el fondo de este panel es casi el mismo color
+            que la página, así que lo único que dibuja su borde izquierdo es la
+            curva de la esquina. A 20px esa curva se leía como sangría contra el
+            borde recto del título y de la rejilla; a 12px va a juego con los
+            pósters y con los chips. */}
+        <div className="mb-10 p-4 md:p-5 rounded-xl bg-zinc-950/80 border border-white/5 shadow-xl">
           {/* Fila principal de filtros con flex-wrap real para que los Dropdowns NO se corten */}
           <div className="flex flex-wrap items-center gap-3 md:gap-4">
             
