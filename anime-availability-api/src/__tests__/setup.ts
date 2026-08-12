@@ -201,6 +201,36 @@ function mockAniListResponse(url: string, init?: RequestInit): unknown {
     };
   }
 
+  // Step one of recommendations. Both halves of the condition are load-bearing:
+  // `id_in` separates it from the anime-details query, which also selects
+  // `recommendations(`; `recommendations(` separates it from the batch query,
+  // which also filters by `id_in` and would answer with media that carry no
+  // recommendations at all.
+  if (query.includes("recommendations(") && query.includes("id_in")) {
+    const ids = (body.variables?.ids ?? []) as number[];
+    return {
+      data: {
+        Page: {
+          media: ids.map((id) => ({
+            id,
+            recommendations: {
+              // Deterministic and overlapping: every seed recommends a shared
+              // candidate plus one of its own, so tests can exercise both
+              // accumulation across seeds and the per-seed cap.
+              nodes: [
+                { rating: 100, mediaRecommendation: { id: 900001 } },
+                { rating: 50, mediaRecommendation: { id: id * 10 } },
+                { rating: 25, mediaRecommendation: { id: id * 10 + 1 } },
+                { rating: 10, mediaRecommendation: { id: id * 10 + 2 } },
+                { rating: 5, mediaRecommendation: { id: id * 10 + 3 } },
+              ],
+            },
+          })),
+        },
+      },
+    };
+  }
+
   // Batch anime query. Now one `id_in` page instead of one alias per id — the
   // alias form blew AniList's complexity cap at fifteen ids. Unknown ids are
   // modelled the way the real API behaves: absent from the result, not an error.
