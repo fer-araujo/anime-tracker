@@ -78,6 +78,16 @@ export default function Header() {
           <Link href="/season" className="hover:text-white transition-colors">
             Temporada
           </Link>
+          {/* Unconditional on purpose. A nav entry that appears once the user
+              has enough favourites cannot explain why it was not there before,
+              and nothing else in the app would introduce the feature. The page
+              itself says what to do when it has nothing to show. */}
+          <Link
+            href="/recommendations"
+            className="hover:text-white transition-colors"
+          >
+            Recomendaciones
+          </Link>
         </nav>
 
         <div className="hidden md:flex flex-1" />
@@ -194,6 +204,13 @@ export default function Header() {
             className="text-left py-2 hover:text-white transition-colors"
           >
             Temporada
+          </Link>
+          <Link
+            href="/recommendations"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="text-left py-2 hover:text-white transition-colors"
+          >
+            Recomendaciones
           </Link>
 
           <div className="w-full h-[1px] bg-white/10 my-2" />
