@@ -24,7 +24,7 @@ type Props = {
  * Density is the other half. At phone width the grid fits about two cards on
  * screen; five rows fit in the same space, and each one says more.
  */
-export function SeasonListRow({ anime, onOpen }: Props) {
+export function AnimeListRow({ anime, onOpen }: Props) {
   const providers = uniqueNormalizedProviders(anime.providers);
   const continuationOf = anime.meta?.continuationOf ?? null;
   const poster = anime.images?.poster ?? null;

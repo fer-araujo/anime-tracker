@@ -3,8 +3,8 @@ import type {
   SeasonCatalogue,
   SeasonFormatCount,
   SeasonFormatKey,
-  SeasonViewMode,
 } from "@/types/season";
+import type { ViewMode } from "@/types/view";
 
 /**
  * Pure helpers for the season surface.
@@ -142,7 +142,7 @@ export function normalizeFormatKey(
 
 export function normalizeViewMode(
   raw: string | null | undefined,
-): SeasonViewMode {
+): ViewMode {
   return raw === "list" ? "list" : "grid";
 }
 

@@ -25,17 +25,6 @@ export type SeasonFormatCount = {
   count: number;
 };
 
-/**
- * How the season renders its results.
- *
- * `grid` is what the page has always done and stays the default. `list` exists
- * for phones: the card's information block is `hidden md:flex` behind a hover
- * overlay, so on a touch screen a poster grid shows a cover and a title and
- * nothing else — a row can show studio, episodes, score and providers with no
- * hover to depend on.
- */
-export type SeasonViewMode = "grid" | "list";
-
 /** Both halves of a season response, so callers pass one object around. */
 export type SeasonCatalogue = {
   seasonal: Anime[];
