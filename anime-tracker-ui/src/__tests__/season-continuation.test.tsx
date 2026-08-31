@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { Anime, RelatedMediaRef } from "@/types/anime";
 import { AnimeCard } from "@/components/AnimeCard";
-import { SeasonListRow } from "@/components/season/SeasonListRow";
+import { AnimeListRow } from "@/components/common/AnimeListRow";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), prefetch: vi.fn(), replace: vi.fn() }),
@@ -75,11 +75,11 @@ describe("AnimeCard — continuation line", () => {
   });
 });
 
-describe("SeasonListRow", () => {
+describe("AnimeListRow", () => {
   it("shows studio, episodes and providers without needing a hover", () => {
     // The whole reason the row exists: AnimeCard hides all of this behind
     // `md:group-hover`, which a touch screen never triggers.
-    render(<SeasonListRow anime={makeAnime(null)} />);
+    render(<AnimeListRow anime={makeAnime(null)} />);
 
     expect(screen.getByText(/Studio Bind/)).toBeInTheDocument();
     expect(screen.getByText(/12 eps/)).toBeInTheDocument();
@@ -87,20 +87,20 @@ describe("SeasonListRow", () => {
   });
 
   it("describes a continuation the same way the grid card does", () => {
-    render(<SeasonListRow anime={makeAnime(PREQUEL)} />);
+    render(<AnimeListRow anime={makeAnime(PREQUEL)} />);
     expect(screen.getByText("Mushoku Tensei Season 2")).toBeInTheDocument();
   });
 
   it("falls back to Pirata when nothing legal resolved", () => {
     const anime = { ...makeAnime(null), providers: [] };
-    render(<SeasonListRow anime={anime} />);
+    render(<AnimeListRow anime={anime} />);
     expect(screen.getByText("Pirata")).toBeInTheDocument();
   });
 
   it("opens the anime when activated", async () => {
     const onOpen = vi.fn();
     const anime = makeAnime(null);
-    render(<SeasonListRow anime={anime} onOpen={onOpen} />);
+    render(<AnimeListRow anime={anime} onOpen={onOpen} />);
 
     screen.getByRole("button", { name: /Ver detalles de/ }).click();
     expect(onOpen).toHaveBeenCalledWith(anime);

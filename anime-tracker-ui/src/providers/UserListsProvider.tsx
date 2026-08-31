@@ -15,6 +15,16 @@ import { fetchAnimeBatch } from "@/lib/fetchAnimeBatch";
 import { buildStatusBreakdown } from "@/lib/lists";
 import type { ListStatusSlice } from "@/types/lists";
 import type { TrackingStatus } from "@/types/anime";
+import type { RecommendationLibrary, Seed } from "@/types/recommendations";
+
+/** A score at or above this is a signal on its own, matching the API's rule. */
+const SEED_SCORE_THRESHOLD = 8;
+
+const EMPTY_LIBRARY: RecommendationLibrary = {
+  seeds: [],
+  excludedIds: [],
+  completedIds: [],
+};
 
 export type UserList = {
   id: string;
@@ -33,6 +43,15 @@ export type UserListsContextValue = {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  /**
+   * The same `user_anime` read, reshaped for the recommendation page.
+   *
+   * It rides along here rather than in its own hook because the query already
+   * runs on every page for every signed-in user — widening its `select` by two
+   * columns costs nothing, while a second hook would mean a second round-trip
+   * for data this one already had in hand.
+   */
+  library: RecommendationLibrary;
 };
 
 const UserListsContext = createContext<UserListsContextValue | null>(null);
@@ -54,12 +73,14 @@ const UserListsContext = createContext<UserListsContextValue | null>(null);
 export function UserListsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [lists, setLists] = useState<UserList[]>([]);
+  const [library, setLibrary] = useState<RecommendationLibrary>(EMPTY_LIBRARY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refetch = useCallback(async () => {
     if (!user) {
       setLists([]);
+      setLibrary(EMPTY_LIBRARY);
       setError(null);
       setLoading(false);
       return;
@@ -85,16 +106,34 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
     // the lists at once. The tracking status lives here and nowhere in
     // `user_lists`, which is why /lists could not draw a status bar before.
     // A failure here is not fatal — the cards simply render without their bar.
+    //
+    // `favorite` and `score` come along for the recommendation page. They are
+    // two more columns on a query that was already running, which is cheaper
+    // than any separate hook could be.
     const { data: trackedRows } = await supabase
       .from("user_anime")
-      .select("anime_id, status")
+      .select("anime_id, status, favorite, score")
       .eq("user_id", user.id);
 
-    const statusByAnimeId = new Map<number, TrackingStatus>();
-    for (const row of (trackedRows ?? []) as {
+    // Dismissed recommendations. Selected separately because they are not part
+    // of the library — a dismissal says "this means nothing to me", the exact
+    // opposite of what a `user_anime` row means, which is why it is its own
+    // table rather than a flag that every other query would have to remember
+    // to filter out.
+    const { data: dismissedRows } = await supabase
+      .from("user_dismissed_recommendations")
+      .select("anime_id")
+      .eq("user_id", user.id);
+
+    const tracked = (trackedRows ?? []) as {
       anime_id: number;
       status: TrackingStatus | null;
-    }[]) {
+      favorite: boolean | null;
+      score: number | null;
+    }[];
+
+    const statusByAnimeId = new Map<number, TrackingStatus>();
+    for (const row of tracked) {
       if (row.status) statusByAnimeId.set(row.anime_id, row.status);
     }
 
@@ -138,6 +177,36 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    const seeds: Seed[] = tracked
+      .filter(
+        (row) =>
+          row.favorite === true ||
+          (typeof row.score === "number" && row.score >= SEED_SCORE_THRESHOLD),
+      )
+      .map((row) => ({
+        animeId: row.anime_id,
+        favorite: row.favorite === true,
+        score: row.score,
+      }));
+
+    // Everything the user has already acted on. Tracked entries and list
+    // entries overlap heavily, and dismissals do not overlap either — the Set
+    // is what keeps the request body from carrying the same id three times.
+    const excluded = new Set<number>();
+    for (const row of tracked) excluded.add(row.anime_id);
+    for (const list of mapped) for (const id of list.anime_ids) excluded.add(id);
+    for (const row of (dismissedRows ?? []) as { anime_id: number }[]) {
+      excluded.add(row.anime_id);
+    }
+
+    setLibrary({
+      seeds,
+      excludedIds: [...excluded],
+      completedIds: tracked
+        .filter((row) => row.status === "completed")
+        .map((row) => row.anime_id),
+    });
+
     setLists(mapped);
     setLoading(false);
   }, [user]);
@@ -147,8 +216,8 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
   }, [refetch]);
 
   const value = useMemo(
-    () => ({ lists, loading, error, refetch }),
-    [lists, loading, error, refetch],
+    () => ({ lists, loading, error, refetch, library }),
+    [lists, loading, error, refetch, library],
   );
 
   return (

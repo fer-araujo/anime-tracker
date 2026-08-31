@@ -74,3 +74,18 @@ openspec/
 # Temp / scratch directories
 temp/
 src/app/temp/
+
+# Graphify — derived output, ~7 MB across ~1200 generated JSON/HTML files that
+# git compresses poorly and nobody reviews. `graphify update .` rebuilds all of
+# it from the source tree in seconds, AST-only, with no API key involved.
+#
+# The pattern is `graphify-out/*` and not `graphify-out/`: a trailing slash
+# stops git descending into the directory at all, so the exceptions below would
+# never be evaluated.
+graphify-out/*
+
+# …except the community labels. These come from `graphify label`, which does
+# call an LLM, so ignoring them would mean paying for the naming again on every
+# fresh clone.
+!graphify-out/.graphify_labels.json
+!graphify-out/.graphify_labels.json.sig

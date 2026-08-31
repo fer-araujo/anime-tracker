@@ -8,8 +8,8 @@ import type { Anime } from "@/types/anime";
 import type {
   SeasonCatalogue,
   SeasonFormatKey,
-  SeasonViewMode,
 } from "@/types/season";
+import type { ViewMode } from "@/types/view";
 import {
   buildFormatCounts,
   buildSeasonOptions,
@@ -29,8 +29,8 @@ import {
 } from "@/lib/season";
 import { TrackableAnimeCard } from "@/components/season/TrackableAnimeCard";
 import { SeasonFormatChips } from "@/components/season/SeasonFormatChips";
-import { SeasonListRow } from "@/components/season/SeasonListRow";
-import { SeasonViewToggle } from "@/components/season/SeasonViewToggle";
+import { AnimeListRow } from "@/components/common/AnimeListRow";
+import { ViewToggle } from "@/components/common/ViewToggle";
 import { useBatchAnimeEntries } from "@/hooks/useBatchAnimeEntries";
 import { useUserLists } from "@/hooks/useUserLists";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
@@ -226,7 +226,7 @@ export default function SeasonPage({
   // In the URL like every other filter, so the view survives a refresh and
   // travels with a shared link. `grid` is the default and leaves no parameter.
   const handleViewChange = useCallback(
-    (mode: SeasonViewMode) => {
+    (mode: ViewMode) => {
       const p = new URLSearchParams(searchParams.toString());
       if (mode === "grid") p.delete("view");
       else p.set("view", mode);
@@ -414,7 +414,7 @@ export default function SeasonPage({
 
             {/* Botones de Acción Rápida */}
             <div className="flex items-center gap-2">
-              <SeasonViewToggle value={viewMode} onChange={handleViewChange} />
+              <ViewToggle value={viewMode} onChange={handleViewChange} />
 
               <button
                 type="button"
@@ -493,7 +493,7 @@ export default function SeasonPage({
               // the line empty.
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-3">
                 {paginated.map((anime) => (
-                  <SeasonListRow
+                  <AnimeListRow
                     key={anime.id.anilist}
                     anime={anime}
                     onOpen={handleCardOpen}

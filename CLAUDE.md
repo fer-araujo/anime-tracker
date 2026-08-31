@@ -70,3 +70,21 @@ presupuesto agotado en un catálogo entero mostrando "Pirata".
 
 Supabase free tier y ~4 usuarios activos: una consulta extra es irrelevante. Si hay que objetar
 una consulta, que sea por arquitectura, no por carga.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- graphify-out/obsidian/ holds one note per symbol plus graph.canvas — a vault to open in
+  Obsidian, not a table of contents. There is no index file to navigate from, so for broad
+  orientation use GRAPH_REPORT.md below rather than browsing it.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+  Do this per commit that adds, moves or deletes files, not once per session — a graph that
+  predates the files you are asking about will confidently omit them.
+- **`graphify-out/` is gitignored, so a fresh clone has no graph.** Run `graphify update .`
+  once before the rules above apply; it rebuilds everything from source in seconds without an
+  API key. The only tracked part is `.graphify_labels.json`, because community naming does
+  cost an LLM call.

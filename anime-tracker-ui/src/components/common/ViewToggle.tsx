@@ -2,15 +2,15 @@
 
 import Icon from "@/components/custom/Icon";
 import { cn } from "@/lib/utils";
-import type { SeasonViewMode } from "@/types/season";
+import type { ViewMode } from "@/types/view";
 
 type Props = {
-  value: SeasonViewMode;
-  onChange: (mode: SeasonViewMode) => void;
+  value: ViewMode;
+  onChange: (mode: ViewMode) => void;
 };
 
 const MODES: {
-  key: SeasonViewMode;
+  key: ViewMode;
   label: string;
   icon: "LayoutGrid" | "List";
 }[] = [
@@ -19,13 +19,17 @@ const MODES: {
 ];
 
 /**
- * Grid or list, sitting with the other controls in the filter panel.
+ * Grid or list, for any surface that shows several anime at once.
  *
- * Icon-only with an accessible name rather than icon-plus-text: the panel wraps
- * to a second row on phones as it is, and this is exactly the width worth not
- * spending — especially since the list mode exists for that breakpoint.
+ * Shared rather than per-page: season, recommendations and collections all
+ * offer the same choice, and three copies of a two-button control drift the
+ * moment one of them is styled.
+ *
+ * Icon-only with an accessible name rather than icon-plus-text. Wherever it
+ * sits, the row around it already wraps on phones, and this is the width worth
+ * not spending — especially since the list mode exists for that breakpoint.
  */
-export function SeasonViewToggle({ value, onChange }: Props) {
+export function ViewToggle({ value, onChange }: Props) {
   return (
     <div
       role="group"
