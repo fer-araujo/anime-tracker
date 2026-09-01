@@ -41,8 +41,17 @@ export const SYNOPSIS_SHORT_LENGTH = 180;
  * actually renders — crucially the provider badges — and drops the enrichments
  * that cost several extra API round-trips per item to fill fields the card
  * never shows.
+ *
+ * `localized` exists because those two used to be the only options, and the
+ * recommendations page needed one thing from each: Spanish text, but no paid
+ * provider lookups. Three separate concerns were riding on a single boolean —
+ * language, alternative artwork sources, and whether a provider miss may reach
+ * the metered endpoint — so asking for the first was silently buying the third.
+ * With RapidAPI capped at 1000 calls a month and 35 a day, one visit to a page
+ * of twenty could have spent the day's budget and left the catalogue reading
+ * "Pirata".
  */
-export type EnrichmentLevel = "full" | "light";
+export type EnrichmentLevel = "full" | "light" | "localized";
 
 export async function formatAnimeList(
   rawAnimeList: AniMedia[],
@@ -51,7 +60,12 @@ export async function formatAnimeList(
   baseYear?: number,
   level: EnrichmentLevel = "full",
 ) {
-  const isLight = level === "light";
+  /** Spanish synopsis: everything except the batch endpoint, which shows none. */
+  const wantsSpanish = level !== "light";
+  /** MAL, Kitsu and Shikimori: four extra calls per item, for detail pages only. */
+  const wantsAltSources = level === "full";
+  /** The metered provider endpoint. Only a caller that asked for everything. */
+  const skipPaidFallback = level !== "full";
 
   const items = await Promise.all(
     rawAnimeList.map(async (anime) => {
@@ -105,7 +119,7 @@ export async function formatAnimeList(
         // TMDB missed. They cost four extra API calls per item between them,
         // which a 50-item batch cannot justify for a card that already has an
         // AniList poster.
-        if (!tmdbId && !isLight) {
+        if (!tmdbId && wantsAltSources) {
           malKitsuFallback = await enrichFromMalAndKitsu(title).catch(
             () => null,
           );
@@ -140,17 +154,16 @@ export async function formatAnimeList(
           yearFromSeason,
           kind,
           isRealeasing,
-          // TMDB is free, so a light caller still gets real provider badges.
-          // What it must not do is let 50 misses each hit the paid endpoint.
-          { skipPaidFallback: isLight },
+          // TMDB is free, so every caller gets real provider badges. What only
+          // `full` may do is let a miss reach the metered endpoint.
+          { skipPaidFallback },
         );
 
         // Sinopsis en español — season-aware (si hay tmdbId).
-        // Skipped in light mode: it costs one or two TMDB calls per item to
-        // produce text the cards don't render, and the AniList description
-        // below is already a serviceable fallback.
+        // Skipped only in light mode, where the cards show no synopsis at all
+        // and the AniList description would be a serviceable fallback anyway.
         const spanishSynopsis =
-          tmdbId && !isLight
+          tmdbId && wantsSpanish
             ? await getTmdbSpecificSynopsis(
                 tmdbId,
                 kind,

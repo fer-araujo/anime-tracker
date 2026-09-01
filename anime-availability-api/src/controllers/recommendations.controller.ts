@@ -9,6 +9,7 @@ import type {
   UserLibrary,
 } from "../types/recommendations.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
+import { extractContinuationOf } from "../utils/extractRelations.js";
 import { hybridCache, setCacheControl } from "../utils/cache.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
 import {
@@ -166,27 +167,37 @@ export async function getRecommendations(
     const medias = ((hydrateJson.data as { Page?: { media?: AniMedia[] } }).Page
       ?.media ?? []) as AniMedia[];
 
-    // Light enrichment: fifty items feeding cards, which is the trade the batch
-    // endpoint already makes. Provider badges still resolve.
-    const formatted = await formatAnimeList(
-      medias,
-      country,
-      undefined,
-      undefined,
-      "light",
-    );
-
-    const byId = new Map(formatted.map((f) => [f.id.anilist, f]));
-
+    // Selection reads genres and relations, and both arrive straight from
+    // AniList. Running the enrichment first — TMDB lookups, provider
+    // resolution, Spanish text — would pay for fifty records to keep twenty.
+    // So the facts come from the raw media, and only the survivors are enriched.
     const facts = new Map<number, CandidateFacts>();
-    for (const item of formatted) {
-      facts.set(item.id.anilist, {
-        genres: item.meta.genres ?? [],
-        continuationOfId: item.meta.continuationOf?.id ?? null,
+    const mediaById = new Map<number, AniMedia>();
+    for (const media of medias) {
+      mediaById.set(media.id, media);
+      facts.set(media.id, {
+        genres: media.genres ?? [],
+        continuationOfId: extractContinuationOf(media.relations)?.id ?? null,
       });
     }
 
     const picked = selectRecommendations(ranked, facts, library, RESULT_LIMIT);
+
+    // `localized`, not `light`: this page renders synopses, and light mode
+    // skips the Spanish one, so every card read in English. Not `full` either —
+    // that would let twenty provider misses reach the metered endpoint, and one
+    // visit could spend a day of the RapidAPI budget.
+    const formatted = await formatAnimeList(
+      picked
+        .map((c) => mediaById.get(c.animeId))
+        .filter((m): m is AniMedia => Boolean(m)),
+      country,
+      undefined,
+      undefined,
+      "localized",
+    );
+
+    const byId = new Map(formatted.map((f) => [f.id.anilist, f]));
 
     const payload = {
       meta: {
