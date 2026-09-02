@@ -39,4 +39,13 @@ export type RecommendationsResponse = {
     candidates?: number;
   };
   data: Anime[];
+  /**
+   * Ranked picks past the visible twenty, sent but not shown.
+   *
+   * Dismissing is what advances this page — there is no paginator — so a
+   * dismissed card needs something to replace it. Carrying the replacements in
+   * the same response means that costs no second request on a page the user is
+   * still reading.
+   */
+  reserve?: Anime[];
 };

@@ -7,12 +7,14 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useUserLists } from "@/hooks/useUserLists";
 import { useBatchAnimeEntries } from "@/hooks/useBatchAnimeEntries";
 import { fetchRecommendations, seedsMissing } from "@/lib/recommendations";
+import { useDismissals } from "@/hooks/useDismissals";
 import { normalizeViewMode } from "@/lib/season";
 import { TrackableAnimeCard } from "@/components/season/TrackableAnimeCard";
 import { AnimeListRow } from "@/components/common/AnimeListRow";
 import { ViewToggle } from "@/components/common/ViewToggle";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
 import Icon from "@/components/custom/Icon";
+import { cn } from "@/lib/utils";
 import type { Anime } from "@/types/anime";
 import type { ViewMode } from "@/types/view";
 
@@ -32,8 +34,14 @@ export function RecommendationsPage() {
   const searchParams = useSearchParams();
 
   const [items, setItems] = useState<Anime[]>([]);
+  const [reserve, setReserve] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { visible, pending, dismiss, undo } = useDismissals({
+    initial: items,
+    reserve,
+  });
 
   const viewMode = normalizeViewMode(searchParams.get("view"));
 
@@ -66,6 +74,7 @@ export function RecommendationsPage() {
     if (authLoading || libraryLoading) return;
     if (!user || missing > 0) {
       setItems([]);
+      setReserve([]);
       setLoading(false);
       return;
     }
@@ -75,7 +84,10 @@ export function RecommendationsPage() {
     setError(null);
 
     fetchRecommendations(library, controller.signal)
-      .then((resp) => setItems(resp.data))
+      .then((resp) => {
+        setItems(resp.data);
+        setReserve(resp.reserve ?? []);
+      })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
         setError(
@@ -92,7 +104,7 @@ export function RecommendationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, libraryLoading, user, missing, libraryKey]);
 
-  const animeIds = useMemo(() => items.map((a) => a.id.anilist), [items]);
+  const animeIds = useMemo(() => visible.map((a) => a.id.anilist), [visible]);
   const { entriesMap, refetch: refetchEntries } = useBatchAnimeEntries(animeIds);
   const { refetch: refetchLists } = useUserLists();
 
@@ -114,13 +126,13 @@ export function RecommendationsPage() {
             Recomendaciones
           </h1>
           <p className="text-base md:text-lg text-white/60 mt-3 font-medium">
-            {items.length > 0
+            {visible.length > 0
               ? `A partir de ${seedCount} ${seedCount === 1 ? "anime que te gusta" : "animes que te gustan"}.`
               : "A partir de lo que marcas como favorito y de tus mejores notas."}
           </p>
         </div>
 
-        {items.length > 0 && (
+        {visible.length > 0 && (
           <div className="mb-6 flex justify-end">
             <ViewToggle value={viewMode} onChange={handleViewChange} />
           </div>
@@ -133,7 +145,10 @@ export function RecommendationsPage() {
           seedCount={seedCount}
           loading={loading}
           error={error}
-          items={items}
+          items={visible}
+          pending={pending}
+          onDismiss={dismiss}
+          onUndo={undo}
           viewMode={viewMode}
           entriesMap={entriesMap}
           onOpen={handleOpen}
@@ -154,6 +169,9 @@ type ContentProps = {
   loading: boolean;
   error: string | null;
   items: Anime[];
+  pending: number[];
+  onDismiss: (animeId: number) => void;
+  onUndo: (animeId: number) => void;
   viewMode: ViewMode;
   entriesMap: ReturnType<typeof useBatchAnimeEntries>["entriesMap"];
   onOpen: (anime: Anime) => void;
@@ -168,6 +186,9 @@ function Content({
   loading,
   error,
   items,
+  pending,
+  onDismiss,
+  onUndo,
   viewMode,
   entriesMap,
   onOpen,
@@ -234,27 +255,127 @@ function Content({
     );
   }
 
+  const isPending = (anime: Anime) => pending.includes(anime.id.anilist);
+
   if (viewMode === "list") {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-3">
-        {items.map((anime) => (
-          <AnimeListRow key={anime.id.anilist} anime={anime} onOpen={onOpen} />
-        ))}
+        {items.map((anime) =>
+          isPending(anime) ? (
+            <UndoTile
+              key={anime.id.anilist}
+              anime={anime}
+              onUndo={onUndo}
+              compact
+            />
+          ) : (
+            <div key={anime.id.anilist} className="relative group/row">
+              <AnimeListRow anime={anime} onOpen={onOpen} />
+              <DismissButton anime={anime} onDismiss={onDismiss} inRow />
+            </div>
+          ),
+        )}
       </div>
     );
   }
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
-      {items.map((anime) => (
-        <TrackableAnimeCard
-          key={anime.id.anilist}
-          anime={anime}
-          onOpen={onOpen}
-          animeEntry={entriesMap.get(anime.id.anilist) ?? null}
-          onTrackingChange={onTrackingChange}
-        />
-      ))}
+      {items.map((anime) =>
+        isPending(anime) ? (
+          <UndoTile key={anime.id.anilist} anime={anime} onUndo={onUndo} />
+        ) : (
+          // The button sits outside TrackableAnimeCard rather than inside it:
+          // that card is shared with the season page, where dismissing means
+          // nothing, and adding a prop it ignores everywhere else is how a
+          // component starts collecting other screens' concerns.
+          <div key={anime.id.anilist} className="relative group/card">
+            <TrackableAnimeCard
+              anime={anime}
+              onOpen={onOpen}
+              animeEntry={entriesMap.get(anime.id.anilist) ?? null}
+              onTrackingChange={onTrackingChange}
+            />
+            <DismissButton anime={anime} onDismiss={onDismiss} />
+          </div>
+        ),
+      )}
+    </div>
+  );
+}
+
+/**
+ * Dismissal, offered on hover and always present for touch.
+ *
+ * `[@media(hover:hover)]` is doing real work: on a phone there is no hover, so
+ * an opacity-0 control would be invisible and still occupy the tap target of
+ * whatever sits under it.
+ */
+function DismissButton({
+  anime,
+  onDismiss,
+  inRow = false,
+}: {
+  anime: Anime;
+  onDismiss: (animeId: number) => void;
+  inRow?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`No me interesa ${anime.title}`}
+      title="No me interesa"
+      onClick={() => onDismiss(anime.id.anilist)}
+      className={cn(
+        "absolute z-20 grid place-items-center h-7 w-7 rounded-full cursor-pointer",
+        "bg-black/70 border border-white/15 text-white/70 backdrop-blur-sm",
+        "hover:bg-black/90 hover:text-white transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/card:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:focus-visible:opacity-100",
+        inRow ? "top-2 right-2" : "top-2 left-2",
+      )}
+    >
+      <Icon name="X" size={14} />
+    </button>
+  );
+}
+
+/**
+ * What a dismissed card leaves behind for a few seconds.
+ *
+ * In place rather than as a toast: the card's own slot is where the user was
+ * looking, and a message at the edge of the screen asks them to find it again.
+ * The row is already written to the database — waiting for this window to close
+ * would lose the dismissal of anyone who navigates away immediately, which is
+ * exactly when people dismiss things.
+ */
+function UndoTile({
+  anime,
+  onUndo,
+  compact = false,
+}: {
+  anime: Anime;
+  onUndo: (animeId: number) => void;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center text-center gap-2 rounded-xl",
+        "border border-dashed border-white/15 bg-white/5 px-3",
+        compact ? "py-4" : "aspect-2/3",
+      )}
+    >
+      <p className="text-xs text-white/50 line-clamp-2">
+        Ocultamos <span className="text-white/75">{anime.title}</span>
+      </p>
+      <button
+        type="button"
+        onClick={() => onUndo(anime.id.anilist)}
+        className="text-sm font-semibold text-primary hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+      >
+        Deshacer
+      </button>
     </div>
   );
 }

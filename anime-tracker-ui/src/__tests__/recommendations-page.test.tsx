@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import type { Anime } from "@/types/anime";
 import type { RecommendationLibrary } from "@/types/recommendations";
 import { seedsMissing, MIN_SEEDS } from "@/lib/recommendations";
+import { UNDO_WINDOW_MS } from "@/hooks/useDismissals";
 
 const mockReplace = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -18,6 +19,13 @@ vi.mock("@/providers/AuthProvider", () => ({
 const mockLists = vi.fn();
 vi.mock("@/hooks/useUserLists", () => ({
   useUserLists: () => mockLists(),
+}));
+
+const mockDismiss = vi.fn().mockResolvedValue({ success: true });
+const mockUndo = vi.fn().mockResolvedValue({ success: true });
+vi.mock("@/actions/dismissRecommendation", () => ({
+  dismissRecommendation: (...a: unknown[]) => mockDismiss(...a),
+  undoDismissRecommendation: (...a: unknown[]) => mockUndo(...a),
 }));
 
 vi.mock("@/hooks/useBatchAnimeEntries", () => ({
@@ -81,6 +89,7 @@ beforeEach(() => {
   mockFetch.mockResolvedValue({
     meta: { seedCount: 3, minSeeds: 3, enough: true },
     data: [anime(10, "Frieren"), anime(11, "Vinland Saga")],
+    reserve: [anime(12, "Monster")],
   });
 });
 
@@ -157,6 +166,64 @@ describe("RecommendationsPage", () => {
     expect(
       await screen.findByText(/No se pudieron cargar las recomendaciones/),
     ).toBeInTheDocument();
+  });
+
+  it("writes the dismissal immediately, not when the undo window closes", async () => {
+    // Dismissing is usually the last thing someone does before leaving the
+    // page. Waiting for the timer would lose exactly those.
+    setup({ seeds: 3 });
+    render(<RecommendationsPage />);
+    await screen.findByText("Frieren");
+
+    screen.getByRole("button", { name: /No me interesa Frieren/ }).click();
+
+    await waitFor(() => expect(mockDismiss).toHaveBeenCalledWith(10));
+  });
+
+  it("leaves an undo in the card's own slot", async () => {
+    // In place rather than as a toast: the slot is where the user was looking,
+    // and a message at the edge of the screen asks them to find it again.
+    setup({ seeds: 3 });
+    render(<RecommendationsPage />);
+    await screen.findByText("Frieren");
+
+    screen.getByRole("button", { name: /No me interesa Frieren/ }).click();
+
+    expect(await screen.findByText("Deshacer")).toBeInTheDocument();
+    expect(screen.getByText(/Ocultamos/)).toBeInTheDocument();
+    // Still in the list — the row has not been reclaimed yet.
+    expect(screen.getByText("Vinland Saga")).toBeInTheDocument();
+  });
+
+  it("deletes the row again when undone", async () => {
+    setup({ seeds: 3 });
+    render(<RecommendationsPage />);
+    await screen.findByText("Frieren");
+
+    screen.getByRole("button", { name: /No me interesa Frieren/ }).click();
+    (await screen.findByText("Deshacer")).click();
+
+    await waitFor(() => expect(mockUndo).toHaveBeenCalledWith(10));
+    // And the card comes back rather than the slot staying empty.
+    await waitFor(() => expect(screen.getByText("Frieren")).toBeInTheDocument());
+  });
+
+  it("promotes a reserve pick once the window closes", async () => {
+    // There is no paginator, so dismissing is what advances the page. The
+    // replacement travels in the same response — no second request.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    setup({ seeds: 3 });
+    render(<RecommendationsPage />);
+    await screen.findByText("Frieren");
+
+    screen.getByRole("button", { name: /No me interesa Frieren/ }).click();
+    await screen.findByText("Deshacer");
+
+    await vi.advanceTimersByTimeAsync(UNDO_WINDOW_MS + 100);
+
+    await waitFor(() => expect(screen.getByText("Monster")).toBeInTheDocument());
+    expect(screen.queryByText("Frieren")).toBeNull();
+    vi.useRealTimers();
   });
 
   it("offers the view toggle only when there is something to switch", async () => {

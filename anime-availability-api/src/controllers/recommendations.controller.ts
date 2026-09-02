@@ -36,6 +36,17 @@ const HYDRATE_LIMIT = 50;
 /** What the page shows. */
 const RESULT_LIMIT = 20;
 
+/**
+ * Extra picks sent but not displayed.
+ *
+ * Dismissing is the interaction that advances this page — there is no
+ * paginator, so a dismissed card has to be replaced by something. Sending a
+ * reserve means that replacement costs nothing: no second request, no refetch
+ * on a page the user is still reading. Ten covers half the page being rejected
+ * in one sitting, which is already an unusual amount of disagreement.
+ */
+const RESERVE_LIMIT = 10;
+
 const CACHE_TTL_MS = 1000 * 60 * 60 * 6;
 
 type RecommendationsBody = {
@@ -181,7 +192,12 @@ export async function getRecommendations(
       });
     }
 
-    const picked = selectRecommendations(ranked, facts, library, RESULT_LIMIT);
+    const picked = selectRecommendations(
+      ranked,
+      facts,
+      library,
+      RESULT_LIMIT + RESERVE_LIMIT,
+    );
 
     // `localized`, not `light`: this page renders synopses, and light mode
     // skips the Spanish one, so every card read in English. Not `full` either —
@@ -198,6 +214,9 @@ export async function getRecommendations(
     );
 
     const byId = new Map(formatted.map((f) => [f.id.anilist, f]));
+    const ordered = picked
+      .map((c) => byId.get(c.animeId))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
     const payload = {
       meta: {
@@ -208,9 +227,8 @@ export async function getRecommendations(
       },
       // Selection order is the answer, so the response carries it rather than
       // leaving the client to re-sort by a weight it would have to be told.
-      data: picked
-        .map((c) => byId.get(c.animeId))
-        .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+      data: ordered.slice(0, RESULT_LIMIT),
+      reserve: ordered.slice(RESULT_LIMIT),
     };
 
     await hybridCache.set(key, payload, CACHE_TTL_MS);
