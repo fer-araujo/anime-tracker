@@ -1,15 +1,28 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { ProviderBadge } from "@/components/ProviderBadge";
 import { ScoreBadge } from "@/components/common/ScoreBadge";
+import { ActionButton, FavButton } from "@/components/common/Buttons";
+import Icon from "@/components/custom/Icon";
 import { uniqueNormalizedProviders } from "@/lib/providers";
 import { cn } from "@/lib/utils";
-import type { Anime } from "@/types/anime";
+import type { Anime, AnimeEntry } from "@/types/anime";
 
 type Props = {
   anime: Anime;
   onOpen?: (anime: Anime) => void;
+  /**
+   * Actions are opt-in. A surface that only navigates — a franchise strip, say
+   * — passes neither and gets a row with no controls, rather than buttons that
+   * open a modal it never wired up.
+   */
+  onToggleFavorite?: (anime: Anime, next: boolean) => void;
+  onAddToList?: (anime: Anime) => void;
+  /** Tracking state, owned by the parent so the query stays batched. */
+  animeEntry?: AnimeEntry | null;
+  listCount?: number;
 };
 
 /**
@@ -24,7 +37,22 @@ type Props = {
  * Density is the other half. At phone width the grid fits about two cards on
  * screen; five rows fit in the same space, and each one says more.
  */
-export function AnimeListRow({ anime, onOpen }: Props) {
+export function AnimeListRow({
+  anime,
+  onOpen,
+  onToggleFavorite,
+  onAddToList,
+  animeEntry = null,
+  listCount = 0,
+}: Props) {
+  // Optimistic, exactly as the poster card does it: the heart flips on click
+  // and the write follows, because waiting for a round-trip to colour an icon
+  // makes the control feel broken.
+  const [isFav, setFav] = useState(animeEntry?.favorite ?? false);
+  useEffect(() => {
+    setFav(animeEntry?.favorite ?? false);
+  }, [animeEntry?.favorite]);
+
   const providers = uniqueNormalizedProviders(anime.providers);
   const continuationOf = anime.meta?.continuationOf ?? null;
   const poster = anime.images?.poster ?? null;
@@ -33,18 +61,29 @@ export function AnimeListRow({ anime, onOpen }: Props) {
   const type = anime.meta?.type;
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen?.(anime)}
+    // A container, not a button. The row used to be one, which made it
+    // impossible to put a favourite or an add control inside it — nested
+    // buttons are invalid HTML, and browsers resolve them by dropping the
+    // inner one. What opens the anime is now the poster-and-text area; the
+    // actions sit beside it as siblings.
+    <div
       className={cn(
-        "group w-full text-left flex items-stretch gap-3 p-2.5 rounded-xl",
-        "bg-white/5 border border-white/10 transition-colors cursor-pointer",
+        "group relative w-full flex items-stretch gap-3 p-2.5 rounded-xl",
+        "bg-white/5 border border-white/10 transition-colors",
         "[@media(hover:hover)]:hover:bg-white/10 [@media(hover:hover)]:hover:border-white/20",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        "focus-within:border-primary/40",
       )}
-      aria-label={`Ver detalles de ${anime.title}`}
     >
-      <div className="relative w-14 sm:w-16 shrink-0 aspect-2/3 rounded-lg overflow-hidden bg-white/5">
+      <button
+        type="button"
+        onClick={() => onOpen?.(anime)}
+        aria-label={`Ver detalles de ${anime.title}`}
+        // Stretched over the row so the whole surface stays clickable, but
+        // underneath the actions, which sit above it in the stacking order.
+        className="absolute inset-0 z-0 rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      />
+
+      <div className="relative z-10 w-14 sm:w-16 shrink-0 aspect-2/3 rounded-lg overflow-hidden bg-white/5 pointer-events-none">
         {poster && (
           <Image
             src={poster}
@@ -58,7 +97,7 @@ export function AnimeListRow({ anime, onOpen }: Props) {
         )}
       </div>
 
-      <div className="min-w-0 flex-1 flex flex-col gap-1 py-0.5">
+      <div className="relative z-10 min-w-0 flex-1 flex flex-col gap-1 py-0.5 pointer-events-none">
         <p className="text-sm font-medium text-white/90 leading-tight line-clamp-2">
           {anime.title}
         </p>
@@ -96,11 +135,42 @@ export function AnimeListRow({ anime, onOpen }: Props) {
         </div>
       </div>
 
-      {typeof anime.meta?.rating === "number" && (
-        <div className="shrink-0 self-center pr-1">
-          <ScoreBadge value={anime.meta.rating} />
-        </div>
-      )}
-    </button>
+      <div className="relative z-10 shrink-0 self-center flex items-center gap-1 pr-0.5">
+        {typeof anime.meta?.rating === "number" && (
+          <div className="pointer-events-none pr-1">
+            <ScoreBadge value={anime.meta.rating} />
+          </div>
+        )}
+
+        {/* The same two controls the poster card uses, from the same module.
+            A row with its own heart would be a second answer to a question
+            already settled. */}
+        {onToggleFavorite && (
+          <FavButton
+            active={isFav}
+            onClick={(e) => {
+              e.stopPropagation();
+              const next = !isFav;
+              setFav(next);
+              onToggleFavorite(anime, next);
+            }}
+          />
+        )}
+
+        {onAddToList && (
+          <ActionButton
+            variant="soft"
+            size="sm"
+            icon={<Icon name="Plus" size={14} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToList(anime);
+            }}
+          >
+            {listCount > 0 ? listCount : "Añadir"}
+          </ActionButton>
+        )}
+      </div>
+    </div>
   );
 }

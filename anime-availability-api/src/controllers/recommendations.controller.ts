@@ -9,6 +9,7 @@ import type {
   UserLibrary,
 } from "../types/recommendations.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
+import { extractContinuationOf } from "../utils/extractRelations.js";
 import { hybridCache, setCacheControl } from "../utils/cache.js";
 import { formatAnimeList } from "../utils/formatAnimeList.js";
 import {
@@ -34,6 +35,17 @@ const HYDRATE_LIMIT = 50;
 
 /** What the page shows. */
 const RESULT_LIMIT = 20;
+
+/**
+ * Extra picks sent but not displayed.
+ *
+ * Dismissing is the interaction that advances this page — there is no
+ * paginator, so a dismissed card has to be replaced by something. Sending a
+ * reserve means that replacement costs nothing: no second request, no refetch
+ * on a page the user is still reading. Ten covers half the page being rejected
+ * in one sitting, which is already an unusual amount of disagreement.
+ */
+const RESERVE_LIMIT = 10;
 
 const CACHE_TTL_MS = 1000 * 60 * 60 * 6;
 
@@ -166,27 +178,45 @@ export async function getRecommendations(
     const medias = ((hydrateJson.data as { Page?: { media?: AniMedia[] } }).Page
       ?.media ?? []) as AniMedia[];
 
-    // Light enrichment: fifty items feeding cards, which is the trade the batch
-    // endpoint already makes. Provider badges still resolve.
-    const formatted = await formatAnimeList(
-      medias,
-      country,
-      undefined,
-      undefined,
-      "light",
-    );
-
-    const byId = new Map(formatted.map((f) => [f.id.anilist, f]));
-
+    // Selection reads genres and relations, and both arrive straight from
+    // AniList. Running the enrichment first — TMDB lookups, provider
+    // resolution, Spanish text — would pay for fifty records to keep twenty.
+    // So the facts come from the raw media, and only the survivors are enriched.
     const facts = new Map<number, CandidateFacts>();
-    for (const item of formatted) {
-      facts.set(item.id.anilist, {
-        genres: item.meta.genres ?? [],
-        continuationOfId: item.meta.continuationOf?.id ?? null,
+    const mediaById = new Map<number, AniMedia>();
+    for (const media of medias) {
+      mediaById.set(media.id, media);
+      facts.set(media.id, {
+        genres: media.genres ?? [],
+        continuationOfId: extractContinuationOf(media.relations)?.id ?? null,
       });
     }
 
-    const picked = selectRecommendations(ranked, facts, library, RESULT_LIMIT);
+    const picked = selectRecommendations(
+      ranked,
+      facts,
+      library,
+      RESULT_LIMIT + RESERVE_LIMIT,
+    );
+
+    // `localized`, not `light`: this page renders synopses, and light mode
+    // skips the Spanish one, so every card read in English. Not `full` either —
+    // that would let twenty provider misses reach the metered endpoint, and one
+    // visit could spend a day of the RapidAPI budget.
+    const formatted = await formatAnimeList(
+      picked
+        .map((c) => mediaById.get(c.animeId))
+        .filter((m): m is AniMedia => Boolean(m)),
+      country,
+      undefined,
+      undefined,
+      "localized",
+    );
+
+    const byId = new Map(formatted.map((f) => [f.id.anilist, f]));
+    const ordered = picked
+      .map((c) => byId.get(c.animeId))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
     const payload = {
       meta: {
@@ -197,9 +227,8 @@ export async function getRecommendations(
       },
       // Selection order is the answer, so the response carries it rather than
       // leaving the client to re-sort by a weight it would have to be told.
-      data: picked
-        .map((c) => byId.get(c.animeId))
-        .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+      data: ordered.slice(0, RESULT_LIMIT),
+      reserve: ordered.slice(RESULT_LIMIT),
     };
 
     await hybridCache.set(key, payload, CACHE_TTL_MS);

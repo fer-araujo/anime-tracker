@@ -29,7 +29,7 @@ import {
 } from "@/lib/season";
 import { TrackableAnimeCard } from "@/components/season/TrackableAnimeCard";
 import { SeasonFormatChips } from "@/components/season/SeasonFormatChips";
-import { AnimeListRow } from "@/components/common/AnimeListRow";
+import { TrackableAnimeListRow } from "@/components/common/TrackableAnimeListRow";
 import { ViewToggle } from "@/components/common/ViewToggle";
 import { useBatchAnimeEntries } from "@/hooks/useBatchAnimeEntries";
 import { useUserLists } from "@/hooks/useUserLists";
@@ -493,10 +493,13 @@ export default function SeasonPage({
               // the line empty.
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-3">
                 {paginated.map((anime) => (
-                  <AnimeListRow
+                  <TrackableAnimeListRow
                     key={anime.id.anilist}
                     anime={anime}
                     onOpen={handleCardOpen}
+                    animeEntry={entriesMap.get(anime.id.anilist) ?? null}
+                    listCount={listCountMap.get(anime.id.anilist) ?? 0}
+                    onTrackingChange={handleTrackingChange}
                   />
                 ))}
               </div>
