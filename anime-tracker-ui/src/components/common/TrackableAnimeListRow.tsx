@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimeCard } from "@/components/AnimeCard";
+import { AnimeListRow } from "@/components/common/AnimeListRow";
 import { TrackingModal } from "@/components/common/TrackingModal";
 import { useAnimeTracking } from "@/hooks/useAnimeTracking";
 import type { Anime, AnimeEntry } from "@/types/anime";
@@ -8,19 +8,20 @@ import type { Anime, AnimeEntry } from "@/types/anime";
 type Props = {
   anime: Anime;
   onOpen?: (anime: Anime) => void;
-  /**
-   * Tracking state is owned by the parent grid, not fetched here. This
-   * component used to call useAnimeEntry itself, which meant one Supabase
-   * round-trip per card — 20 by default and up to 100 when the user raises
-   * the page size. The parent batches them into a single query.
-   */
   animeEntry?: AnimeEntry | null;
   listCount?: number;
-  /** Lets the parent re-run its batched queries once the modal writes. */
   onTrackingChange?: () => void;
 };
 
-export function TrackableAnimeCard({
+/**
+ * The list row's counterpart to TrackableAnimeCard.
+ *
+ * Switching to the list view used to take the controls away: the row could
+ * open an anime and nothing else, so favouriting something meant switching
+ * back to the grid. The two views now do the same things, through the same
+ * hook and the same dialog — the only difference left between them is shape.
+ */
+export function TrackableAnimeListRow({
   anime,
   onOpen,
   animeEntry = null,
@@ -31,10 +32,8 @@ export function TrackableAnimeCard({
 
   return (
     <>
-      <AnimeCard
+      <AnimeListRow
         anime={anime}
-        variant="compact"
-        showTitleBelow
         onOpen={onOpen}
         animeEntry={animeEntry}
         listCount={listCount}

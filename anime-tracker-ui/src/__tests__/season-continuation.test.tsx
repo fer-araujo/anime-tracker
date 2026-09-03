@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { Anime, RelatedMediaRef } from "@/types/anime";
 import { AnimeCard } from "@/components/AnimeCard";
 import { AnimeListRow } from "@/components/common/AnimeListRow";
@@ -104,5 +104,62 @@ describe("AnimeListRow", () => {
 
     screen.getByRole("button", { name: /Ver detalles de/ }).click();
     expect(onOpen).toHaveBeenCalledWith(anime);
+  });
+
+  it("never nests a button inside another button", () => {
+    // The row used to be a <button> at its root, which made actions
+    // impossible: nested buttons are invalid HTML and browsers resolve them by
+    // dropping the inner one. What opens the anime is now a sibling of the
+    // controls, not their ancestor.
+    const { container } = render(
+      <AnimeListRow
+        anime={makeAnime(null)}
+        onOpen={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onAddToList={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector("button button")).toBeNull();
+  });
+
+  it("carries the same controls as the poster card when they are wired", () => {
+    const onToggleFavorite = vi.fn();
+    const onAddToList = vi.fn();
+    const anime = makeAnime(null);
+
+    render(
+      <AnimeListRow
+        anime={anime}
+        onToggleFavorite={onToggleFavorite}
+        onAddToList={onAddToList}
+      />,
+    );
+
+    screen.getByRole("button", { name: /Agregar a favoritos/i }).click();
+    expect(onToggleFavorite).toHaveBeenCalledWith(anime, true);
+
+    screen.getByRole("button", { name: /Añadir/i }).click();
+    expect(onAddToList).toHaveBeenCalledWith(anime);
+  });
+
+  it("shows no controls when a surface only navigates", () => {
+    // A franchise strip should get a row it can click, not buttons wired to a
+    // modal that page never mounted.
+    render(<AnimeListRow anime={makeAnime(null)} onOpen={vi.fn()} />);
+
+    expect(screen.queryByRole("button", { name: /favoritos/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Añadir/i })).toBeNull();
+  });
+
+  it("flips the heart before the write lands", () => {
+    // Waiting for a round-trip to colour an icon makes the control feel broken.
+    const anime = makeAnime(null);
+    render(<AnimeListRow anime={anime} onToggleFavorite={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Agregar a favoritos/i }));
+    expect(
+      screen.getByRole("button", { name: /Quitar de favoritos/i }),
+    ).toBeInTheDocument();
   });
 });

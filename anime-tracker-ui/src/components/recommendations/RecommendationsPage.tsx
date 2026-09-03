@@ -10,7 +10,7 @@ import { fetchRecommendations, seedsMissing } from "@/lib/recommendations";
 import { useDismissals } from "@/hooks/useDismissals";
 import { normalizeViewMode } from "@/lib/season";
 import { TrackableAnimeCard } from "@/components/season/TrackableAnimeCard";
-import { AnimeListRow } from "@/components/common/AnimeListRow";
+import { TrackableAnimeListRow } from "@/components/common/TrackableAnimeListRow";
 import { ViewToggle } from "@/components/common/ViewToggle";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
 import Icon from "@/components/custom/Icon";
@@ -270,7 +270,12 @@ function Content({
             />
           ) : (
             <div key={anime.id.anilist} className="relative group/row">
-              <AnimeListRow anime={anime} onOpen={onOpen} />
+              <TrackableAnimeListRow
+                anime={anime}
+                onOpen={onOpen}
+                animeEntry={entriesMap.get(anime.id.anilist) ?? null}
+                onTrackingChange={onTrackingChange}
+              />
               <DismissButton anime={anime} onDismiss={onDismiss} inRow />
             </div>
           ),
