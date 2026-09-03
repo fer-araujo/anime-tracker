@@ -337,11 +337,15 @@ function DismissButton({
         "hover:bg-black/90 hover:text-white transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/card:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:focus-visible:opacity-100",
-        // Overhanging the corner in the grid, not inside it: AnimeCard's
-        // overlay puts its status pills at px-3 pt-3 and reveals them on the
-        // same hover, so anything at top-2 left-2 lands on top of "Ongoing".
-        // The row has no such header, so there it sits inside.
-        inRow ? "top-2 right-2" : "-top-2 -left-2 shadow-lg shadow-black/50",
+        // Top-right, where every dismiss control lives — ads, toasts, feed
+        // cards, "not interested". Fighting that convention buys nothing.
+        //
+        // In the grid it overhangs the corner rather than sitting inside it.
+        // AnimeCard's overlay fills that row with its score on the right and
+        // status pills on the left, and reveals them on the same hover, so
+        // anything within the padding lands on one or the other. The row has no
+        // such header and keeps it inside.
+        inRow ? "top-2 right-2" : "-top-2 -right-2 shadow-lg shadow-black/50",
       )}
     >
       <Icon name="X" size={14} />
