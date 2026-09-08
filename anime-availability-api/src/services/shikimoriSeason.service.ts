@@ -172,3 +172,35 @@ export async function shikiFetchDetail(
     return null;
   }
 }
+
+/** One upcoming broadcast, as Shikimori's calendar reports it. */
+export type ShikiCalendarEntry = {
+  next_episode: number;
+  next_episode_at: string;
+  duration?: number | null;
+  anime: ShikiSeasonEntry;
+};
+
+/**
+ * The airing calendar: every anime with a scheduled next episode, in one call.
+ *
+ * This is what makes "airing today" answerable without a fallback source. The
+ * per-anime detail endpoint also carries `next_episode_at`, but reading it that
+ * way is one request per title — fifty to fill one shelf.
+ */
+export async function shikiFetchCalendar(): Promise<ShikiCalendarEntry[]> {
+  try {
+    const res = await fetch(`${SHIKI_BASE}/api/calendar`, {
+      headers: HEADERS,
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      logger.warn(`[shikimori] calendar HTTP ${res.status}`);
+      return [];
+    }
+    return (await res.json()) as ShikiCalendarEntry[];
+  } catch (err) {
+    logger.warn({ err }, "[shikimori] calendar fetch failed");
+    return [];
+  }
+}

@@ -16,7 +16,10 @@ import {
   AIRING_SCHEDULE_GQL,
   UPCOMING_MEDIA_GQL,
 } from "../graphql/queries/schedule.gql.js";
-import { shikiFetchByStatus } from "../services/shikimoriSeason.service.js";
+import {
+  shikiFetchByStatus,
+  shikiFetchCalendar,
+} from "../services/shikimoriSeason.service.js";
 import { shikimoriToAniMedia } from "../services/adapters/shikimoriToAniMedia.js";
 
 const DEFAULT_COUNTRY = process.env.DEFAULT_COUNTRY || "MX";
@@ -212,14 +215,33 @@ export async function getSchedule(
         },
       );
 
-      // AniList gone. Shikimori has no per-day timetable — that lives in its
-      // detail endpoint, one call per anime — so a degraded shelf shows what is
-      // currently airing rather than what airs today. Narrower than the real
-      // thing, and still a shelf instead of an empty homepage.
+      // AniList gone. Shikimori's calendar carries every scheduled next
+      // episode in one call, so "airing today" stays answerable rather than
+      // degrading into "currently airing" — a shelf labelled Hoy has to mean
+      // today.
       if (!schedules?.length) {
-        const fallback = await shikiFetchByStatus("ongoing", 20);
-        const media = fallback
-          .map((entry) => shikimoriToAniMedia(entry))
+        const calendar = await shikiFetchCalendar();
+
+        // Shikimori's calendar only knows each anime's *next* episode, so
+        // unlike AniList's airingSchedules it cannot report what already went
+        // out earlier today. Clipping to the remaining hours of the CDMX day
+        // therefore empties the shelf every evening — measured at 20:47 local,
+        // it matched nothing. The next 24 hours is what "airing today" means to
+        // someone looking at it late, and it is the whole of what this source
+        // can honestly answer.
+        const now = Math.floor(Date.now() / 1000);
+        const horizon = now + 24 * 3600;
+        const inWindow = calendar
+          .filter((entry) => {
+            const at = Math.floor(
+              new Date(entry.next_episode_at).getTime() / 1000,
+            );
+            return at >= now && at <= horizon;
+          })
+          .sort((a, b) => a.next_episode_at.localeCompare(b.next_episode_at));
+
+        const media = inWindow
+          .map((entry) => shikimoriToAniMedia(entry.anime))
           .filter((m): m is AniMedia => m !== null);
 
         if (media.length) {

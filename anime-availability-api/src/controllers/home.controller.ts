@@ -189,7 +189,11 @@ export async function getHomeHero(
           genres: m.genres?.slice(0, 3) ?? [],
           status: m.status,
           episodes: m.episodes,
-          type: m.type,
+          // `format` (TV, MOVIE, OVA) rather than `type` (ANIME, MANGA): the
+          // card shows the former, and a fallback source fills only that one.
+          // Left undefined it fails the client's schema, which rejects the whole
+          // payload and makes the hero vanish with no error and no skeleton.
+          type: m.format ?? m.type ?? null,
           studio: m.studios?.edges?.[0]?.node?.name ?? null,
           trailer: m.trailer?.site === "youtube" ? m.trailer.id : null,
         },
