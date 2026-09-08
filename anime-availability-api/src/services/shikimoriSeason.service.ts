@@ -74,3 +74,35 @@ export async function shikiFetchSeason(
     return [];
   }
 }
+
+/**
+ * Anime by airing status, for the homepage shelves.
+ *
+ * `ongoing` is a weaker answer than "airing today": the per-episode timetable
+ * lives in the detail endpoint, one call per anime, which is fifty requests for
+ * one shelf. Currently-airing is what a degraded shelf can honestly show.
+ */
+export async function shikiFetchByStatus(
+  status: "ongoing" | "anons",
+  limit = 20,
+): Promise<ShikiSeasonEntry[]> {
+  const url = new URL(`${SHIKI_BASE}/api/animes`);
+  url.searchParams.set("status", status);
+  url.searchParams.set("limit", String(Math.min(limit, 50)));
+  url.searchParams.set("order", "popularity");
+
+  try {
+    const res = await fetch(url.toString(), {
+      headers: HEADERS,
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      logger.warn(`[shikimori] status=${status} HTTP ${res.status}`);
+      return [];
+    }
+    return (await res.json()) as ShikiSeasonEntry[];
+  } catch (err) {
+    logger.warn({ err }, `[shikimori] status=${status} fetch failed`);
+    return [];
+  }
+}

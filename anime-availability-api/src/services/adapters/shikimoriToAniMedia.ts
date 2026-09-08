@@ -35,8 +35,8 @@ const STATUS: Record<string, string> = {
  */
 export function shikimoriToAniMedia(
   entry: ShikiSeasonEntry,
-  season: string | undefined,
-  year: number,
+  season?: string,
+  year?: number,
 ): AniMedia | null {
   const anilistId = anilistIdFor(entry.id);
   if (!anilistId) return null;
@@ -53,6 +53,7 @@ export function shikimoriToAniMedia(
 
   // Shikimori scores 0–10 as a string; AniList uses 0–100. Everything
   // downstream divides by 10, so the scale has to match before it gets there.
+  const aired = parseAiredOn(entry.aired_on);
   const score = Number(entry.score);
   const averageScore =
     Number.isFinite(score) && score > 0 ? Math.round(score * 10) : null;
@@ -69,8 +70,10 @@ export function shikimoriToAniMedia(
     episodes: entry.episodes || null,
     averageScore,
     season: season ?? null,
-    seasonYear: year,
-    startDate: parseAiredOn(entry.aired_on),
+    // The status-based lists carry no season context, so the year comes from
+    // the air date instead of being left blank.
+    seasonYear: year ?? aired?.year ?? null,
+    startDate: aired,
     isAdult: false,
   };
 }

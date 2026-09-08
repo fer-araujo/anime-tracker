@@ -16,6 +16,8 @@ import {
   AIRING_SCHEDULE_GQL,
   UPCOMING_MEDIA_GQL,
 } from "../graphql/queries/schedule.gql.js";
+import { shikiFetchByStatus } from "../services/shikimoriSeason.service.js";
+import { shikimoriToAniMedia } from "../services/adapters/shikimoriToAniMedia.js";
 
 const DEFAULT_COUNTRY = process.env.DEFAULT_COUNTRY || "MX";
 
@@ -210,7 +212,23 @@ export async function getSchedule(
         },
       );
 
-      if (!schedules) {
+      // AniList gone. Shikimori has no per-day timetable — that lives in its
+      // detail endpoint, one call per anime — so a degraded shelf shows what is
+      // currently airing rather than what airs today. Narrower than the real
+      // thing, and still a shelf instead of an empty homepage.
+      if (!schedules?.length) {
+        const fallback = await shikiFetchByStatus("ongoing", 20);
+        const media = fallback
+          .map((entry) => shikimoriToAniMedia(entry))
+          .filter((m): m is AniMedia => m !== null);
+
+        if (media.length) {
+          const items = await formatAnimeList(media, country, season, year, "light");
+          const payload = { data: items.sort(byRatingThenTitle), degraded: true };
+          await hybridCache.set(cacheKey, payload, 1000 * 60 * 30);
+          setCacheControl(res, "schedule");
+          return res.json(payload);
+        }
         return res.status(503).json({ error: "AniList unavailable" });
       }
 
@@ -259,7 +277,24 @@ export async function getSchedule(
         },
       );
 
-      if (!media) {
+      if (!media?.length) {
+        // `anons` is Shikimori's "announced": exactly the upcoming bucket, and
+        // its entries carry air dates, so the coming/tba split still works.
+        const fallback = await shikiFetchByStatus("anons", 30);
+        const converted = fallback
+          .map((entry) => shikimoriToAniMedia(entry))
+          .filter((m): m is AniMedia => m !== null);
+
+        if (converted.length) {
+          const split = converted.filter((m) =>
+            type === "coming" ? hasConfirmedDate(m) : !hasConfirmedDate(m),
+          );
+          const items = await formatAnimeList(split, country, season, year, "light");
+          const payload = { data: items.sort(byRatingThenTitle), degraded: true };
+          await hybridCache.set(cacheKey, payload, 1000 * 60 * 30);
+          setCacheControl(res, "schedule");
+          return res.json(payload);
+        }
         return res.status(503).json({ error: "AniList unavailable" });
       }
 
