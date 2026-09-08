@@ -8,6 +8,7 @@ import { requestId } from "./middleware/requestId.js";
 import { httpLogger, logger } from "./utils/logger.js";
 import { errorHandler, notFound } from "./middleware/error.js";
 import { isOriginAllowed, parseAllowedOrigins } from "./utils/cors.js";
+import { getRapidApiQuotaState } from "./utils/quotaGuard.js";
 
 const app = express();
 
@@ -66,7 +67,12 @@ app.use(express.json({ limit: "1mb" }));
 app.use(compression());
 
 // healthcheck
-app.get("/health", (_req, res) => res.json({ ok: true }));
+// The paid-provider counter rides along because it was invisible until a
+// RapidAPI invoice made it visible: the guard existed and nothing ever read it.
+// A number that can be watched is what turns a silent leak into a noticed one.
+app.get("/health", (_req, res) =>
+  res.json({ ok: true, rapidApi: getRapidApiQuotaState() }),
+);
 
 // v1 API
 app.use("/v1", apiRateLimit, router);

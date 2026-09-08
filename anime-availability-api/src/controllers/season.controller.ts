@@ -182,8 +182,20 @@ export async function getSeason(
       : new Map();
 
     const needFormatting = rawMedia.filter((m) => !cachedRecords.has(m.id));
+    // Never `full` while degraded. `full` is the level that lets a provider miss
+    // reach the metered RapidAPI endpoint, and a degraded title is precisely the
+    // one that misses: it carries a romaji name and no TMDB id, so the lookup
+    // fails and falls through. On a healthy season most titles resolve against
+    // TMDB and the paid call is rare; on a degraded one it fires for nearly all
+    // fifty, which spends a day's budget on a single page load.
     const formatted = needFormatting.length
-      ? await formatAnimeList(needFormatting, resolvedCountry, season, year)
+      ? await formatAnimeList(
+          needFormatting,
+          resolvedCountry,
+          season,
+          year,
+          degraded ? "localized" : "full",
+        )
       : [];
 
     // Source order, not cache order: the season should read the same whether a

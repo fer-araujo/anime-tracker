@@ -136,9 +136,18 @@ export async function getAnimeDetails(
         ?.map((node: any) => node.mediaRecommendation)
         .filter(Boolean) || [];
 
+    // `localized`, not `full`: these are the small cards below the detail page,
+    // and `full` is the level that lets each provider miss reach the metered
+    // RapidAPI endpoint. One page view resolving a dozen of them at `full` can
+    // spend a third of a day's budget on a row nobody scrolled to. TMDB
+    // providers and the Spanish synopsis both survive; only the paid fallback
+    // is skipped, which leaves the verdict unverified and cached briefly.
     const formattedRecommendations = await formatAnimeList(
       rawRecommendations,
       country,
+      undefined,
+      undefined,
+      "localized",
     );
 
     // 4. Mapeo de Relaciones para "Franquicia"

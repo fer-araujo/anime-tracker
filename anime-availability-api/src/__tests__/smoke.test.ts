@@ -6,7 +6,10 @@ describe("API smoke tests", () => {
   it("GET /health returns 200", async () => {
     const res = await request(app).get("/health");
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ ok: true });
+    expect(res.body.ok).toBe(true);
+    // The paid-provider counter is part of the payload so the spend is
+    // observable without waiting for an invoice.
+    expect(res.body.rapidApi).toEqual({ used: 0, limit: expect.any(Number) });
   });
 
   it("GET /v1/home/hero returns 200 with data", async () => {
