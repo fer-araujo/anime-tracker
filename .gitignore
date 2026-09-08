@@ -42,8 +42,12 @@ coverage/
 # TypeScript
 *.tsbuildinfo
 
-# Optional: Ignore package-lock or yarn.lock if not needed
-package-lock.json
+# package-lock.json is NOT ignored, despite what the boilerplate this file was
+# copied from suggests. Without it `npm install` re-resolves the whole tree from
+# the registry on every deploy, and Render's builds died on npm's resolver —
+# "Cannot read properties of null (reading 'edgesOut')" — through a cache clear
+# and a fresh clone alike. A committed lockfile is also the only thing that makes
+# a production build reproduce what was tested locally.
 # yarn.lock
 
 # Next.js build output
