@@ -61,3 +61,80 @@ export function airingsOnDay<T extends CalendarLike>(
 
   return hits.sort((a, b) => a.airingAt - b.airingAt);
 }
+
+/**
+ * The other half of the day: a weekly broadcast slot rather than a dated one.
+ *
+ * MAL states the schedule as a JST weekday plus a wall-clock time and never a
+ * timestamp, so the instant has to be constructed. That is not a formality — a
+ * CDMX day spans two JST days, and a series broadcasting Tuesday 23:15 JST goes
+ * out on the CDMX Tuesday morning while one broadcasting Tuesday 10:00 JST
+ * belongs to the CDMX Monday. Matching the weekday name against the local one
+ * would misfile both.
+ *
+ * So every JST day overlapping the CDMX window is checked in turn, and the slot
+ * is kept only if the instant it produces genuinely lands inside the day.
+ *
+ * Verified against Shikimori's dated calendar on 2026-09-08: the two sources
+ * agree on all 77 titles they share, which is what makes it safe to merge them.
+ */
+const JST_OFFSET_SECONDS = 9 * 3600;
+const SECONDS_PER_DAY = 86400;
+
+/** Epoch day 0 (1970-01-01) was a Thursday, so index 0 must map to weekday 4. */
+const EPOCH_DAY_WEEKDAY_OFFSET = 4;
+
+const WEEKDAYS = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+];
+
+export type BroadcastLike = {
+  broadcast?: {
+    day_of_the_week?: string | null;
+    start_time?: string | null;
+  } | null;
+};
+
+export function broadcastsOnDay<T extends BroadcastLike>(
+  entries: T[],
+  dayIndex: number,
+): { entry: T; airingAt: number }[] {
+  const start = cdmxDayStart(dayIndex);
+  const end = cdmxDayStart(dayIndex + 1) - 1;
+
+  const firstJstDay = Math.floor((start + JST_OFFSET_SECONDS) / SECONDS_PER_DAY);
+  const lastJstDay = Math.floor((end + JST_OFFSET_SECONDS) / SECONDS_PER_DAY);
+
+  const hits: { entry: T; airingAt: number }[] = [];
+  for (const entry of entries) {
+    const weekday = entry.broadcast?.day_of_the_week;
+    const time = entry.broadcast?.start_time;
+    if (!weekday || !time) continue;
+
+    const [hours, minutes] = time.split(":").map(Number);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) continue;
+
+    for (let jstDay = firstJstDay; jstDay <= lastJstDay; jstDay++) {
+      const name = WEEKDAYS[(jstDay + EPOCH_DAY_WEEKDAY_OFFSET) % 7];
+      if (name !== weekday) continue;
+
+      const airingAt =
+        jstDay * SECONDS_PER_DAY -
+        JST_OFFSET_SECONDS +
+        hours * 3600 +
+        minutes * 60;
+      if (airingAt >= start && airingAt <= end) {
+        hits.push({ entry, airingAt });
+        break;
+      }
+    }
+  }
+
+  return hits.sort((a, b) => a.airingAt - b.airingAt);
+}

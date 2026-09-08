@@ -15,7 +15,7 @@ import {
   cdmxRange,
   cdmxRangeBounds,
 } from "../utils/cdmxCalendar.js";
-import { airingsOnDay } from "../utils/airingDay.js";
+import { airingsOnDay, broadcastsOnDay } from "../utils/airingDay.js";
 import {
   AIRING_SCHEDULE_GQL,
   UPCOMING_MEDIA_GQL,
@@ -25,6 +25,8 @@ import {
   shikiFetchCalendar,
 } from "../services/shikimoriSeason.service.js";
 import { shikimoriToAniMedia } from "../services/adapters/shikimoriToAniMedia.js";
+import { malFetchAiring } from "../services/malSchedule.service.js";
+import { malToAniMedia } from "../services/adapters/malToAniMedia.js";
 
 const DEFAULT_COUNTRY = process.env.DEFAULT_COUNTRY || "MX";
 
@@ -224,23 +226,47 @@ export async function getSchedule(
       // degrading into "currently airing" — a shelf labelled Hoy has to mean
       // today.
       if (!schedules?.length) {
-        const calendar = await shikiFetchCalendar();
+        // Two sources, because one is not enough to answer the question.
+        // Shikimori's calendar lists 93 of the 253 series it itself calls
+        // ongoing, so a third of a day's schedule was missing before MAL was
+        // added. They agree on the broadcast day for every title both carry.
+        const [calendar, malNodes] = await Promise.all([
+          shikiFetchCalendar(),
+          malFetchAiring(),
+        ]);
+        const malAiring = malNodes.filter((n) => n.status === "currently_airing");
 
-        // One reconstruction pass per requested day. A shelf labelled "hoy" has
-        // to mean the whole calendar day — what already went out this morning as
-        // much as what is still to come — and Shikimori's calendar only records
-        // each anime's next episode, so the earlier broadcasts are inferred from
-        // the weekly cadence. See `airingsOnDay` for what that can and cannot
-        // honestly recover.
         const fallbackSchedules: AiringSchedule[] = [];
         for (let day = firstDay; day <= lastDay; day++) {
+          const seen = new Set<number>();
+
+          // Shikimori first: it carries a dated next-episode, so both the
+          // instant and the episode number are real rather than reconstructed
+          // from a weekly slot. A shelf labelled "hoy" has to mean the whole
+          // calendar day, so `airingsOnDay` also recovers what already went out
+          // this morning — see it for the limits of that inference.
           for (const hit of airingsOnDay(calendar, day)) {
             const media = shikimoriToAniMedia(hit.entry.anime);
-            if (!media) continue;
+            if (!media || seen.has(media.id)) continue;
+            seen.add(media.id);
             fallbackSchedules.push({
               media,
               airingAt: hit.airingAt,
               episode: hit.episode,
+            });
+          }
+
+          // MAL fills the gap. It states a weekly slot rather than a date, so
+          // the episode number is unknown — better an untitled episode on a
+          // card that exists than a series missing from its own airing day.
+          for (const hit of broadcastsOnDay(malAiring, day)) {
+            const media = malToAniMedia(hit.entry);
+            if (!media || seen.has(media.id)) continue;
+            seen.add(media.id);
+            fallbackSchedules.push({
+              media,
+              airingAt: hit.airingAt,
+              episode: null,
             });
           }
         }

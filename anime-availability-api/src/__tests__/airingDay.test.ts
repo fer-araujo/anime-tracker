@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { airingsOnDay } from "../utils/airingDay.js";
+import { airingsOnDay, broadcastsOnDay } from "../utils/airingDay.js";
 import { cdmxDayStart, cdmxDayIndex } from "../utils/cdmxCalendar.js";
 
 /**
@@ -81,5 +81,52 @@ describe("airingsOnDay", () => {
     expect(airingsOnDay([{ next_episode: 3, next_episode_at: "" }], DAY)).toEqual(
       [],
     );
+  });
+});
+
+/**
+ * MAL states a JST weekday plus a wall-clock time, never a timestamp. A CDMX day
+ * spans two JST days, so the same weekday name lands on either side of the
+ * boundary depending on the hour — which is the whole reason this is arithmetic
+ * and not a string comparison.
+ *
+ * 2026-09-08 CDMX runs 06:00Z that day to 05:59Z the next: JST Tuesday 15:00
+ * through JST Wednesday 14:59.
+ */
+describe("broadcastsOnDay", () => {
+  const TUESDAY = cdmxDayIndex(
+    Math.floor(Date.parse("2026-09-08T12:00:00Z") / 1000),
+  );
+
+  const slot = (day: string, time: string) => ({
+    broadcast: { day_of_the_week: day, start_time: time },
+  });
+
+  it("places a late-night JST Tuesday slot on the CDMX Tuesday", () => {
+    // JST Tuesday 23:15 is 14:15 UTC, inside the CDMX Tuesday.
+    const hits = broadcastsOnDay([slot("tuesday", "23:15")], TUESDAY);
+
+    expect(hits).toHaveLength(1);
+    expect(new Date(hits[0].airingAt * 1000).toISOString()).toBe(
+      "2026-09-08T14:15:00.000Z",
+    );
+  });
+
+  it("excludes a morning JST Tuesday slot, which belongs to the day before", () => {
+    // JST Tuesday 10:00 is 01:00 UTC — still the CDMX Monday evening.
+    expect(broadcastsOnDay([slot("tuesday", "10:00")], TUESDAY)).toEqual([]);
+  });
+
+  it("includes a morning JST Wednesday slot, which is still the CDMX Tuesday", () => {
+    const hits = broadcastsOnDay([slot("wednesday", "07:40")], TUESDAY);
+
+    expect(hits).toHaveLength(1);
+    expect(new Date(hits[0].airingAt * 1000).toISOString()).toBe(
+      "2026-09-08T22:40:00.000Z",
+    );
+  });
+
+  it("skips an entry with no broadcast slot at all", () => {
+    expect(broadcastsOnDay([{ broadcast: null }, {}], TUESDAY)).toEqual([]);
   });
 });
