@@ -6,8 +6,14 @@ import { logger } from "../utils/logger.js";
 import { ENV } from "../config/env.js";
 import { ANIME_DETAILS_GQL } from "../graphql/queries/animeDetails.gql.js";
 import { ANIME_BATCH_GQL } from "../graphql/queries/animeBatch.gql.js";
-import { shikiFetchByIds } from "../services/shikimoriSeason.service.js";
-import { shikimoriToAniMedia } from "../services/adapters/shikimoriToAniMedia.js";
+import {
+  shikiFetchByIds,
+  shikiFetchDetail,
+} from "../services/shikimoriSeason.service.js";
+import {
+  shikimoriToAniMedia,
+  shikimoriDetailToAniMedia,
+} from "../services/adapters/shikimoriToAniMedia.js";
 import { malIdFor } from "../utils/idMap.js";
 // Ya no necesitamos normalizeTitle aquí
 import { htmlToText, shorten } from "../utils/sanitize.js";
@@ -21,7 +27,11 @@ import {
   SYNOPSIS_SHORT_LENGTH,
   type FormattedAnime,
 } from "../utils/formatAnimeList.js";
-import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
+import {
+  getTmdbSpecificSynopsis,
+  getTmdbImages,
+  tmdbPosterUrl,
+} from "../services/tmdb.service.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
 import { bayesianAverage } from "../utils/rating.js";
 import { createSupabaseAdmin } from "../utils/supabase.js";
@@ -50,16 +60,33 @@ export async function getAnimeDetails(
       body: JSON.stringify({ query: gql, variables: { id: anilistId } }),
     });
 
+    let media = aniRes.ok ? (await aniRes.json())?.data?.Media : null;
+
     if (!aniRes.ok) {
-      const errorText = await aniRes.text();
-      logger.error({ status: aniRes.status }, `AniList error for ID ${anilistId}`);
-      return res.status(aniRes.status).json({
-        error: "Anime not found in AniList or GraphQL Error",
-        details: errorText,
-      });
+      // The upstream body was being forwarded verbatim, so a client asking for
+      // an anime got AniList's internal error text and its status code. Log it,
+      // do not relay it.
+      logger.error(
+        { status: aniRes.status },
+        `AniList error for ID ${anilistId}`,
+      );
     }
-    const json = await aniRes.json();
-    const media = json.data?.Media;
+
+    // Shikimori's detail endpoint carries genres, studios, synopsis and the
+    // next airing time — enough for this page to render rather than 503.
+    // Missing: relations, external links and recommendations, so the franchise
+    // strip and the suggestions below it come back empty.
+    let degraded = false;
+    if (!media) {
+      const malId = malIdFor(anilistId);
+      const detail = malId ? await shikiFetchDetail(malId) : null;
+      const converted = detail ? shikimoriDetailToAniMedia(detail) : null;
+      if (converted) {
+        media = converted;
+        degraded = true;
+        logger.warn(`[anime] ${anilistId} served from Shikimori`);
+      }
+    }
 
     if (!media) return res.status(404).json({ error: "Not found" });
 
@@ -158,12 +185,23 @@ export async function getAnimeDetails(
     // 5. RESPUESTA ESTRUCTURADA
     const result = {
       id: { anilist: media.id, tmdb: tmdbId },
+      degraded,
       title: title,
       subtitle: media.title?.native !== title ? media.title?.native : null,
       providers: providersData.providers || [],
       images: {
         artworkCandidates: artworkCandidates || [],
-        poster: media.coverImage?.extraLarge ?? media.coverImage?.large ?? null,
+        // resolveHeroArtwork has already matched this title on TMDB and
+        // getTmdbImages is deduplicated, so the fallback poster costs nothing
+        // extra. It matters because a degraded source often has no cover.
+        poster:
+          media.coverImage?.extraLarge ??
+          media.coverImage?.large ??
+          (tmdbId
+            ? (tmdbPosterUrl(
+                (await getTmdbImages(tmdbId, kind))?.posters?.[0]?.file_path,
+              ) ?? null)
+            : null),
         backdrop: backdrop ?? null,
         logo: logo ?? null,
         banner: media.bannerImage ?? null,

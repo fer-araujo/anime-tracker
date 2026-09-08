@@ -138,3 +138,30 @@ export async function shikiFetchByIds(
     return [];
   }
 }
+
+/** Everything Shikimori knows about one anime, by MAL id. */
+export type ShikiAnimeDetail = ShikiSeasonEntry & {
+  english?: string[] | null;
+  japanese?: string[] | null;
+  description?: string | null;
+  duration?: number | null;
+  next_episode_at?: string | null;
+  genres?: { id: number; name: string; russian: string }[] | null;
+  studios?: { id: number; name: string }[] | null;
+};
+
+export async function shikiFetchDetail(
+  malId: number,
+): Promise<ShikiAnimeDetail | null> {
+  try {
+    const res = await fetch(`${SHIKI_BASE}/api/animes/${malId}`, {
+      headers: HEADERS,
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as ShikiAnimeDetail;
+  } catch (err) {
+    logger.warn({ err }, `[shikimori] detail ${malId} failed`);
+    return null;
+  }
+}

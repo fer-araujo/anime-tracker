@@ -1,6 +1,9 @@
 import type { AniMedia } from "../../types/animeCore.js";
 import { anilistIdFor } from "../../utils/idMap.js";
-import type { ShikiSeasonEntry } from "../shikimoriSeason.service.js";
+import type {
+  ShikiAnimeDetail,
+  ShikiSeasonEntry,
+} from "../shikimoriSeason.service.js";
 
 const SHIKI_BASE = "https://shikimori.one";
 
@@ -82,4 +85,42 @@ function parseAiredOn(aired: string | null | undefined) {
   if (!aired) return null;
   const [y, m, d] = aired.split("-").map(Number);
   return { year: y || null, month: m || null, day: d || null };
+}
+
+/**
+ * The detail endpoint, which carries what the season list omits.
+ *
+ * Genres arrive with both an English `name` and a Russian one; the English is
+ * the only usable side here. `description` comes with Shikimori's own bbcode
+ * markup, which the caller's sanitiser strips.
+ */
+export function shikimoriDetailToAniMedia(
+  detail: ShikiAnimeDetail,
+): AniMedia | null {
+  const base = shikimoriToAniMedia(detail);
+  if (!base) return null;
+
+  return {
+    ...base,
+    title: {
+      romaji: detail.name,
+      english: detail.english?.[0] ?? detail.name,
+      native: detail.japanese?.[0] ?? undefined,
+    },
+    description: detail.description ?? null,
+    duration: detail.duration ?? null,
+    genres: (detail.genres ?? []).map((g) => g.name),
+    studios: {
+      edges: (detail.studios ?? []).map((st) => ({
+        isMain: true,
+        node: { name: st.name },
+      })),
+    },
+    nextAiringEpisode: detail.next_episode_at
+      ? {
+          episode: (detail.episodes_aired ?? 0) + 1,
+          airingAt: Math.floor(new Date(detail.next_episode_at).getTime() / 1000),
+        }
+      : null,
+  };
 }
