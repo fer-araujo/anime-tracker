@@ -3,7 +3,10 @@ import type { Request, Response, NextFunction } from "express";
 import type { AniMedia } from "../types/animeCore.js";
 import { hybridCache, setCacheControl } from "../utils/cache.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
-import { formatAnimeList } from "../utils/formatAnimeList.js";
+import {
+  formatAnimeList,
+  type EnrichmentLevel,
+} from "../utils/formatAnimeList.js";
 import { getCurrentSeasonYearLocal } from "../utils/season.js";
 import {
   cdmxDateISO,
@@ -12,6 +15,7 @@ import {
   cdmxRange,
   cdmxRangeBounds,
 } from "../utils/cdmxCalendar.js";
+import { airingsOnDay } from "../utils/airingDay.js";
 import {
   AIRING_SCHEDULE_GQL,
   UPCOMING_MEDIA_GQL,
@@ -116,7 +120,7 @@ async function formatSchedules(
   country: string,
   season: string,
   year: number,
-  level: "full" | "light",
+  level: EnrichmentLevel,
 ): Promise<AiringEntry[]> {
   const uniqueMedia = new Map<number, AniMedia>();
   for (const s of schedules) {
@@ -222,34 +226,50 @@ export async function getSchedule(
       if (!schedules?.length) {
         const calendar = await shikiFetchCalendar();
 
-        // Shikimori's calendar only knows each anime's *next* episode, so
-        // unlike AniList's airingSchedules it cannot report what already went
-        // out earlier today. Clipping to the remaining hours of the CDMX day
-        // therefore empties the shelf every evening — measured at 20:47 local,
-        // it matched nothing. The next 24 hours is what "airing today" means to
-        // someone looking at it late, and it is the whole of what this source
-        // can honestly answer.
-        const now = Math.floor(Date.now() / 1000);
-        const horizon = now + 24 * 3600;
-        const inWindow = calendar
-          .filter((entry) => {
-            const at = Math.floor(
-              new Date(entry.next_episode_at).getTime() / 1000,
-            );
-            return at >= now && at <= horizon;
-          })
-          .sort((a, b) => a.next_episode_at.localeCompare(b.next_episode_at));
+        // One reconstruction pass per requested day. A shelf labelled "hoy" has
+        // to mean the whole calendar day — what already went out this morning as
+        // much as what is still to come — and Shikimori's calendar only records
+        // each anime's next episode, so the earlier broadcasts are inferred from
+        // the weekly cadence. See `airingsOnDay` for what that can and cannot
+        // honestly recover.
+        const fallbackSchedules: AiringSchedule[] = [];
+        for (let day = firstDay; day <= lastDay; day++) {
+          for (const hit of airingsOnDay(calendar, day)) {
+            const media = shikimoriToAniMedia(hit.entry.anime);
+            if (!media) continue;
+            fallbackSchedules.push({
+              media,
+              airingAt: hit.airingAt,
+              episode: hit.episode,
+            });
+          }
+        }
 
-        const media = inWindow
-          .map((entry) => shikimoriToAniMedia(entry.anime))
-          .filter((m): m is AniMedia => m !== null);
-
-        if (media.length) {
+        if (fallbackSchedules.length) {
           // `localized`, not `light`: Shikimori carries no description at all,
           // so without the Spanish synopsis from TMDB these cards would have no
           // text whatsoever. Still no paid provider lookups.
-          const items = await formatAnimeList(media, country, season, year, "localized");
-          const payload = { data: items.sort(byRatingThenTitle), degraded: true };
+          const entries = await formatSchedules(
+            fallbackSchedules,
+            country,
+            season,
+            year,
+            "localized",
+          );
+
+          const payload =
+            days === 1
+              ? { data: [...entries].sort(byRatingThenTitle), degraded: true }
+              : {
+                  meta: {
+                    days,
+                    firstDate: cdmxDateISO(firstDay),
+                    lastDate: cdmxDateISO(lastDay),
+                  },
+                  data: groupByDay(entries, firstDay, lastDay),
+                  degraded: true,
+                };
+
           await hybridCache.set(cacheKey, payload, 1000 * 60 * 30);
           setCacheControl(res, "schedule");
           return res.json(payload);
