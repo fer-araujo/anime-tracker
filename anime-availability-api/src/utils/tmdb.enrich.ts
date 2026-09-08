@@ -93,7 +93,18 @@ export function getTitleVariations(title: string): string[] {
    * ending in "I" or "1" is not a sequel, and stripping a bare digit blindly
    * would break Mob Psycho 100 and Steins;Gate 0.
    */
-  const SEQUEL_SUFFIX = /\s+(?:i{2,3}|iv|v|vi{1,3}|ix|x|[2-9])$/i;
+  const SEQUEL_SUFFIX = /\s+(?:i{2,3}|iv|v|vi{1,3}|ix|x|[2-9]|[1-9]\d)$/i;
+
+  /**
+   * A trailing parenthetical, which is a disambiguator rather than a title.
+   *
+   * The fallback sources qualify remakes and long-runners the way a catalogue
+   * does — "Doraemon (2005)", "Bono Bono (2016)", "Koukaku Kidoutai (TV)" —
+   * while TMDB indexes them under the bare name and keeps the year in its own
+   * field. Measured on the currently-airing set, this is the second largest
+   * cause of a miss after the sequel marker.
+   */
+  const TRAILING_PARENTHETICAL = /\s*\([^)]*\)\s*$/;
 
   // Variación A: Título tal cual lo indexa TMDB, con puntuación intacta.
   const verbatim = clean.replace(/\s+/g, " ").trim();
@@ -136,9 +147,11 @@ export function getTitleVariations(title: string): string[] {
   // must get its own query before anything guesses that the tail is a sequel
   // marker. A Set keeps this a no-op when the title carries no such suffix.
   for (const variation of [...variations]) {
-    const withoutSequel = variation.replace(SEQUEL_SUFFIX, "").trim();
-    if (withoutSequel && withoutSequel !== variation) {
-      variations.add(withoutSequel);
+    // The parenthetical goes first: "Doraemon (2005)" has to lose the year
+    // before the sequel rule can see whatever is underneath it.
+    const bare = variation.replace(TRAILING_PARENTHETICAL, "").trim();
+    for (const candidate of [bare, bare.replace(SEQUEL_SUFFIX, "").trim()]) {
+      if (candidate && candidate !== variation) variations.add(candidate);
     }
   }
 
