@@ -14,8 +14,14 @@ import {
   cdmxDayName,
   cdmxRange,
   cdmxRangeBounds,
+  cdmxDayStart,
 } from "../utils/cdmxCalendar.js";
 import { airingsOnDay, broadcastsOnDay } from "../utils/airingDay.js";
+import {
+  asFetchOngoingIndex,
+  asFetchTimetable,
+} from "../services/animeSchedule.service.js";
+import { animeScheduleToAniMedia } from "../services/adapters/animeScheduleToAniMedia.js";
 import {
   AIRING_SCHEDULE_GQL,
   UPCOMING_MEDIA_GQL,
@@ -226,11 +232,14 @@ export async function getSchedule(
       // degrading into "currently airing" — a shelf labelled Hoy has to mean
       // today.
       if (!schedules?.length) {
-        // Two sources, because one is not enough to answer the question.
-        // Shikimori's calendar lists 93 of the 253 series it itself calls
-        // ongoing, so a third of a day's schedule was missing before MAL was
-        // added. They agree on the broadcast day for every title both carry.
-        const [calendar, malNodes] = await Promise.all([
+        // Three sources, in descending order of how directly each answers the
+        // question. No single one is enough: Shikimori's calendar lists 93 of
+        // the 253 series it itself calls ongoing, MAL records a broadcast day
+        // for 112 of 377, and neither schedules donghua at all. Where they
+        // overlap they agree, so the merge adds coverage rather than noise.
+        const [timetable, asIndex, calendar, malNodes] = await Promise.all([
+          asFetchTimetable(),
+          asFetchOngoingIndex(),
           shikiFetchCalendar(),
           malFetchAiring(),
         ]);
@@ -239,12 +248,33 @@ export async function getSchedule(
         const fallbackSchedules: AiringSchedule[] = [];
         for (let day = firstDay; day <= lastDay; day++) {
           const seen = new Set<number>();
+          const dayStart = cdmxDayStart(day);
+          const dayEnd = cdmxDayStart(day + 1) - 1;
 
-          // Shikimori first: it carries a dated next-episode, so both the
-          // instant and the episode number are real rather than reconstructed
-          // from a weekly slot. A shelf labelled "hoy" has to mean the whole
-          // calendar day, so `airingsOnDay` also recovers what already went out
-          // this morning — see it for the limits of that inference.
+          // AnimeSchedule first: it is the only source with a real per-episode
+          // timestamp, so nothing about the instant or the episode number is
+          // inferred. It also carries its own AniList id, so it loses nothing
+          // to the offline mapping table.
+          for (const row of timetable) {
+            const airingAt = Math.floor(Date.parse(row.episodeDate) / 1000);
+            if (!Number.isFinite(airingAt)) continue;
+            if (airingAt < dayStart || airingAt > dayEnd) continue;
+
+            const record = asIndex.get(row.route);
+            const media = record && animeScheduleToAniMedia(record);
+            if (!media || seen.has(media.id)) continue;
+            seen.add(media.id);
+            fallbackSchedules.push({
+              media,
+              airingAt,
+              episode: row.episodeNumber || null,
+            });
+          }
+
+          // Shikimori next: it carries a dated next-episode, so the instant and
+          // the episode number are still real. A shelf labelled "hoy" has to
+          // mean the whole calendar day, so `airingsOnDay` also recovers what
+          // already went out this morning — see it for the limits of that.
           for (const hit of airingsOnDay(calendar, day)) {
             const media = shikimoriToAniMedia(hit.entry.anime);
             if (!media || seen.has(media.id)) continue;
