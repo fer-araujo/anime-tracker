@@ -114,6 +114,10 @@ describe("FavoritesBanner", () => {
 
   it("the CTA button links to /season", async () => {
     const mockPush = vi.fn();
+    // Spread over a partial mock rather than listing every field: `next build`
+    // type-checks this file, so a router method added in a Next release breaks
+    // the production build of an app whose source never changed. That is how
+    // `bfcacheId` arrived. Only `push` is asserted on here.
     vi.mocked(useRouter).mockReturnValue({
       push: mockPush,
       back: vi.fn(),
@@ -121,7 +125,7 @@ describe("FavoritesBanner", () => {
       refresh: vi.fn(),
       replace: vi.fn(),
       prefetch: vi.fn(),
-    });
+    } as unknown as ReturnType<typeof useRouter>);
 
     vi.mocked(useAuth).mockReturnValue({
       user: mockUser as any,
