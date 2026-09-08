@@ -7,6 +7,7 @@ import {
   tmdbSearch,
   isAnimeCandidate,
   getTmdbSpecificSynopsis,
+  tmdbPosterUrl,
 } from "../services/tmdb.service.js";
 import { resolveProvidersForAnimeDetailed } from "./resolveProviders.js";
 import { enrichFromMalAndKitsu } from "./enrich.js";
@@ -107,6 +108,10 @@ export async function formatAnimeList(
 
         // 2. Búsqueda en TMDB (Con Cascada Inteligente)
         let tmdbId: number | null = null;
+        // Kept from the match we already pay for. A fallback source may have no
+        // artwork — Shikimori has none for most of a current season — and this
+        // search runs either way, so the poster is already bought.
+        let tmdbPosterPath: string | null = null;
         try {
           const titleVariants = getTitleVariations(title);
           if (titleVariants.length === 0) titleVariants.push(title);
@@ -119,6 +124,7 @@ export async function formatAnimeList(
                   tmdbResults.find(isAnimeCandidate) ?? tmdbResults[0];
                 if (bestTmdb) {
                   tmdbId = bestTmdb.id;
+                  tmdbPosterPath = bestTmdb.poster_path ?? null;
                   // Downstream provider lookups must follow the catalogue that
                   // matched, not the initial guess.
                   kind = candidateKind;
@@ -222,6 +228,7 @@ export async function formatAnimeList(
             poster:
               anime.coverImage?.extraLarge ??
               anime.coverImage?.large ??
+              tmdbPosterUrl(tmdbPosterPath) ??
               malKitsuFallback?.posterAlt ??
               null,
             backdrop: anime.bannerImage ?? shikiScreenshot ?? null,

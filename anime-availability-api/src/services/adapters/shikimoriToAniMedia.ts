@@ -41,9 +41,15 @@ export function shikimoriToAniMedia(
   const anilistId = anilistIdFor(entry.id);
   if (!anilistId) return null;
 
-  const poster = entry.image?.original
-    ? `${SHIKI_BASE}${entry.image.original}`
-    : null;
+  // Shikimori answers with a placeholder path rather than omitting the field,
+  // and most recent-season entries have no art at all — 36 of 43 for Summer
+  // 2026. Passing that through would paint a page of identical grey boxes and
+  // block the TMDB poster further down the chain.
+  const rawImage = entry.image?.original ?? null;
+  const poster =
+    rawImage && !rawImage.includes("missing")
+      ? `${SHIKI_BASE}${rawImage}`
+      : null;
 
   // Shikimori scores 0–10 as a string; AniList uses 0–100. Everything
   // downstream divides by 10, so the scale has to match before it gets there.
