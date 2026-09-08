@@ -106,3 +106,35 @@ export async function shikiFetchByStatus(
     return [];
   }
 }
+
+/**
+ * Several anime in one request, by MAL id.
+ *
+ * Shikimori accepts a comma-separated `ids`, so a fifty-id batch costs one call
+ * rather than fifty — the same shape the AniList batch has, which is what makes
+ * this a viable substitute for it rather than a slow imitation.
+ */
+export async function shikiFetchByIds(
+  malIds: number[],
+): Promise<ShikiSeasonEntry[]> {
+  if (malIds.length === 0) return [];
+
+  const url = new URL(`${SHIKI_BASE}/api/animes`);
+  url.searchParams.set("ids", malIds.slice(0, 50).join(","));
+  url.searchParams.set("limit", "50");
+
+  try {
+    const res = await fetch(url.toString(), {
+      headers: HEADERS,
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      logger.warn(`[shikimori] ids HTTP ${res.status}`);
+      return [];
+    }
+    return (await res.json()) as ShikiSeasonEntry[];
+  } catch (err) {
+    logger.warn({ err }, "[shikimori] ids fetch failed");
+    return [];
+  }
+}

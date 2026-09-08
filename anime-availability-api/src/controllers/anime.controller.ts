@@ -6,6 +6,9 @@ import { logger } from "../utils/logger.js";
 import { ENV } from "../config/env.js";
 import { ANIME_DETAILS_GQL } from "../graphql/queries/animeDetails.gql.js";
 import { ANIME_BATCH_GQL } from "../graphql/queries/animeBatch.gql.js";
+import { shikiFetchByIds } from "../services/shikimoriSeason.service.js";
+import { shikimoriToAniMedia } from "../services/adapters/shikimoriToAniMedia.js";
+import { malIdFor } from "../utils/idMap.js";
 // Ya no necesitamos normalizeTitle aquí
 import { htmlToText, shorten } from "../utils/sanitize.js";
 import { setCacheControl } from "../utils/cache.js";
@@ -14,7 +17,9 @@ import { resolveProvidersForAnimeDetailed } from "../utils/resolveProviders.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
 import {
   formatAnimeList,
+  getCachedAnimeRecords,
   SYNOPSIS_SHORT_LENGTH,
+  type FormattedAnime,
 } from "../utils/formatAnimeList.js";
 import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
@@ -303,12 +308,33 @@ export async function getAnimeBatch(
 
     const aniJson = await anilistFetch(ANIME_BATCH_GQL, { ids: uniqueIds });
 
-    if (!aniJson?.data) {
-      return res.status(503).json({ error: "AniList unavailable" });
-    }
-
-    const medias = ((aniJson.data as { Page?: { media?: AniMedia[] } }).Page
+    let medias = ((aniJson?.data as { Page?: { media?: AniMedia[] } })?.Page
       ?.media ?? []) as AniMedia[];
+
+    // This endpoint paints the user's own lists, so an outage here empties the
+    // most personal page in the app. Anything seen before is already cached per
+    // anime; the rest comes from Shikimori, which takes a comma-separated `ids`
+    // and answers a fifty-id batch in one call.
+    let cachedRecords = new Map<number, FormattedAnime>();
+    if (medias.length === 0) {
+      cachedRecords = await getCachedAnimeRecords(uniqueIds);
+
+      const missing = uniqueIds.filter((id) => !cachedRecords.has(id));
+      const malIds = missing
+        .map((id) => malIdFor(id))
+        .filter((m): m is number => m !== null);
+
+      if (malIds.length) {
+        const entries = await shikiFetchByIds(malIds);
+        medias = entries
+          .map((entry) => shikimoriToAniMedia(entry))
+          .filter((m): m is AniMedia => m !== null);
+      }
+
+      if (cachedRecords.size === 0 && medias.length === 0) {
+        return res.status(503).json({ error: "AniList unavailable" });
+      }
+    }
 
     // This endpoint used to hand-roll its own mapping, and that is precisely
     // why it shipped `providers: []` for every anime — a hardcoded empty list
@@ -327,10 +353,9 @@ export async function getAnimeBatch(
       "light",
     );
 
-    const results: Record<number, (typeof formatted)[number]> = {};
-    for (const anime of formatted) {
-      results[anime.id.anilist] = anime;
-    }
+    const results: Record<number, FormattedAnime> = {};
+    for (const [id, record] of cachedRecords) results[id] = record;
+    for (const anime of formatted) results[anime.id.anilist] = anime;
 
     setCacheControl(res, "anime");
     return res.json({ data: results });
