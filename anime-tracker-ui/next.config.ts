@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "shikimori.one" },
       { protocol: "https", hostname: "img1.ak.crunchyroll.com" },
       { protocol: "https", hostname: "assets.fanart.tv" },
+      // Posters served by the airing-schedule fallback while AniList is down.
+      { protocol: "https", hostname: "img.animeschedule.net" },
       // Agrega este por si acaso (backups de Kitsu)
       {
         protocol: "https",
