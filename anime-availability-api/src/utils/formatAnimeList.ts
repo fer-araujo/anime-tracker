@@ -38,6 +38,9 @@ export const animeRecordKey = (anilistId: number) => `anime:record:${anilistId}`
 /** Matches the stale window in anilistRateLimit: both exist to survive an outage. */
 const ANIME_RECORD_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
+/** Long enough to spare a repeated lookup, short enough to heal on its own. */
+const THIN_RECORD_TTL_MS = 1000 * 60 * 30;
+
 /** One formatted anime, as every surface receives it. */
 export type FormattedAnime = Awaited<ReturnType<typeof formatAnimeList>>[number];
 
@@ -185,8 +188,9 @@ export async function formatAnimeList(
           kind,
           isRealeasing,
           // TMDB is free, so every caller gets real provider badges. What only
-          // `full` may do is let a miss reach the metered endpoint.
-          { skipPaidFallback },
+          // `full` may do is let a miss reach the metered endpoint — and the
+          // format lets even `full` recognise the entries no service carries.
+          { skipPaidFallback, format: anime.format },
         );
 
         // Sinopsis en español — season-aware (si hay tmdbId).
@@ -310,12 +314,20 @@ export async function formatAnimeList(
   // source that lists a season as bare ids has no way to fill those cards from
   // it. This does — and the id stays AniList's, so the entries still match the
   // user's library.
+  // A thin record must not outlive the outage that produced it. The fallback
+  // sources carry no synopsis and no genres, so a card built during a degraded
+  // window is missing exactly the fields the season page then reads back from
+  // here instead of formatting fresh — which is how a fixed backend keeps
+  // serving broken cards for a week. Same rule the provider resolver already
+  // follows: only a complete answer earns a long life.
   await Promise.all(
     items.map((item) =>
       hybridCache.set(
         animeRecordKey(item.id.anilist),
         item,
-        ANIME_RECORD_TTL_MS,
+        item.meta.synopsis && item.meta.genres.length
+          ? ANIME_RECORD_TTL_MS
+          : THIN_RECORD_TTL_MS,
       ),
     ),
   );
