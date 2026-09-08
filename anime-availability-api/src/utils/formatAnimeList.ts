@@ -18,6 +18,7 @@ import { htmlToText, shorten } from "./sanitize.js";
 import { extractStudio } from "./extractStudio.js";
 import { extractContinuationOf } from "./extractRelations.js";
 import { tmdbKindsFor, type TmdbKind } from "./animeFormat.js";
+import { hybridCache } from "./cache.js";
 
 const limit = pLimit(10);
 
@@ -29,6 +30,29 @@ const limit = pLimit(10);
  * governs payload size — it is not a layout knob.
  */
 export const SYNOPSIS_SHORT_LENGTH = 180;
+
+/** Per-anime record, keyed by AniList id so a fallback list can be filled from it. */
+export const animeRecordKey = (anilistId: number) => `anime:record:${anilistId}`;
+
+/** Matches the stale window in anilistRateLimit: both exist to survive an outage. */
+const ANIME_RECORD_TTL_MS = 1000 * 60 * 60 * 24 * 7;
+
+/** One formatted anime, as every surface receives it. */
+export type FormattedAnime = Awaited<ReturnType<typeof formatAnimeList>>[number];
+
+/** What we already know about these ids, for whatever a live source cannot supply. */
+export async function getCachedAnimeRecords(
+  ids: number[],
+): Promise<Map<number, FormattedAnime>> {
+  const found = new Map<number, FormattedAnime>();
+  await Promise.all(
+    ids.map(async (id) => {
+      const hit = await hybridCache.get<FormattedAnime>(animeRecordKey(id));
+      if (hit) found.set(id, hit);
+    }),
+  );
+  return found;
+}
 
 /**
  * How much per-item enrichment a caller is willing to pay for.
@@ -270,6 +294,23 @@ export async function formatAnimeList(
         };
       });
     }),
+  );
+
+  // Keep a copy of every formatted record under its own AniList id.
+  //
+  // The GraphQL cache is keyed by query hash, so it can answer "what did this
+  // exact query return" but never "what do we know about anime 21". A fallback
+  // source that lists a season as bare ids has no way to fill those cards from
+  // it. This does — and the id stays AniList's, so the entries still match the
+  // user's library.
+  await Promise.all(
+    items.map((item) =>
+      hybridCache.set(
+        animeRecordKey(item.id.anilist),
+        item,
+        ANIME_RECORD_TTL_MS,
+      ),
+    ),
   );
 
   // 5. Filtrar duplicados por ID de AniList
