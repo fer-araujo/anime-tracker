@@ -73,6 +73,39 @@ export function getTitleVariations(title: string): string[] {
 
   const variations = new Set<string>();
 
+  /**
+   * A sequel marker TMDB does not use.
+   *
+   * TMDB models a sequel as another *season of the same series*, so "Youjo
+   * Senki II" simply does not exist there — the show is "Saga of Tanya the
+   * Evil", season 2. The strip above already handles the vocabulary AniList
+   * writes ("2nd Season", "Season 2", "Part 2"), which is why this went
+   * unnoticed while AniList was the only source. The fallback sources spell the
+   * same thing in Roman numerals: AnimeSchedule and Shikimori both say "II".
+   *
+   * The consequence was not cosmetic. No TMDB match means no Spanish synopsis
+   * and no providers, so the card claimed no legal stream existed for a series
+   * airing on Crunchyroll — and the provider resolver then spent a metered
+   * RapidAPI call trying to answer a question TMDB could have answered for
+   * free.
+   *
+   * Roman numerals only from II up, and single digits only from 2 up: a title
+   * ending in "I" or "1" is not a sequel, and stripping a bare digit blindly
+   * would break Mob Psycho 100 and Steins;Gate 0.
+   */
+  const SEQUEL_SUFFIX = /\s+(?:i{2,3}|iv|v|vi{1,3}|ix|x|[2-9]|[1-9]\d)$/i;
+
+  /**
+   * A trailing parenthetical, which is a disambiguator rather than a title.
+   *
+   * The fallback sources qualify remakes and long-runners the way a catalogue
+   * does — "Doraemon (2005)", "Bono Bono (2016)", "Koukaku Kidoutai (TV)" —
+   * while TMDB indexes them under the bare name and keeps the year in its own
+   * field. Measured on the currently-airing set, this is the second largest
+   * cause of a miss after the sequel marker.
+   */
+  const TRAILING_PARENTHETICAL = /\s*\([^)]*\)\s*$/;
+
   // Variación A: Título tal cual lo indexa TMDB, con puntuación intacta.
   const verbatim = clean.replace(/\s+/g, " ").trim();
   if (verbatim) variations.add(verbatim);
@@ -89,7 +122,14 @@ export function getTitleVariations(title: string): string[] {
   // Variación C: Recorte antes del ':' (Para "Yu Yu Hakusho: Ghostfiles").
   // Se emiten ambas formas por la misma razón que arriba — sin esto,
   // "Kino's Journey: The Beautiful World" se recortaría a "kinos journey".
-  if (clean.includes(":")) {
+  // A head shorter than this is not a title, it is a prefix. "Re:Zero kara
+  // Hajimeru Isekai Seikatsu" splits to "re", which TMDB answers with twenty
+  // unrelated shows — "RE: European Stories" first — and the caller takes the
+  // top result. A wrong provider list is worse than an empty one: it tells the
+  // user a series streams somewhere it does not.
+  const MIN_HEAD_LENGTH = 4;
+
+  if (clean.includes(":") && clean.split(":")[0].trim().length >= MIN_HEAD_LENGTH) {
     const head = clean.split(":")[0];
 
     const headVerbatim = head.replace(/\s+/g, " ").trim();
@@ -100,6 +140,19 @@ export function getTitleVariations(title: string): string[] {
       .replace(/\s+/g, " ")
       .trim();
     if (headStripped) variations.add(headStripped);
+  }
+
+  // Last, never first. Every variation above is a more faithful rendering of
+  // what the user actually asked for, and a series really named "Gundam ZZ"
+  // must get its own query before anything guesses that the tail is a sequel
+  // marker. A Set keeps this a no-op when the title carries no such suffix.
+  for (const variation of [...variations]) {
+    // The parenthetical goes first: "Doraemon (2005)" has to lose the year
+    // before the sequel rule can see whatever is underneath it.
+    const bare = variation.replace(TRAILING_PARENTHETICAL, "").trim();
+    for (const candidate of [bare, bare.replace(SEQUEL_SUFFIX, "").trim()]) {
+      if (candidate && candidate !== variation) variations.add(candidate);
+    }
   }
 
   return Array.from(variations);

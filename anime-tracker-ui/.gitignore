@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Graphify output, when the tool is run from inside this sub-project rather
+# than the repo root. The root .gitignore anchors its own `graphify-out/*` to
+# the root, so a nested copy is invisible to it — that is how eleven
+# generated cache files reached a pull request.
+graphify-out/

@@ -51,7 +51,7 @@ describe("EnrichmentLevel", () => {
     expect(item.meta.synopsisLang).toBe("en");
     expect(
       vi.mocked(resolveProvidersForAnimeDetailed).mock.calls[0]?.[7],
-    ).toEqual({ skipPaidFallback: true });
+    ).toMatchObject({ skipPaidFallback: true });
   });
 
   it("localized: Spanish synopsis, and the paid fallback still off", async () => {
@@ -64,7 +64,7 @@ describe("EnrichmentLevel", () => {
     expect(item.meta.synopsis).toContain("español");
     expect(
       vi.mocked(resolveProvidersForAnimeDetailed).mock.calls[0]?.[7],
-    ).toEqual({ skipPaidFallback: true });
+    ).toMatchObject({ skipPaidFallback: true });
   });
 
   it("full: Spanish synopsis and the paid fallback allowed", async () => {
@@ -73,7 +73,7 @@ describe("EnrichmentLevel", () => {
     expect(getTmdbSpecificSynopsis).toHaveBeenCalled();
     expect(
       vi.mocked(resolveProvidersForAnimeDetailed).mock.calls[0]?.[7],
-    ).toEqual({ skipPaidFallback: false });
+    ).toMatchObject({ skipPaidFallback: false });
   });
 
   it("only full reaches for MAL and Kitsu when TMDB misses", async () => {

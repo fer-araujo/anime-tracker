@@ -143,7 +143,40 @@ export type ResolveProvidersOptions = {
    * where this is read below.
    */
   skipPaidFallback?: boolean;
+  /**
+   * The AniList format, when the caller knows it. Used only to recognise the
+   * handful of entries no streaming service carries — see `isUnstreamable`.
+   */
+  format?: string | null;
 };
+
+/**
+ * Promotional material, spelled the way the catalogues spell it.
+ *
+ * `PV` is a promotional video and `CM` a television commercial: a trailer the
+ * studio publishes before a premiere. Measured on the currently-airing set,
+ * these plus music videos are most of what never resolves against TMDB —
+ * "Blue Archive Anime PV", "Azur Lane Anime PVs", "Fate/Grand Order CMs" — and
+ * every one of them was reaching the metered endpoint to ask where to watch a
+ * trailer.
+ *
+ * Word boundaries matter here. A substring match would swallow any title
+ * containing those two letters, and the cost of a false positive is a real
+ * series reported as having no legal stream.
+ */
+const PROMO_TITLE = /\b(pvs?|cms?|promo|teaser|trailer)\b/i;
+
+/**
+ * Whether a paid lookup could tell us anything at all.
+ *
+ * Deliberately narrow. Specials are NOT here: both AniList and MAL file plenty
+ * of genuine OVAs under `SPECIAL`, and those do stream — excluding them would
+ * cost real availability data to save a call.
+ */
+function isUnstreamable(format?: string | null, title?: string): boolean {
+  if (format?.toUpperCase() === "MUSIC") return true;
+  return Boolean(title && PROMO_TITLE.test(title));
+}
 
 export async function resolveProvidersForAnimeDetailed(
   anilistId: number,
@@ -220,7 +253,18 @@ export async function resolveProvidersForAnimeDetailed(
     const currentYear = new Date().getFullYear();
     const isRecent = !year || year >= currentYear - 6 || isReleasing;
 
-    if (isRecent && opts.skipPaidFallback) {
+    if (isRecent && isUnstreamable(opts.format, knownTitle)) {
+      // Same unverified treatment as a budget skip, and for a reason worth
+      // stating: this is a heuristic on a title, and the one mistake this
+      // codebase has already paid for was marking an unchecked empty result
+      // conclusive. Leaving it unverified means a wrong guess costs a repeated
+      // free TMDB lookup, never a permanent "Pirata" on a real series.
+      saWasNeeded = true;
+      logger.info(
+        { anilistId, title: knownTitle, format: opts.format },
+        "[resolveProviders] Promotional or music entry — no paid lookup to make",
+      );
+    } else if (isRecent && opts.skipPaidFallback) {
       // `saWasNeeded` stays true and `saOk` stays false on purpose. This is the
       // whole mechanism: a source that should have run didn't, so the empty
       // result below fails `allSourcesAnswered`, expires in ten minutes, and is

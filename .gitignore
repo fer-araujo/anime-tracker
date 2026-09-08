@@ -79,13 +79,12 @@ src/app/temp/
 # git compresses poorly and nobody reviews. `graphify update .` rebuilds all of
 # it from the source tree in seconds, AST-only, with no API key involved.
 #
-# The pattern is `graphify-out/*` and not `graphify-out/`: a trailing slash
-# stops git descending into the directory at all, so the exceptions below would
-# never be evaluated.
-graphify-out/*
-
-# …except the community labels. These come from `graphify label`, which does
-# call an LLM, so ignoring them would mean paying for the naming again on every
-# fresh clone.
-!graphify-out/.graphify_labels.json
-!graphify-out/.graphify_labels.json.sig
+# Nothing here is kept, the community labels included. They were tracked for a
+# while on the theory that `graphify label` spends an LLM call and a fresh clone
+# would have to pay for it again. Reading the file settles it: the labels are
+# file and symbol names lifted from the AST — "anime.controller.ts",
+# "compilerOptions" — and every run reports that no Gemini key is configured, so
+# no model has ever named anything. What they did cost was churn: the file
+# changed in 7 of this branch's 20 commits, adding a diff nobody reads to a
+# third of its pull request.
+graphify-out/

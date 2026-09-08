@@ -6,6 +6,15 @@ import { logger } from "../utils/logger.js";
 import { ENV } from "../config/env.js";
 import { ANIME_DETAILS_GQL } from "../graphql/queries/animeDetails.gql.js";
 import { ANIME_BATCH_GQL } from "../graphql/queries/animeBatch.gql.js";
+import {
+  shikiFetchByIds,
+  shikiFetchDetail,
+} from "../services/shikimoriSeason.service.js";
+import {
+  shikimoriToAniMedia,
+  shikimoriDetailToAniMedia,
+} from "../services/adapters/shikimoriToAniMedia.js";
+import { malIdFor } from "../utils/idMap.js";
 // Ya no necesitamos normalizeTitle aquí
 import { htmlToText, shorten } from "../utils/sanitize.js";
 import { setCacheControl } from "../utils/cache.js";
@@ -14,9 +23,15 @@ import { resolveProvidersForAnimeDetailed } from "../utils/resolveProviders.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
 import {
   formatAnimeList,
+  getCachedAnimeRecords,
   SYNOPSIS_SHORT_LENGTH,
+  type FormattedAnime,
 } from "../utils/formatAnimeList.js";
-import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
+import {
+  getTmdbSpecificSynopsis,
+  getTmdbImages,
+  tmdbPosterUrl,
+} from "../services/tmdb.service.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
 import { bayesianAverage } from "../utils/rating.js";
 import { createSupabaseAdmin } from "../utils/supabase.js";
@@ -45,16 +60,33 @@ export async function getAnimeDetails(
       body: JSON.stringify({ query: gql, variables: { id: anilistId } }),
     });
 
+    let media = aniRes.ok ? (await aniRes.json())?.data?.Media : null;
+
     if (!aniRes.ok) {
-      const errorText = await aniRes.text();
-      logger.error({ status: aniRes.status }, `AniList error for ID ${anilistId}`);
-      return res.status(aniRes.status).json({
-        error: "Anime not found in AniList or GraphQL Error",
-        details: errorText,
-      });
+      // The upstream body was being forwarded verbatim, so a client asking for
+      // an anime got AniList's internal error text and its status code. Log it,
+      // do not relay it.
+      logger.error(
+        { status: aniRes.status },
+        `AniList error for ID ${anilistId}`,
+      );
     }
-    const json = await aniRes.json();
-    const media = json.data?.Media;
+
+    // Shikimori's detail endpoint carries genres, studios, synopsis and the
+    // next airing time — enough for this page to render rather than 503.
+    // Missing: relations, external links and recommendations, so the franchise
+    // strip and the suggestions below it come back empty.
+    let degraded = false;
+    if (!media) {
+      const malId = malIdFor(anilistId);
+      const detail = malId ? await shikiFetchDetail(malId) : null;
+      const converted = detail ? shikimoriDetailToAniMedia(detail) : null;
+      if (converted) {
+        media = converted;
+        degraded = true;
+        logger.warn(`[anime] ${anilistId} served from Shikimori`);
+      }
+    }
 
     if (!media) return res.status(404).json({ error: "Not found" });
 
@@ -104,9 +136,18 @@ export async function getAnimeDetails(
         ?.map((node: any) => node.mediaRecommendation)
         .filter(Boolean) || [];
 
+    // `localized`, not `full`: these are the small cards below the detail page,
+    // and `full` is the level that lets each provider miss reach the metered
+    // RapidAPI endpoint. One page view resolving a dozen of them at `full` can
+    // spend a third of a day's budget on a row nobody scrolled to. TMDB
+    // providers and the Spanish synopsis both survive; only the paid fallback
+    // is skipped, which leaves the verdict unverified and cached briefly.
     const formattedRecommendations = await formatAnimeList(
       rawRecommendations,
       country,
+      undefined,
+      undefined,
+      "localized",
     );
 
     // 4. Mapeo de Relaciones para "Franquicia"
@@ -153,12 +194,23 @@ export async function getAnimeDetails(
     // 5. RESPUESTA ESTRUCTURADA
     const result = {
       id: { anilist: media.id, tmdb: tmdbId },
+      degraded,
       title: title,
       subtitle: media.title?.native !== title ? media.title?.native : null,
       providers: providersData.providers || [],
       images: {
         artworkCandidates: artworkCandidates || [],
-        poster: media.coverImage?.extraLarge ?? media.coverImage?.large ?? null,
+        // resolveHeroArtwork has already matched this title on TMDB and
+        // getTmdbImages is deduplicated, so the fallback poster costs nothing
+        // extra. It matters because a degraded source often has no cover.
+        poster:
+          media.coverImage?.extraLarge ??
+          media.coverImage?.large ??
+          (tmdbId
+            ? (tmdbPosterUrl(
+                (await getTmdbImages(tmdbId, kind))?.posters?.[0]?.file_path,
+              ) ?? null)
+            : null),
         backdrop: backdrop ?? null,
         logo: logo ?? null,
         banner: media.bannerImage ?? null,
@@ -303,12 +355,33 @@ export async function getAnimeBatch(
 
     const aniJson = await anilistFetch(ANIME_BATCH_GQL, { ids: uniqueIds });
 
-    if (!aniJson?.data) {
-      return res.status(503).json({ error: "AniList unavailable" });
-    }
-
-    const medias = ((aniJson.data as { Page?: { media?: AniMedia[] } }).Page
+    let medias = ((aniJson?.data as { Page?: { media?: AniMedia[] } })?.Page
       ?.media ?? []) as AniMedia[];
+
+    // This endpoint paints the user's own lists, so an outage here empties the
+    // most personal page in the app. Anything seen before is already cached per
+    // anime; the rest comes from Shikimori, which takes a comma-separated `ids`
+    // and answers a fifty-id batch in one call.
+    let cachedRecords = new Map<number, FormattedAnime>();
+    if (medias.length === 0) {
+      cachedRecords = await getCachedAnimeRecords(uniqueIds);
+
+      const missing = uniqueIds.filter((id) => !cachedRecords.has(id));
+      const malIds = missing
+        .map((id) => malIdFor(id))
+        .filter((m): m is number => m !== null);
+
+      if (malIds.length) {
+        const entries = await shikiFetchByIds(malIds);
+        medias = entries
+          .map((entry) => shikimoriToAniMedia(entry))
+          .filter((m): m is AniMedia => m !== null);
+      }
+
+      if (cachedRecords.size === 0 && medias.length === 0) {
+        return res.status(503).json({ error: "AniList unavailable" });
+      }
+    }
 
     // This endpoint used to hand-roll its own mapping, and that is precisely
     // why it shipped `providers: []` for every anime — a hardcoded empty list
@@ -316,21 +389,24 @@ export async function getAnimeBatch(
     // titles that are streaming right now. Every other surface goes through
     // formatAnimeList; this one is back on the same rail.
     //
-    // Light mode because a batch is up to 50 ids: it keeps the TMDB lookup and
-    // provider resolution (free, and the whole point), and drops the per-item
-    // enrichments whose fields a card never renders.
+    // `localized`, not `light`. Light was chosen when the tracking cards showed
+    // only a poster and a title; they now show a synopsis, and light is the one
+    // level that skips it, so every card in a tracking list rendered with an
+    // empty body. The Spanish synopsis comes from TMDB, which is free and
+    // already looked up here for the poster and the providers — so this adds no
+    // request the batch was not making. Still not `full`: that is the level
+    // that lets fifty provider misses reach the metered endpoint.
     const formatted = await formatAnimeList(
       medias,
       country,
       undefined,
       undefined,
-      "light",
+      "localized",
     );
 
-    const results: Record<number, (typeof formatted)[number]> = {};
-    for (const anime of formatted) {
-      results[anime.id.anilist] = anime;
-    }
+    const results: Record<number, FormattedAnime> = {};
+    for (const [id, record] of cachedRecords) results[id] = record;
+    for (const anime of formatted) results[anime.id.anilist] = anime;
 
     setCacheControl(res, "anime");
     return res.json({ data: results });

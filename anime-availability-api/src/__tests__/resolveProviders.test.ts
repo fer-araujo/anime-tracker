@@ -316,3 +316,81 @@ describe("resolveProvidersForAnimeDetailed — skipPaidFallback", () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Some entries cannot have a streaming provider at all. Asking a metered API
+ * where to watch a trailer spends budget to learn nothing — measured on the
+ * currently-airing set, promos and music videos were most of what never
+ * resolved against TMDB and therefore most of what reached the paid endpoint.
+ */
+describe("resolveProvidersForAnimeDetailed — entries nothing streams", () => {
+  beforeEach(() => {
+    cacheStore.clear();
+    vi.clearAllMocks();
+    mockGetStored.mockResolvedValue(null);
+    mockTmdbDetailed.mockResolvedValue({ ok: true, providers: [] });
+    mockTryConsume.mockReturnValue(true);
+  });
+
+  it("spends nothing on a promotional video", async () => {
+    await resolveProvidersForAnimeDetailed(
+      1,
+      "MX",
+      123,
+      "Blue Archive Anime PV",
+      2026,
+      "tv",
+      true,
+    );
+
+    expect(mockTryConsume).not.toHaveBeenCalled();
+  });
+
+  it("spends nothing on a music entry", async () => {
+    await resolveProvidersForAnimeDetailed(
+      2,
+      "MX",
+      123,
+      "Some Song",
+      2026,
+      "tv",
+      true,
+      { format: "MUSIC" },
+    );
+
+    expect(mockTryConsume).not.toHaveBeenCalled();
+  });
+
+  it("still pays for a special, because OVAs are filed as specials", async () => {
+    // Excluding SPECIAL would drop real releases to save a call. Both AniList
+    // and MAL file plenty of genuine OVAs there, and those do stream.
+    await resolveProvidersForAnimeDetailed(
+      3,
+      "MX",
+      123,
+      "Some OVA",
+      2026,
+      "tv",
+      true,
+      { format: "SPECIAL" },
+    );
+
+    expect(mockTryConsume).toHaveBeenCalled();
+  });
+
+  it("never treats the skip as a checked answer", async () => {
+    // The one mistake this file already paid for was persisting an unchecked
+    // empty result, which reported "Pirata" across the catalogue.
+    await resolveProvidersForAnimeDetailed(
+      4,
+      "MX",
+      123,
+      "Azur Lane Anime PVs",
+      2026,
+      "tv",
+      true,
+    );
+
+    expect(mockStore).not.toHaveBeenCalled();
+  });
+});

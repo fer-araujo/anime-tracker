@@ -3,7 +3,10 @@ import type { Request, Response, NextFunction } from "express";
 import type { AniMedia } from "../types/animeCore.js";
 import { hybridCache, setCacheControl } from "../utils/cache.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
-import { formatAnimeList } from "../utils/formatAnimeList.js";
+import {
+  formatAnimeList,
+  type EnrichmentLevel,
+} from "../utils/formatAnimeList.js";
 import { getCurrentSeasonYearLocal } from "../utils/season.js";
 import {
   cdmxDateISO,
@@ -11,11 +14,25 @@ import {
   cdmxDayName,
   cdmxRange,
   cdmxRangeBounds,
+  cdmxDayStart,
 } from "../utils/cdmxCalendar.js";
+import { airingsOnDay, broadcastsOnDay } from "../utils/airingDay.js";
+import {
+  asFetchOngoingIndex,
+  asFetchTimetable,
+} from "../services/animeSchedule.service.js";
+import { animeScheduleToAniMedia } from "../services/adapters/animeScheduleToAniMedia.js";
 import {
   AIRING_SCHEDULE_GQL,
   UPCOMING_MEDIA_GQL,
 } from "../graphql/queries/schedule.gql.js";
+import {
+  shikiFetchByStatus,
+  shikiFetchCalendar,
+} from "../services/shikimoriSeason.service.js";
+import { shikimoriToAniMedia } from "../services/adapters/shikimoriToAniMedia.js";
+import { malFetchAiring } from "../services/malSchedule.service.js";
+import { malToAniMedia } from "../services/adapters/malToAniMedia.js";
 
 const DEFAULT_COUNTRY = process.env.DEFAULT_COUNTRY || "MX";
 
@@ -111,7 +128,7 @@ async function formatSchedules(
   country: string,
   season: string,
   year: number,
-  level: "full" | "light",
+  level: EnrichmentLevel,
 ): Promise<AiringEntry[]> {
   const uniqueMedia = new Map<number, AniMedia>();
   for (const s of schedules) {
@@ -210,7 +227,109 @@ export async function getSchedule(
         },
       );
 
-      if (!schedules) {
+      // AniList gone. Shikimori's calendar carries every scheduled next
+      // episode in one call, so "airing today" stays answerable rather than
+      // degrading into "currently airing" — a shelf labelled Hoy has to mean
+      // today.
+      if (!schedules?.length) {
+        // Three sources, in descending order of how directly each answers the
+        // question. No single one is enough: Shikimori's calendar lists 93 of
+        // the 253 series it itself calls ongoing, MAL records a broadcast day
+        // for 112 of 377, and neither schedules donghua at all. Where they
+        // overlap they agree, so the merge adds coverage rather than noise.
+        const [timetable, asIndex, calendar, malNodes] = await Promise.all([
+          asFetchTimetable(),
+          asFetchOngoingIndex(),
+          shikiFetchCalendar(),
+          malFetchAiring(),
+        ]);
+        const malAiring = malNodes.filter((n) => n.status === "currently_airing");
+
+        const fallbackSchedules: AiringSchedule[] = [];
+        for (let day = firstDay; day <= lastDay; day++) {
+          const seen = new Set<number>();
+          const dayStart = cdmxDayStart(day);
+          const dayEnd = cdmxDayStart(day + 1) - 1;
+
+          // AnimeSchedule first: it is the only source with a real per-episode
+          // timestamp, so nothing about the instant or the episode number is
+          // inferred. It also carries its own AniList id, so it loses nothing
+          // to the offline mapping table.
+          for (const row of timetable) {
+            const airingAt = Math.floor(Date.parse(row.episodeDate) / 1000);
+            if (!Number.isFinite(airingAt)) continue;
+            if (airingAt < dayStart || airingAt > dayEnd) continue;
+
+            const record = asIndex.get(row.route);
+            const media = record && animeScheduleToAniMedia(record);
+            if (!media || seen.has(media.id)) continue;
+            seen.add(media.id);
+            fallbackSchedules.push({
+              media,
+              airingAt,
+              episode: row.episodeNumber || null,
+            });
+          }
+
+          // Shikimori next: it carries a dated next-episode, so the instant and
+          // the episode number are still real. A shelf labelled "hoy" has to
+          // mean the whole calendar day, so `airingsOnDay` also recovers what
+          // already went out this morning — see it for the limits of that.
+          for (const hit of airingsOnDay(calendar, day)) {
+            const media = shikimoriToAniMedia(hit.entry.anime);
+            if (!media || seen.has(media.id)) continue;
+            seen.add(media.id);
+            fallbackSchedules.push({
+              media,
+              airingAt: hit.airingAt,
+              episode: hit.episode,
+            });
+          }
+
+          // MAL fills the gap. It states a weekly slot rather than a date, so
+          // the episode number is unknown — better an untitled episode on a
+          // card that exists than a series missing from its own airing day.
+          for (const hit of broadcastsOnDay(malAiring, day)) {
+            const media = malToAniMedia(hit.entry);
+            if (!media || seen.has(media.id)) continue;
+            seen.add(media.id);
+            fallbackSchedules.push({
+              media,
+              airingAt: hit.airingAt,
+              episode: null,
+            });
+          }
+        }
+
+        if (fallbackSchedules.length) {
+          // `localized`, not `light`: Shikimori carries no description at all,
+          // so without the Spanish synopsis from TMDB these cards would have no
+          // text whatsoever. Still no paid provider lookups.
+          const entries = await formatSchedules(
+            fallbackSchedules,
+            country,
+            season,
+            year,
+            "localized",
+          );
+
+          const payload =
+            days === 1
+              ? { data: [...entries].sort(byRatingThenTitle), degraded: true }
+              : {
+                  meta: {
+                    days,
+                    firstDate: cdmxDateISO(firstDay),
+                    lastDate: cdmxDateISO(lastDay),
+                  },
+                  data: groupByDay(entries, firstDay, lastDay),
+                  degraded: true,
+                };
+
+          await hybridCache.set(cacheKey, payload, 1000 * 60 * 30);
+          setCacheControl(res, "schedule");
+          return res.json(payload);
+        }
         return res.status(503).json({ error: "AniList unavailable" });
       }
 
@@ -259,7 +378,24 @@ export async function getSchedule(
         },
       );
 
-      if (!media) {
+      if (!media?.length) {
+        // `anons` is Shikimori's "announced": exactly the upcoming bucket, and
+        // its entries carry air dates, so the coming/tba split still works.
+        const fallback = await shikiFetchByStatus("anons", 30);
+        const converted = fallback
+          .map((entry) => shikimoriToAniMedia(entry))
+          .filter((m): m is AniMedia => m !== null);
+
+        if (converted.length) {
+          const split = converted.filter((m) =>
+            type === "coming" ? hasConfirmedDate(m) : !hasConfirmedDate(m),
+          );
+          const items = await formatAnimeList(split, country, season, year, "localized");
+          const payload = { data: items.sort(byRatingThenTitle), degraded: true };
+          await hybridCache.set(cacheKey, payload, 1000 * 60 * 30);
+          setCacheControl(res, "schedule");
+          return res.json(payload);
+        }
         return res.status(503).json({ error: "AniList unavailable" });
       }
 

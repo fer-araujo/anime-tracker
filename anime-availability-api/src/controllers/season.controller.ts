@@ -2,7 +2,13 @@ import { logger } from "../utils/logger.js";
 import type { Request, Response, NextFunction } from "express";
 import { ENV } from "../config/env.js";
 import type { SeasonQuery } from "../models/schema.js";
-import { formatAnimeList } from "../utils/formatAnimeList.js";
+import {
+  formatAnimeList,
+  getCachedAnimeRecords,
+  type FormattedAnime,
+} from "../utils/formatAnimeList.js";
+import { shikiFetchSeason } from "../services/shikimoriSeason.service.js";
+import { shikimoriToAniMedia } from "../services/adapters/shikimoriToAniMedia.js";
 import type { AniMedia } from "../types/animeCore.js";
 import { setCacheControl, hybridCache } from "../utils/cache.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
@@ -130,24 +136,77 @@ export async function getSeason(
 
     const aniJson = await anilistFetch(gql, gqlVariables);
 
-    if (!aniJson) {
-      return res.status(503).json({ error: "AniList unavailable" });
+    let rawMedia = aniJson?.data?.Page?.media as AniMedia[] | undefined;
+    let degraded = false;
+
+    // AniList gone and no stale copy to fall back on. Shikimori answers the
+    // same question — it was the only source still serving seasons during the
+    // 2026-09-06 outage, while Jikan's season endpoint returned 504.
+    // Every variant needs this, not just the season one. `rank=popular` and
+    // `season=ALL` set skipSeasonFilter, and excluding them here left the
+    // homepage's Popular shelf on 503 — which `fetchSeason` throws on, taking
+    // the whole page render down with it.
+    if (!rawMedia?.length) {
+      const fromShikimori = await shikiFetchSeason(
+        skipSeasonFilter ? undefined : season,
+        year,
+      );
+      const converted = fromShikimori
+        .map((entry) => shikimoriToAniMedia(entry, season, year))
+        .filter((m): m is AniMedia => m !== null);
+
+      if (converted.length > 0) {
+        rawMedia = converted;
+        degraded = true;
+        logger.warn(
+          `[season] AniList unavailable — serving ${converted.length} entries from Shikimori`,
+        );
+      }
     }
 
-    const rawMedia = aniJson?.data?.Page?.media as AniMedia[] | undefined;
+    if (!aniJson && !rawMedia?.length) {
+      return res.status(503).json({ error: "AniList unavailable" });
+    }
 
     if (!rawMedia || rawMedia.length === 0) {
       setCacheControl(res, "season");
       return res.json({ meta: { country: resolvedCountry, season: rawSeason, year, total: 0, source: "AniList + TMDB" }, data: [], leftovers: [] });
     }
 
-    // --- MAGIA AQUÍ: Usamos la utilidad ---
-    const uniqueItems = await formatAnimeList(
-      rawMedia,
-      resolvedCountry,
-      season,
-      year,
-    );
+    // Shikimori's season endpoint gives no genres, studios or synopsis — a
+    // detail call per anime would be 50 requests to paint one page. Anything
+    // seen before is already in the per-anime cache with all of it, so the
+    // cards come from there and only the unseen ones are formatted fresh.
+    const cachedRecords: Map<number, FormattedAnime> = degraded
+      ? await getCachedAnimeRecords(rawMedia.map((m) => m.id))
+      : new Map();
+
+    const needFormatting = rawMedia.filter((m) => !cachedRecords.has(m.id));
+    // Never `full` while degraded. `full` is the level that lets a provider miss
+    // reach the metered RapidAPI endpoint, and a degraded title is precisely the
+    // one that misses: it carries a romaji name and no TMDB id, so the lookup
+    // fails and falls through. On a healthy season most titles resolve against
+    // TMDB and the paid call is rare; on a degraded one it fires for nearly all
+    // fifty, which spends a day's budget on a single page load.
+    const formatted = needFormatting.length
+      ? await formatAnimeList(
+          needFormatting,
+          resolvedCountry,
+          season,
+          year,
+          degraded ? "localized" : "full",
+        )
+      : [];
+
+    // Source order, not cache order: the season should read the same whether a
+    // card came from the cache or the network.
+    const byId = new Map<number, FormattedAnime>([
+      ...cachedRecords,
+      ...formatted.map((f) => [f.id.anilist, f] as const),
+    ]);
+    const uniqueItems = rawMedia
+      .map((m) => byId.get(m.id))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
     // Ordenar final
     uniqueItems.sort((a, b) => {
@@ -175,7 +234,10 @@ export async function getSeason(
         season: rawSeason,
         year,
         total: uniqueItems.length,
-        source: "AniList + TMDB",
+        // The client shows a notice when this is not AniList, so a user reading
+        // a thinner season knows why rather than assuming data went missing.
+        source: degraded ? "Shikimori + cache" : "AniList + TMDB",
+        degraded,
       },
       data: uniqueItems,
       // Separate key, not merged into `data`: these belong to a different

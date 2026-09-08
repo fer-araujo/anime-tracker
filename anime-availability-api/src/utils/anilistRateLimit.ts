@@ -26,6 +26,12 @@ const MAX_REQUESTS_PER_MINUTE = 25;
 const WINDOW_MS = 60_000;
 const CACHE_TTL_MS = 1000 * 60 * 60 * 6; // 6 hours for individual GraphQL queries
 
+/** Read only when the upstream is down. AniList 403'd for a full day on 2026-09-06. */
+const STALE_TTL_MS = 1000 * 60 * 60 * 24 * 7;
+
+/** Its own key: the fresh entry must be able to expire without taking this with it. */
+const staleKey = (key: string) => `stale:${key}`;
+
 // Sliding window rate limiter
 // NOTE: This is a single-instance, in-memory rate limiter. The `requestTimestamps`
 // array mutation is not atomic — in a multi-instance or clustered deployment,
@@ -79,14 +85,28 @@ function hashQuery(query: string, variables: Record<string, unknown>): string {
  * - Limits to 25 req/min globally (below AniList's degraded 30/min)
  * - Caches each unique query+variables for 6 hours
  * - On 429, reads Retry-After header and waits
- * - On failure, returns null (caller handles gracefully)
+ * - On failure, falls back to a stale copy; null only if there is none
  */
 export async function anilistFetch<T = AniListDefaultResponse>(
   query: string,
   variables: Record<string, unknown>,
   endpoint: string = "https://graphql.anilist.co",
+  options?: {
+    /** Called when the answer came from the stale copy, so callers can say so. */
+    onStale?: () => void;
+  },
 ): Promise<T | null> {
   const cacheKey = hashQuery(query, variables);
+
+  // Last resort. Returns null on a cold cache: serving stale must never become
+  // inventing data.
+  const serveStale = async (reason: string): Promise<T | null> => {
+    const stale = await hybridCache.get(staleKey(cacheKey));
+    if (!stale) return null;
+    logger.warn(`[anilist] ${reason} — serving stale copy`);
+    options?.onStale?.();
+    return stale as T;
+  };
 
   // 1. Check cache first — skip rate limit entirely
   const cached = await hybridCache.get(cacheKey);
@@ -129,13 +149,13 @@ export async function anilistFetch<T = AniListDefaultResponse>(
       });
 
       if (!retryRes.ok) {
-        logger.error(`[anilist] Retry failed with status ${retryRes.status}`);
-        return null;
+        return serveStale(`retry failed with status ${retryRes.status}`);
       }
 
       const retryJson = await retryRes.json();
       if (retryJson?.data) {
         await hybridCache.set(cacheKey, retryJson, CACHE_TTL_MS);
+        await hybridCache.set(staleKey(cacheKey), retryJson, STALE_TTL_MS);
       }
       return retryJson as T;
     }
@@ -145,17 +165,18 @@ export async function anilistFetch<T = AniListDefaultResponse>(
       logger.error(
         `[anilist] HTTP ${res.status} for query: ${query.slice(0, 80)}...`,
       );
-      return null;
+      return serveStale(`HTTP ${res.status}`);
     }
 
     // 6. Success — cache and return
     const json = await res.json();
     if (json?.data) {
       await hybridCache.set(cacheKey, json, CACHE_TTL_MS);
+      await hybridCache.set(staleKey(cacheKey), json, STALE_TTL_MS);
     }
     return json as T;
   } catch (err) {
     logger.error({ err }, `[anilist] Fetch failed`);
-    return null;
+    return serveStale("fetch failed");
   }
 }

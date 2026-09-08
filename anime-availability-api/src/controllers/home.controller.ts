@@ -1,12 +1,19 @@
+import { logger } from "../utils/logger.js";
 // src/controllers/home.controller.ts
 import type { Request, Response, NextFunction } from "express";
 import type { AniMedia } from "../types/animeCore.js";
 import { hybridCache, setCacheControl } from "../utils/cache.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
 import { resolveHeroArtwork } from "../utils/artwork.js";
-import { getTmdbSpecificSynopsis } from "../services/tmdb.service.js";
+import {
+  getTmdbSpecificSynopsis,
+  getTmdbImages,
+  tmdbPosterUrl,
+} from "../services/tmdb.service.js";
 import { preferTitle } from "../utils/title.js";
 import { HOME_HERO_GQL } from "../graphql/queries/homeHero.gql.js";
+import { shikiFetchSeason } from "../services/shikimoriSeason.service.js";
+import { shikimoriToAniMedia } from "../services/adapters/shikimoriToAniMedia.js";
 import { getCurrentSeasonYearLocal } from "../utils/season.js";
 import { shorten } from "../utils/sanitize.js";
 import { SYNOPSIS_SHORT_LENGTH } from "../utils/formatAnimeList.js";
@@ -61,8 +68,7 @@ export async function getHomeHero(
       seasonYear: year,
     });
 
-    if (!aniJson) return res.status(503).json({ error: "AniList unavailable" });
-    let media = (aniJson.data?.Page?.media as AniMedia[]) || [];
+    let media = (aniJson?.data?.Page?.media as AniMedia[]) || [];
 
     // Fallback: if season returned fewer than 3 items, use trending/releasing
     if (media.length < 3) {
@@ -95,6 +101,26 @@ export async function getHomeHero(
       }
     }
 
+    // Both AniList queries came back empty, which during the 2026-09-06 outage
+    // meant an empty homepage above everything else. Shikimori answers the same
+    // question — the season's most popular — and the ids translate back.
+    if (media.length === 0) {
+      const fromShikimori = await shikiFetchSeason(season, year, 5);
+      media = fromShikimori
+        .map((entry) => shikimoriToAniMedia(entry, season, year))
+        .filter((m): m is AniMedia => m !== null)
+        .slice(0, 5);
+      if (media.length) {
+        logger.warn(
+          `[home] AniList unavailable — hero from Shikimori (${media.length})`,
+        );
+      }
+    }
+
+    if (media.length === 0) {
+      return res.status(503).json({ error: "AniList unavailable" });
+    }
+
     const itemsProm = media.map(async (m: AniMedia) => {
       const title = preferTitle(m.title);
       const kind = m.type === "MOVIE" ? "movie" : "tv";
@@ -110,6 +136,15 @@ export async function getHomeHero(
       );
 
       if (!backdrop) return null;
+
+      // A fallback source may carry no cover at all — Shikimori has none for
+      // most of a current season — and resolveHeroArtwork already matched this
+      // title on TMDB. getTmdbImages is deduplicated, so this reuses that call.
+      let tmdbPoster: string | null = null;
+      if (!m.coverImage?.extraLarge && tmdbId) {
+        const images = await getTmdbImages(tmdbId, kind);
+        tmdbPoster = tmdbPosterUrl(images?.posters?.[0]?.file_path) ?? null;
+      }
 
       // B) Synopsis con season-awareness
       const aniMonth = m.startDate?.month ?? null;
@@ -138,7 +173,10 @@ export async function getHomeHero(
           banner: m.bannerImage,
           backdrop,
           logo,
-          poster: m.coverImage?.extraLarge ?? null,
+          // resolveHeroArtwork already matched this title on TMDB, so its
+          // poster costs nothing extra — and a fallback source may carry no
+          // cover at all, which is when the hero would otherwise render bare.
+          poster: m.coverImage?.extraLarge ?? tmdbPoster,
         },
         meta: {
           synopsis: synopsisText,
@@ -151,7 +189,11 @@ export async function getHomeHero(
           genres: m.genres?.slice(0, 3) ?? [],
           status: m.status,
           episodes: m.episodes,
-          type: m.type,
+          // `format` (TV, MOVIE, OVA) rather than `type` (ANIME, MANGA): the
+          // card shows the former, and a fallback source fills only that one.
+          // Left undefined it fails the client's schema, which rejects the whole
+          // payload and makes the hero vanish with no error and no skeleton.
+          type: m.format ?? m.type ?? null,
           studio: m.studios?.edges?.[0]?.node?.name ?? null,
           trailer: m.trailer?.site === "youtube" ? m.trailer.id : null,
         },
