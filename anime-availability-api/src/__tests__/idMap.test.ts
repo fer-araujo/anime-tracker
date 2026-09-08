@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ID_MAP_SIZE, anilistIdFor, malIdFor } from "../utils/idMap.js";
+import { ID_MAP_SIZE, anilistIdFor, malIdFor, genresFor, studioFor } from "../utils/idMap.js";
 
 describe("AniList ↔ MAL id map", () => {
   it("translates ids that differ between the two sites", () => {
@@ -34,5 +34,30 @@ describe("AniList ↔ MAL id map", () => {
   it("carries the whole table, not a truncated copy", () => {
     // Guards against a regeneration that silently produced a fraction of it.
     expect(ID_MAP_SIZE).toBeGreaterThan(15000);
+  });
+});
+
+/**
+ * Genres were the last empty row on a degraded card. They ship in the same
+ * generated table as the studio because no fallback source carries them without
+ * one detail call per anime.
+ */
+describe("genresFor", () => {
+  it("reads the genres AniList would have returned", () => {
+    // Frieren: the fantasy/slice-of-life pairing is what makes it recognisable.
+    const genres = genresFor(154587);
+
+    expect(genres).toContain("Fantasy");
+    expect(genres).toContain("Slice of Life");
+  });
+
+  it("returns an empty list rather than throwing for an unknown id", () => {
+    expect(genresFor(999999999)).toEqual([]);
+  });
+
+  it("keeps the studio readable now that the slot can hold a placeholder", () => {
+    // An entry with genres but no studio stores 0 there; reading it as a name
+    // would print "0" under the title.
+    expect(studioFor(154587)).toBe("Madhouse");
   });
 });

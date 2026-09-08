@@ -21,9 +21,58 @@ import map from "../data/anilist-mal-map.json" with { type: "json" };
  * RAM. Covers 18,858 of the 20,687 entries carrying an AniList id — 91% — with
  * a studio on 80% of those.
  */
-type Entry = [malId: number] | [malId: number, studio: string];
+type Entry =
+  | [malId: number]
+  | [malId: number, studio: string]
+  | [malId: number, studio: string | 0, genreMask: number];
 
 const table = map as unknown as Record<string, Entry>;
+
+/**
+ * AniList's canonical genres, in the bit order `build-id-map.mjs` wrote.
+ *
+ * NEVER REORDER — the committed JSON stores bit positions, not names. Appending
+ * is safe; moving an entry silently relabels every anime that carries that bit.
+ */
+const GENRES = [
+  "Action",
+  "Adventure",
+  "Comedy",
+  "Drama",
+  "Ecchi",
+  "Fantasy",
+  "Horror",
+  "Mahou Shoujo",
+  "Mecha",
+  "Music",
+  "Mystery",
+  "Psychological",
+  "Romance",
+  "Sci-Fi",
+  "Slice of Life",
+  "Sports",
+  "Supernatural",
+  "Thriller",
+] as const;
+
+/**
+ * Genres for a degraded card.
+ *
+ * No fallback source carries these cheaply — Shikimori's list endpoints omit
+ * them entirely and its detail endpoint is one call per anime — so without this
+ * every card served during an outage rendered an empty genre row. Covers 97% of
+ * the table at 3.3 genres each.
+ */
+export function genresFor(anilistId: number): string[] {
+  const mask = table[String(anilistId)]?.[2];
+  if (typeof mask !== "number" || mask === 0) return [];
+
+  const genres: string[] = [];
+  for (let bit = 0; bit < GENRES.length; bit++) {
+    if (mask & (1 << bit)) genres.push(GENRES[bit]);
+  }
+  return genres;
+}
 
 let malToAnilist: Map<number, number> | null = null;
 
@@ -43,8 +92,9 @@ export function malIdFor(anilistId: number): number | null {
 const LEGAL_SUFFIX = /[,\s]+(co\.?,?\s*ltd\.?|inc\.?|ltd\.?|k\.k\.|llc)\.?$/i;
 
 export function studioFor(anilistId: number): string | null {
+  // `0` is the placeholder an entry uses when it has genres but no studio.
   const raw = table[String(anilistId)]?.[1];
-  if (!raw) return null;
+  if (typeof raw !== "string" || !raw) return null;
 
   return raw
     .replace(LEGAL_SUFFIX, "")

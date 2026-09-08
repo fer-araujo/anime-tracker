@@ -1,5 +1,5 @@
 import type { AniMedia } from "../../types/animeCore.js";
-import { anilistIdFor } from "../../utils/idMap.js";
+import { anilistIdFor, genresFor } from "../../utils/idMap.js";
 import type { MalNode } from "../malSchedule.service.js";
 
 /** MAL's `media_type` is lowercase and spells `tv_special`; AniList expects these. */
@@ -50,7 +50,9 @@ export function malToAniMedia(node: MalNode): AniMedia | null {
     description: node.synopsis ?? null,
     format: FORMAT[node.media_type ?? ""] ?? null,
     status: STATUS[node.status ?? ""] ?? null,
-    genres: (node.genres ?? []).map((g) => g.name),
+    genres: node.genres?.length
+      ? node.genres.map((g) => g.name)
+      : genresFor(anilistId),
     episodes: node.num_episodes || null,
     // MAL scores 0–10 with one decimal; AniList uses 0–100 and everything
     // downstream divides by ten, so the scale has to match before it gets there.

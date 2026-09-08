@@ -104,6 +104,75 @@ export function malFetchAiring(): Promise<MalNode[]> {
   return malFetch("/anime/ranking?ranking_type=airing&limit=500");
 }
 
+/**
+ * What MAL's community recommends off one anime.
+ *
+ * The same shape of signal AniList's `recommendations` carries — people voting
+ * that if you liked A you will like B — which is what makes this a substitute
+ * rather than a different feature wearing the name. Measured: Frieren returns
+ * Violet Evergarden at 29 votes, Mushoku Tensei returns Re:Zero at 19.
+ *
+ * One call per seed, unlike AniList which answers fifty in a single query. That
+ * is the reason the caller caps how many seeds it spends here.
+ */
+export async function malFetchRecommendations(
+  malId: number,
+): Promise<{ malId: number; votes: number }[]> {
+  const clientId = process.env.MAL_CLIENT_ID;
+  if (!clientId) return [];
+
+  try {
+    const res = await fetch(
+      `${MAL_BASE}/anime/${malId}?fields=id,recommendations`,
+      {
+        headers: { "X-MAL-CLIENT-ID": clientId },
+        signal: AbortSignal.timeout(8000),
+      },
+    );
+    if (!res.ok) {
+      logger.warn(`[mal] recommendations ${malId} HTTP ${res.status}`);
+      return [];
+    }
+    const json = (await res.json()) as {
+      recommendations?: {
+        node?: { id?: number };
+        num_recommendations?: number;
+      }[];
+    };
+    return (json.recommendations ?? [])
+      .map((r) => ({
+        malId: r.node?.id ?? 0,
+        votes: r.num_recommendations ?? 0,
+      }))
+      .filter((r) => r.malId > 0);
+  } catch (err) {
+    logger.warn({ err }, `[mal] recommendations ${malId} failed`);
+    return [];
+  }
+}
+
+/** Several anime by id, for hydrating a shortlist. MAL has no bulk id endpoint. */
+export async function malFetchByIds(malIds: number[]): Promise<MalNode[]> {
+  const clientId = process.env.MAL_CLIENT_ID;
+  if (!clientId) return [];
+
+  const results = await Promise.all(
+    malIds.map(async (id) => {
+      try {
+        const res = await fetch(`${MAL_BASE}/anime/${id}?fields=${FIELDS}`, {
+          headers: { "X-MAL-CLIENT-ID": clientId },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) return null;
+        return (await res.json()) as MalNode;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return results.filter((n): n is MalNode => n !== null);
+}
+
 /** One season, for the shelves that ask for a season rather than a day. */
 export function malFetchSeason(year: number, season: string): Promise<MalNode[]> {
   return malFetch(

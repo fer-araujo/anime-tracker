@@ -1,4 +1,5 @@
 import type { AniMedia } from "../../types/animeCore.js";
+import { genresFor } from "../../utils/idMap.js";
 import { AS_IMAGE_BASE, type AsAnime } from "../animeSchedule.service.js";
 
 /** AnimeSchedule spells media types in prose; AniList expects these. */
@@ -51,7 +52,9 @@ export function animeScheduleToAniMedia(anime: AsAnime): AniMedia | null {
     description: anime.description ?? null,
     format: FORMAT[format] ?? null,
     status: "RELEASING",
-    genres: (anime.genres ?? []).map((g) => g.name),
+    genres: anime.genres?.length
+      ? anime.genres.map((g) => g.name)
+      : genresFor(anilistId),
     episodes: null,
     // Already 0–100 here, unlike MAL and Shikimori which report 0–10.
     averageScore:

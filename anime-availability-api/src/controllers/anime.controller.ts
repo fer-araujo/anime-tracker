@@ -389,15 +389,19 @@ export async function getAnimeBatch(
     // titles that are streaming right now. Every other surface goes through
     // formatAnimeList; this one is back on the same rail.
     //
-    // Light mode because a batch is up to 50 ids: it keeps the TMDB lookup and
-    // provider resolution (free, and the whole point), and drops the per-item
-    // enrichments whose fields a card never renders.
+    // `localized`, not `light`. Light was chosen when the tracking cards showed
+    // only a poster and a title; they now show a synopsis, and light is the one
+    // level that skips it, so every card in a tracking list rendered with an
+    // empty body. The Spanish synopsis comes from TMDB, which is free and
+    // already looked up here for the poster and the providers — so this adds no
+    // request the batch was not making. Still not `full`: that is the level
+    // that lets fifty provider misses reach the metered endpoint.
     const formatted = await formatAnimeList(
       medias,
       country,
       undefined,
       undefined,
-      "light",
+      "localized",
     );
 
     const results: Record<number, FormattedAnime> = {};

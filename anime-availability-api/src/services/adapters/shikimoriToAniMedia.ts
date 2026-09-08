@@ -1,5 +1,5 @@
 import type { AniMedia } from "../../types/animeCore.js";
-import { anilistIdFor, studioFor } from "../../utils/idMap.js";
+import { anilistIdFor, genresFor, studioFor } from "../../utils/idMap.js";
 import type {
   ShikiAnimeDetail,
   ShikiSeasonEntry,
@@ -70,7 +70,10 @@ export function shikimoriToAniMedia(
     description: null,
     format: FORMAT[entry.kind ?? ""] ?? null,
     status: STATUS[entry.status ?? ""] ?? null,
-    genres: [],
+    // Shikimori's list endpoint carries none, and its detail endpoint is one
+    // call per anime. The generated table has them for 98% of entries, which is
+    // the difference between a genre row and an empty gap on every card.
+    genres: genresFor(anilistId),
     episodes: entry.episodes || null,
     averageScore,
     season: season ?? null,
@@ -117,7 +120,9 @@ export function shikimoriDetailToAniMedia(
     },
     description: detail.description ?? null,
     duration: detail.duration ?? null,
-    genres: (detail.genres ?? []).map((g) => g.name),
+    genres: detail.genres?.length
+      ? detail.genres.map((g) => g.name)
+      : base.genres ?? [],
     studios: {
       edges: (detail.studios ?? []).map((st) => ({
         isMain: true,
