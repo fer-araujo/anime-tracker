@@ -39,7 +39,14 @@ const db = await res.json();
 const entries = db.data ?? [];
 console.log(`Parsed ${entries.length} entries.`);
 
-/** AniList id → MAL id. Only pairs where both exist are useful to us. */
+/**
+ * AniList id → [MAL id, studio?].
+ *
+ * The studio rides along because the fallback sources do not carry it: both of
+ * Shikimori's list endpoints return a thin record, and its detail endpoint is
+ * one call per anime — fifty requests to label one page. Without this every
+ * degraded card reads "Unknown Studio". It costs about 300 KB for 80% coverage.
+ */
 const map = {};
 for (const entry of entries) {
   let anilistId = null;
@@ -48,7 +55,10 @@ for (const entry of entries) {
     anilistId ??= source.match(ANILIST)?.[1] ?? null;
     malId ??= source.match(MAL)?.[1] ?? null;
   }
-  if (anilistId && malId) map[anilistId] = Number(malId);
+  if (!anilistId || !malId) continue;
+
+  const studio = (entry.studios ?? [])[0];
+  map[anilistId] = studio ? [Number(malId), studio] : [Number(malId)];
 }
 
 const pairs = Object.keys(map).length;

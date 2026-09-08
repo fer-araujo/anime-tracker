@@ -223,7 +223,10 @@ export async function getSchedule(
           .filter((m): m is AniMedia => m !== null);
 
         if (media.length) {
-          const items = await formatAnimeList(media, country, season, year, "light");
+          // `localized`, not `light`: Shikimori carries no description at all,
+          // so without the Spanish synopsis from TMDB these cards would have no
+          // text whatsoever. Still no paid provider lookups.
+          const items = await formatAnimeList(media, country, season, year, "localized");
           const payload = { data: items.sort(byRatingThenTitle), degraded: true };
           await hybridCache.set(cacheKey, payload, 1000 * 60 * 30);
           setCacheControl(res, "schedule");
@@ -289,7 +292,7 @@ export async function getSchedule(
           const split = converted.filter((m) =>
             type === "coming" ? hasConfirmedDate(m) : !hasConfirmedDate(m),
           );
-          const items = await formatAnimeList(split, country, season, year, "light");
+          const items = await formatAnimeList(split, country, season, year, "localized");
           const payload = { data: items.sort(byRatingThenTitle), degraded: true };
           await hybridCache.set(cacheKey, payload, 1000 * 60 * 30);
           setCacheControl(res, "schedule");

@@ -1,5 +1,5 @@
 import type { AniMedia } from "../../types/animeCore.js";
-import { anilistIdFor } from "../../utils/idMap.js";
+import { anilistIdFor, studioFor } from "../../utils/idMap.js";
 import type {
   ShikiAnimeDetail,
   ShikiSeasonEntry,
@@ -57,6 +57,7 @@ export function shikimoriToAniMedia(
   // Shikimori scores 0–10 as a string; AniList uses 0–100. Everything
   // downstream divides by 10, so the scale has to match before it gets there.
   const aired = parseAiredOn(entry.aired_on);
+  const studio = studioFor(anilistId);
   const score = Number(entry.score);
   const averageScore =
     Number.isFinite(score) && score > 0 ? Math.round(score * 10) : null;
@@ -78,6 +79,13 @@ export function shikimoriToAniMedia(
     seasonYear: year ?? aired?.year ?? null,
     startDate: aired,
     isAdult: false,
+    // Neither Shikimori list endpoint carries the studio, and its detail
+    // endpoint is one call per anime. The generated map has it for 80% of
+    // entries, which is the difference between a named studio and
+    // "Unknown Studio" on every degraded card.
+    studios: studio
+      ? { edges: [{ isMain: true, node: { name: studio } }] }
+      : undefined,
   };
 }
 
