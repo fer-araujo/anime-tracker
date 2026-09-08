@@ -50,12 +50,19 @@ function shikiSeason(season: string, year: number): string {
  * caller has to translate before these can touch the user's library.
  */
 export async function shikiFetchSeason(
-  season: string,
+  season: string | undefined,
   year: number,
   limit = 50,
 ): Promise<ShikiSeasonEntry[]> {
   const url = new URL(`${SHIKI_BASE}/api/animes`);
-  url.searchParams.set("season", shikiSeason(season, year));
+  // No season means the caller asked for a whole year or for "most popular"
+  // outright — `rank=popular` and `season=ALL` both drop the season filter, and
+  // sending `undefined_2026` returns nothing instead of everything.
+  if (season) {
+    url.searchParams.set("season", shikiSeason(season, year));
+  } else {
+    url.searchParams.set("season", String(year));
+  }
   url.searchParams.set("limit", String(Math.min(limit, 50)));
   url.searchParams.set("order", "popularity");
 

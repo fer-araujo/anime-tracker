@@ -142,8 +142,15 @@ export async function getSeason(
     // AniList gone and no stale copy to fall back on. Shikimori answers the
     // same question — it was the only source still serving seasons during the
     // 2026-09-06 outage, while Jikan's season endpoint returned 504.
-    if (!rawMedia?.length && !skipSeasonFilter && season) {
-      const fromShikimori = await shikiFetchSeason(season, year);
+    // Every variant needs this, not just the season one. `rank=popular` and
+    // `season=ALL` set skipSeasonFilter, and excluding them here left the
+    // homepage's Popular shelf on 503 — which `fetchSeason` throws on, taking
+    // the whole page render down with it.
+    if (!rawMedia?.length) {
+      const fromShikimori = await shikiFetchSeason(
+        skipSeasonFilter ? undefined : season,
+        year,
+      );
       const converted = fromShikimori
         .map((entry) => shikimoriToAniMedia(entry, season, year))
         .filter((m): m is AniMedia => m !== null);
