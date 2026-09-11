@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { updateSession } from "@/lib/supabase/middleware";
 
 const rateLimitMap = new Map<string, number[]>();
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 100;
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     request.headers.get("x-real-ip") ??
@@ -36,7 +37,11 @@ export function middleware(request: NextRequest) {
     );
     return NextResponse.redirect(newUrl, { status: 308 });
   }
-  return NextResponse.next();
+
+  // Last, and on the response that is actually going out. A refused or
+  // redirected request has no page to render, so renewing its session would be
+  // a round trip to Supabase for cookies nobody reads.
+  return updateSession(request, NextResponse.next({ request }));
 }
 
 export const config = {
