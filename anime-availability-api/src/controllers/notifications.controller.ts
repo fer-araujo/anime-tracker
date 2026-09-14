@@ -7,16 +7,18 @@ import { setCacheControl } from "../utils/cache.js";
 import { getCachedAnimeRecords } from "../utils/formatAnimeList.js";
 import {
   asFetchOngoingIndex,
-  asFetchTimetable,
+  asFetchRecentTimetable,
 } from "../services/animeSchedule.service.js";
 
 /**
  * How far back the bell can see.
  *
- * The timetable covers the running week, so nothing older than that is
- * answerable from it — and a notification about an episode from three weeks ago
- * is not news anyway. Someone returning after a long absence gets the last
- * week's releases, not a backlog they would dismiss unread.
+ * The timetable is read for the running ISO week and the one before it, so a
+ * full seven days is always answerable — including on a Monday, when the
+ * running week alone holds a few hours of broadcasts. That was the first
+ * version's bug: it read only the running week and promised a week it did not
+ * have. A notification older than this is not news anyway; someone returning
+ * after a month gets the last week's releases, not a backlog to dismiss unread.
  */
 const MAX_LOOKBACK_MS = 1000 * 60 * 60 * 24 * 7;
 
@@ -32,9 +34,8 @@ const MAX_LOOKBACK_MS = 1000 * 60 * 60 * 24 * 7;
  * RLS already works; sending them is simpler and safer than rebuilding the
  * authorisation.
  *
- * The source is the airing timetable, which is the same data the "Emisión de
- * Hoy" shelf reads and already cached. That matters: a bell polled on every
- * page load must not cost an upstream request per poll.
+ * The source is the airing timetable, cached per week. That matters: a bell
+ * polled on every page load must not cost an upstream request per poll.
  */
 export async function getNotifications(
   req: Request,
@@ -58,7 +59,7 @@ export async function getNotifications(
     const from = Number.isFinite(sinceMs) ? Math.max(sinceMs, floor) : floor;
 
     const [timetable, index] = await Promise.all([
-      asFetchTimetable(),
+      asFetchRecentTimetable(now),
       asFetchOngoingIndex(),
     ]);
 

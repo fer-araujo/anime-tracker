@@ -5,7 +5,7 @@ import express from "express";
 const mockTimetable = vi.fn();
 const mockIndex = vi.fn();
 vi.mock("../services/animeSchedule.service.js", () => ({
-  asFetchTimetable: () => mockTimetable(),
+  asFetchRecentTimetable: () => mockTimetable(),
   asFetchOngoingIndex: () => mockIndex(),
 }));
 

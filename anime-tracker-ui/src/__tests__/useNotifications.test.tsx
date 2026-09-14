@@ -99,15 +99,18 @@ describe("useNotifications", () => {
     expect(result.current.unreadCount).toBe(0);
   });
 
-  it("starts a new account from now, not from the epoch", async () => {
-    // Otherwise the first visit opens a bell holding a whole season.
+  it("starts a new account a day back, so today's episodes show", async () => {
+    // Seeding at this instant hid everything that aired earlier the same day;
+    // seeding at the epoch would open the bell holding a whole season.
     prefsRow.value = null;
 
     renderHook(() => useNotifications());
 
     await waitFor(() => expect(mockInsert).toHaveBeenCalled());
-    const seeded = mockInsert.mock.calls[0][0].notifications_seen_at;
-    expect(Date.parse(seeded)).toBeGreaterThan(Date.now() - 5000);
+    const seeded = Date.parse(mockInsert.mock.calls[0][0].notifications_seen_at);
+    const DAY = 24 * 3600_000;
+    expect(seeded).toBeLessThan(Date.now() - DAY + 5000);
+    expect(seeded).toBeGreaterThan(Date.now() - DAY - 5000);
   });
 
   it("asks for nothing when the user is watching nothing", async () => {

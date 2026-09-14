@@ -1,5 +1,6 @@
 import { logger } from "../utils/logger.js";
 import { hybridCache } from "../utils/cache.js";
+import { isoWeek } from "../utils/isoWeek.js";
 
 const AS_BASE = "https://animeschedule.net/api/v3";
 
@@ -59,12 +60,18 @@ function headers(): Record<string, string> | null {
  * ("when do subtitles land"), so mixing them would put the same episode on the
  * shelf twice under two different times.
  */
-export async function asFetchTimetable(): Promise<AsTimetableEntry[]> {
+export async function asFetchTimetable(week?: {
+  week: number;
+  year: number;
+}): Promise<AsTimetableEntry[]> {
   const auth = headers();
   if (!auth) return [];
 
+  // Without a week the API answers the running ISO week, which is what the
+  // airing shelf wants and all it ever asked for.
+  const query = week ? `?week=${week.week}&year=${week.year}` : "";
   try {
-    const res = await fetch(`${AS_BASE}/timetables/raw`, {
+    const res = await fetch(`${AS_BASE}/timetables/raw${query}`, {
       headers: auth,
       signal: AbortSignal.timeout(8000),
     });
@@ -133,4 +140,45 @@ export async function asFetchOngoingIndex(): Promise<Map<string, AsAnime>> {
     await hybridCache.set(INDEX_KEY, collected, INDEX_TTL_MS);
   }
   return new Map(collected.map((a) => [a.route, a]));
+}
+
+/**
+ * Short, because the running week is still being filled in: a delay announced
+ * this afternoon has to reach the bell before the episode it moved would have
+ * aired.
+ */
+const TIMETABLE_TTL_MS = 1000 * 60 * 15;
+
+/**
+ * The running ISO week and the one before it.
+ *
+ * The API answers one week at a time, and "the last seven days" straddles two
+ * of them on every day but Sunday. Reading only the running week meant a bell
+ * opened on a Monday could see a few hours of broadcasts and nothing from the
+ * weekend. The previous week is found by stepping the instant back seven days
+ * rather than the week number back one, which would ask for week 0 in January.
+ *
+ * Each week is cached under its own key, so the notification bell — polled on
+ * every page load — costs no upstream request once warm.
+ */
+export async function asFetchRecentTimetable(
+  now: number = Date.now(),
+): Promise<AsTimetableEntry[]> {
+  const weeks = [isoWeek(now - 7 * 86_400_000), isoWeek(now)];
+
+  const results = await Promise.all(
+    weeks.map(async (week) => {
+      const key = `animeschedule:timetable:${week.year}-${week.week}`;
+      const cached = await hybridCache.get<AsTimetableEntry[]>(key);
+      if (cached) return cached;
+
+      const rows = await asFetchTimetable(week);
+      // An empty answer is a failed fetch or a missing token, not a quiet week;
+      // caching it would keep the bell blind for the whole TTL.
+      if (rows.length) await hybridCache.set(key, rows, TIMETABLE_TTL_MS);
+      return rows;
+    }),
+  );
+
+  return results.flat();
 }

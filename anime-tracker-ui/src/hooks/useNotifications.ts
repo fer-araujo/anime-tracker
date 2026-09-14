@@ -7,6 +7,9 @@ import { useUserListsContext } from "@/providers/UserListsProvider";
 import { API_BASE } from "@/lib/api";
 import type { EpisodeNotification } from "@/types/notifications";
 
+/** Far enough to include today's broadcasts, short of turning into a backlog. */
+const FIRST_VISIT_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+
 /**
  * Episodes released since the user last opened the bell.
  *
@@ -50,11 +53,13 @@ export function useNotifications() {
 
       let since = data?.notifications_seen_at as string | undefined;
 
-      // First visit. The row is created now rather than lazily on the first
-      // read of the bell, so the starting point is when the user arrived and
-      // not the epoch — otherwise the bell would open full of a whole season.
+      // First visit. Seeded a day back, not at this instant and not at the
+      // epoch. The epoch would open the bell full of a whole season. This
+      // instant was the first version, and it made the bell useless on the day
+      // someone arrived: whatever aired that morning counted as "before", so a
+      // new user opened an empty bell with today's episodes already out.
       if (!since) {
-        since = new Date().toISOString();
+        since = new Date(Date.now() - FIRST_VISIT_LOOKBACK_MS).toISOString();
         const { error: insertError } = await supabase
           .from("user_prefs")
           .insert({ user_id: user.id, notifications_seen_at: since });
