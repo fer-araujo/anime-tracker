@@ -52,6 +52,15 @@ export type UserListsContextValue = {
    * for data this one already had in hand.
    */
   library: RecommendationLibrary;
+  /**
+   * AniList ids the user is currently watching.
+   *
+   * Rides along for the same reason `library` does: the `user_anime` read that
+   * produces it already runs on every page for every signed-in user, and the
+   * notification bell needs exactly this list. A dedicated hook would mean a
+   * second round-trip for rows this query already holds.
+   */
+  watchingIds: number[];
 };
 
 const UserListsContext = createContext<UserListsContextValue | null>(null);
@@ -73,6 +82,7 @@ const UserListsContext = createContext<UserListsContextValue | null>(null);
 export function UserListsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [lists, setLists] = useState<UserList[]>([]);
+  const [watchingIds, setWatchingIds] = useState<number[]>([]);
   const [library, setLibrary] = useState<RecommendationLibrary>(EMPTY_LIBRARY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +91,7 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
     if (!user) {
       setLists([]);
       setLibrary(EMPTY_LIBRARY);
+      setWatchingIds([]);
       setError(null);
       setLoading(false);
       return;
@@ -207,6 +218,10 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
         .map((row) => row.anime_id),
     });
 
+    setWatchingIds(
+      tracked.filter((row) => row.status === "watching").map((row) => row.anime_id),
+    );
+
     setLists(mapped);
     setLoading(false);
   }, [user]);
@@ -216,8 +231,8 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
   }, [refetch]);
 
   const value = useMemo(
-    () => ({ lists, loading, error, refetch, library }),
-    [lists, loading, error, refetch, library],
+    () => ({ lists, loading, error, refetch, library, watchingIds }),
+    [lists, loading, error, refetch, library, watchingIds],
   );
 
   return (
