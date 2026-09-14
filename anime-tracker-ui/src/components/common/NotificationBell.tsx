@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/custom/Icon";
 import { useNotifications } from "@/hooks/useNotifications";
-import { cn } from "@/lib/utils";
 
 /** "hace 3 h", "hace 2 d" — enough precision for something that aired today. */
 function timeAgo(iso: string): string {
@@ -70,41 +69,41 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-white/10 bg-neutral-950 shadow-xl shadow-black/40 overflow-hidden z-50">
-          <div className="px-4 py-3 border-b border-white/10">
-            <p className="text-sm font-semibold text-white">Nuevos episodios</p>
+        <div className="absolute right-0 top-11 w-96 max-w-[calc(100vw-2rem)] rounded-xl border border-white/10 bg-neutral-950 shadow-xl shadow-black/40 overflow-hidden z-50">
+          <div className="px-5 py-4 border-b border-white/10">
+            <p className="text-base font-semibold text-white">Nuevos episodios</p>
           </div>
 
           {items.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-white/50">
+            <p className="px-5 py-8 text-sm text-white/50">
               Nada nuevo por ahora. Aquí aparecen los episodios de lo que estás
               viendo.
             </p>
           ) : (
-            <ul className="max-h-80 overflow-y-auto divide-y divide-white/5">
+            <ul className="max-h-[28rem] overflow-y-auto divide-y divide-white/5">
               {items.map((n) => (
                 <li key={`${n.animeId}-${n.episode}`}>
                   <Link
                     href={`/anime/${n.animeId}`}
                     onClick={() => setOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors",
-                    )}
+                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-white/5 transition-colors"
                   >
+                    {/* 2:3, the poster's own ratio. The first version was
+                        40×56, which read as a thumbnail of a thumbnail. */}
                     {n.poster ? (
                       <img
                         src={n.poster}
                         alt=""
-                        className="w-10 h-14 rounded object-cover shrink-0"
+                        className="w-12 h-[4.5rem] rounded-md object-cover shrink-0"
                       />
                     ) : (
-                      <div className="w-10 h-14 rounded bg-white/10 shrink-0" />
+                      <div className="w-12 h-[4.5rem] rounded-md bg-white/10 shrink-0" />
                     )}
                     <span className="min-w-0">
-                      <span className="block text-sm text-white truncate">
+                      <span className="block text-[15px] font-medium text-white line-clamp-2">
                         {n.title}
                       </span>
-                      <span className="block text-xs text-white/60">
+                      <span className="block mt-1 text-sm text-white/60">
                         Episodio {n.episode} · {timeAgo(n.airedAt)}
                       </span>
                     </span>
