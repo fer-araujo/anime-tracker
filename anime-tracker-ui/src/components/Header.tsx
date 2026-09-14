@@ -8,6 +8,7 @@ import SearchBar from "@/components/Search/SearchBar";
 import { cn } from "@/lib/utils";
 import { AnimeTrackerLogo } from "./Logo";
 import { useAuth } from "@/providers/AuthProvider";
+import NotificationBell from "@/components/common/NotificationBell";
 
 export default function Header() {
   const pathname = usePathname();
@@ -99,6 +100,10 @@ export default function Header() {
 
         {/* ICONOS EXTRA (Solo Desktop) */}
         <div className="hidden md:flex items-center gap-3 lg:gap-4 shrink-0">
+          {/* Signed-in only: the bell reads the user's own watching list, so
+              there is nothing for it to say to a visitor. */}
+          {user ? <NotificationBell /> : null}
+
           {/* User section */}
           <div className="relative" ref={userMenuRef}>
             {loading ? null : user ? (

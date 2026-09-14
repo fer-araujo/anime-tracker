@@ -68,6 +68,7 @@ describe("AddToListModal", () => {
       loading: false,
       error: null,
       refetch: mockRefetchLists,
+      watchingIds: [],
       // Rides on the same provider but is nothing to do with this modal.
       library: { seeds: [], excludedIds: [], completedIds: [] },
     });
