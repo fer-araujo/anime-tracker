@@ -113,7 +113,21 @@ vi.mock("@/components/common/AddToListModal", () => ({
   ),
 }));
 
+// Reduced to what the collection asks of it: the total, and a way to turn the
+// page. The real control's page-size select is its own component's concern.
+vi.mock("@/components/custom/Pagination", () => ({
+  Pagination: ({ totalItems, currentPage, onPageChange }: any) => (
+    <div data-testid="pagination">
+      <span data-testid="pagination-total">{totalItems}</span>
+      <button onClick={() => onPageChange(currentPage + 1)}>next-page</button>
+    </div>
+  ),
+}));
+
 import { CollectionDetail } from "@/components/lists/CollectionDetail";
+import { fetchAnimeBatch } from "@/lib/fetchAnimeBatch";
+
+const range = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 
 describe("CollectionDetail", () => {
   beforeEach(() => {
@@ -200,5 +214,48 @@ describe("CollectionDetail", () => {
 
     expect(screen.getByTestId("card-1")).toBeInTheDocument();
     expect(mockRefetchLists).not.toHaveBeenCalled();
+  });
+
+  it("fetches only the visible page, so a large collection stays under the batch cap", async () => {
+    // The whole collection used to go out in one request. The endpoint rejects
+    // more than fifty ids, so any list that grew past that showed an error.
+    render(
+      <CollectionDetail listId="list-1" listName="Mi colección" animeIds={range(60)} />,
+    );
+
+    await screen.findByTestId("card-1");
+    const requested = vi.mocked(fetchAnimeBatch).mock.calls.flatMap((c) => c[0]);
+    expect(requested).toHaveLength(20);
+    expect(screen.queryByTestId("card-21")).not.toBeInTheDocument();
+    // The count is the collection's, not the page's.
+    expect(screen.getByText("60 animes")).toBeInTheDocument();
+    expect(screen.getByTestId("pagination-total")).toHaveTextContent("60");
+  });
+
+  it("loads the next page's anime when the page turns", async () => {
+    render(
+      <CollectionDetail listId="list-1" listName="Mi colección" animeIds={range(25)} />,
+    );
+    const user = userEvent.setup();
+
+    await screen.findByTestId("card-1");
+    await user.click(screen.getByText("next-page"));
+
+    expect(await screen.findByTestId("card-21")).toBeInTheDocument();
+    // Waited for, not asserted at once: AnimatePresence keeps the outgoing page
+    // mounted for its exit animation, the same reason the removal test waits.
+    await waitFor(() =>
+      expect(screen.queryByTestId("card-1")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("shows no paginator for a collection that fits on one page", async () => {
+    // A control offering a single page to click is noise.
+    render(
+      <CollectionDetail listId="list-1" listName="Mi colección" animeIds={[1, 2]} />,
+    );
+
+    await screen.findByTestId("card-1");
+    expect(screen.queryByTestId("pagination")).not.toBeInTheDocument();
   });
 });
