@@ -322,7 +322,11 @@ export default function SeasonPage({
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
       </div>
 
-      <main className="relative z-10 max-w-3/4 mx-auto px-6 md:px-10 lg:px-16 pt-32 md:pt-40">
+      {/* A fixed ceiling, not `max-w-3/4`. Three-quarters of the viewport is
+          ~1400 px on a wide monitor, which is the look worth keeping, and ~270 px
+          on a phone, which squeezed the whole page into a column a third of the
+          screen wide. The pixel cap keeps the first and never causes the second. */}
+      <main className="relative z-10 max-w-[1400px] mx-auto px-4 md:px-10 lg:px-16 pt-32 md:pt-40">
         
         {/* ===== 2. TÍTULO ===== */}
         <motion.div 
