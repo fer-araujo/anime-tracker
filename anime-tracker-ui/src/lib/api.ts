@@ -56,7 +56,11 @@ export async function fetchSeason(opts?: {
   // which fetch on demand and are unaffected by this.
   const res = await fetch(u.toString(), {
     next: { revalidate: 3600 },
-    signal: AbortSignal.timeout(8000),
+    // 15 s, not 8. The popular and trending variants resolve fifty titles and
+    // took 10.6 s on the first request after a deploy, so the homepage rendered
+    // "No pudimos cargar esta sección" for data that was on its way. Only a
+    // cold render pays this: the hour of revalidation above serves the rest.
+    signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) throw new Error(`season ${res.status}`);
   const json = await res.json();

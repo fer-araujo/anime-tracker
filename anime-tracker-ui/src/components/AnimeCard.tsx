@@ -59,7 +59,12 @@ export function AnimeCard({
 
   return (
     <div
-      className="group relative w-full select-none"
+      // `@container` so the overlay's buttons can size to the card rather than
+      // to the screen. The same card is 255 px wide in a desktop grid and about
+      // 220 px in a three-column tablet grid, and a breakpoint cannot tell those
+      // apart — the "Detalles · Añadir (n) · ♥" row, about 250 px, overflowed
+      // the narrower one.
+      className="@container group relative w-full select-none"
       onMouseEnter={prefetchDetail}
       onTouchStart={prefetchDetail}
     >
@@ -248,7 +253,11 @@ export function AnimeCard({
                   }}
                   icon={<Icon name="Info" size={14} />}
                 >
-                  Detalles
+                  {/* Labels drop out by card width, and only visually: `sr-only`
+                      keeps the button named for a screen reader. */}
+                  <span className="sr-only @min-[15rem]:not-sr-only">
+                    Detalles
+                  </span>
                 </ActionButton>
 
                 {/* Add button — muestra contador si listCount > 0 */}
@@ -260,9 +269,10 @@ export function AnimeCard({
                   }}
                   icon={<Icon name="Plus" size={14} />}
                 >
-                  {listCount != null && listCount > 0
-                    ? `Añadir (${listCount})`
-                    : "Añadir"}
+                  <span className="sr-only @min-[12rem]:not-sr-only">Añadir</span>
+                  {listCount != null && listCount > 0 && (
+                    <span className="@min-[12rem]:ml-1">({listCount})</span>
+                  )}
                 </ActionButton>
 
                 <FavButton

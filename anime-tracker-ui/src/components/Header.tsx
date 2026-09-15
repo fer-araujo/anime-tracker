@@ -165,6 +165,11 @@ export default function Header() {
 
         {/* ICONOS MOBILE (Lupa + Hamburguesa) */}
         <div className="md:hidden flex items-center gap-3 z-10">
+          {/* Here as well as in the desktop cluster. It lived only there at
+              first, so on a phone the one feature that says "something new
+              came out" had no way in at all. */}
+          {user ? <NotificationBell /> : null}
+
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen(true)}
