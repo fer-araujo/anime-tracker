@@ -7,22 +7,21 @@ import { useUserListsContext } from "@/providers/UserListsProvider";
 import { API_BASE } from "@/lib/api";
 import type { EpisodeNotification } from "@/types/notifications";
 
-/** Far enough to include today's broadcasts, short of turning into a backlog. */
-const FIRST_VISIT_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Episodes released since the user last opened the bell.
+ * Episodes released for the anime the user is watching.
  *
- * The whole feature rests on one stored fact — `user_prefs.notifications_seen_at`
- * — and derives the rest. There is no per-notification row to write, mark or
- * clean up: an episode is unread if it aired after that instant, and reading
- * the bell moves the instant forward.
+ * One stored fact — `user_prefs.notifications_seen_at` — decides what is
+ * unread: anything that aired after it. It does not decide what is listed. The
+ * bell always shows the last day, with what was already read dimmed, because
+ * the first version listed only unread episodes and that made reading destroy
+ * the list: open the bell, and the next refetch came back empty, so the user
+ * never got a second look at which series had a new episode.
  *
  * If `user_prefs` is missing, the bell stays silent rather than falling back to
- * a fixed window. A window it cannot record would show a badge that no click
- * could clear, which is worse than no bell at all — and the table being absent
- * means the migration has not run yet, which is a deploy state, not a user's
- * problem to look at.
+ * a fixed window. A badge no click could clear is worse than no bell at all,
+ * and the table being absent is a deploy state, not the user's problem.
  */
 export function useNotifications() {
   const { user } = useAuth();
@@ -30,8 +29,15 @@ export function useNotifications() {
   const [items, setItems] = useState<EpisodeNotification[]>([]);
   const [seenAt, setSeenAt] = useState<string | null>(null);
 
+  // Primitives, not objects. AuthProvider hands out a new `user` on every auth
+  // event, and Supabase emits TOKEN_REFRESHED whenever the window regains focus
+  // — so an effect keyed on the object re-ran each time the pointer came back
+  // to the page. The id and a joined key change only when the facts do.
+  const userId = user?.id ?? null;
+  const watchingKey = watchingIds.join(",");
+
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setItems([]);
       setSeenAt(null);
       return;
@@ -45,66 +51,64 @@ export function useNotifications() {
       const { data, error } = await supabase
         .from("user_prefs")
         .select("notifications_seen_at")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
 
       // Missing table, or RLS refusing: no bell. See the note above.
       if (error) return;
 
-      let since = data?.notifications_seen_at as string | undefined;
+      let seen = data?.notifications_seen_at as string | undefined;
 
-      // First visit. Seeded a day back, not at this instant and not at the
-      // epoch. The epoch would open the bell full of a whole season. This
-      // instant was the first version, and it made the bell useless on the day
-      // someone arrived: whatever aired that morning counted as "before", so a
-      // new user opened an empty bell with today's episodes already out.
-      if (!since) {
-        since = new Date(Date.now() - FIRST_VISIT_LOOKBACK_MS).toISOString();
+      // First visit: a day back, so today's episodes count as new rather than
+      // disappearing into "before you arrived".
+      if (!seen) {
+        seen = new Date(Date.now() - DAY_MS).toISOString();
         const { error: insertError } = await supabase
           .from("user_prefs")
-          .insert({ user_id: user.id, notifications_seen_at: since });
+          .insert({ user_id: userId, notifications_seen_at: seen });
         if (insertError) return;
       }
 
       if (cancelled) return;
-      setSeenAt(since);
+      setSeenAt(seen);
 
-      if (watchingIds.length === 0) {
+      const ids = watchingKey ? watchingKey.split(",").map(Number) : [];
+      if (ids.length === 0) {
         setItems([]);
         return;
       }
+
+      // Whichever reaches further back: the last day, or the last visit. The
+      // day keeps read episodes on the list; the visit covers someone who has
+      // been away longer than that.
+      const since = new Date(
+        Math.min(Date.parse(seen), Date.now() - DAY_MS),
+      ).toISOString();
 
       try {
         const res = await fetch(`${API_BASE}/notifications`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ animeIds: watchingIds, since }),
+          body: JSON.stringify({ animeIds: ids, since }),
           signal: AbortSignal.timeout(15000),
         });
         if (!res.ok) return;
         const json = (await res.json()) as { data: EpisodeNotification[] };
         if (!cancelled) setItems(json.data ?? []);
       } catch {
-        // A silent bell is the right failure here: nothing the user asked for
-        // is blocked by it.
+        // A silent bell is the right failure: nothing the user asked for is
+        // blocked by it.
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [user, watchingIds]);
+  }, [userId, watchingKey]);
 
-  /**
-   * Clears the badge immediately and records the new instant behind it.
-   *
-   * The list itself is kept on screen. The popover is open at this moment and
-   * emptying it under the cursor would take away what the user just opened it
-   * to read; they stay until the next load, by which point they are genuinely
-   * old news.
-   */
+  /** Moves the instant forward; the list stays, now shown as read. */
   const markRead = useCallback(async () => {
-    if (!user || items.length === 0) return;
+    if (!userId) return;
 
     const now = new Date().toISOString();
     setSeenAt(now);
@@ -113,16 +117,15 @@ export function useNotifications() {
     await supabase
       .from("user_prefs")
       .update({ notifications_seen_at: now })
-      .eq("user_id", user.id);
-  }, [user, items.length]);
+      .eq("user_id", userId);
+  }, [userId]);
 
-  /**
-   * Unread is derived, not stored. `markRead` moves `seenAt` past everything
-   * currently listed, so the badge empties without touching `items`.
-   */
-  const unreadCount = seenAt
-    ? items.filter((n) => n.airedAt > seenAt).length
-    : 0;
+  const isUnread = useCallback(
+    (n: EpisodeNotification) => seenAt !== null && n.airedAt > seenAt,
+    [seenAt],
+  );
 
-  return { items, unreadCount, markRead };
+  const unreadCount = items.filter(isUnread).length;
+
+  return { items, unreadCount, isUnread, markRead };
 }

@@ -56,6 +56,7 @@ export function AnimeListRow({
   const providers = uniqueNormalizedProviders(anime.providers);
   const continuationOf = anime.meta?.continuationOf ?? null;
   const poster = anime.images?.poster ?? null;
+  const rating = anime.meta?.rating;
 
   const episodes = anime.meta?.episodes;
   const type = anime.meta?.type;
@@ -103,6 +104,15 @@ export function AnimeListRow({
         </p>
 
         <p className="text-xs text-white/50 truncate">
+          {/* On a phone the score moves into this line. Beside the actions it
+              pushed the text column down to about ninety pixels, which is where
+              titles and provider badges were being crushed. */}
+          {typeof rating === "number" && (
+            <span className="sm:hidden text-primary font-medium">
+              ★ {rating.toFixed(1)}
+              {" · "}
+            </span>
+          )}
           {anime.meta?.studio ?? "Estudio desconocido"}
           {type || episodes ? " · " : ""}
           {type ?? ""}
@@ -135,10 +145,10 @@ export function AnimeListRow({
         </div>
       </div>
 
-      <div className="relative z-10 shrink-0 self-center flex items-center gap-1 pr-0.5">
-        {typeof anime.meta?.rating === "number" && (
-          <div className="pointer-events-none pr-1">
-            <ScoreBadge value={anime.meta.rating} />
+      <div className="relative z-10 shrink-0 self-center flex flex-col sm:flex-row items-center gap-1 pr-0.5">
+        {typeof rating === "number" && (
+          <div className="hidden sm:block pointer-events-none pr-1">
+            <ScoreBadge value={rating} />
           </div>
         )}
 
@@ -167,7 +177,14 @@ export function AnimeListRow({
               onAddToList(anime);
             }}
           >
-            {listCount > 0 ? listCount : "Añadir"}
+            {listCount > 0 ? (
+              listCount
+            ) : (
+              // Icon-only on a phone, but still named: `sr-only` rather than
+              // `hidden`, which would remove the word from the accessibility
+              // tree along with the pixels.
+              <span className="sr-only sm:not-sr-only">Añadir</span>
+            )}
           </ActionButton>
         )}
       </div>
