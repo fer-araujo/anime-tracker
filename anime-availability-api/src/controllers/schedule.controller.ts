@@ -18,7 +18,7 @@ import {
 } from "../utils/cdmxCalendar.js";
 import { airingsOnDay, broadcastsOnDay } from "../utils/airingDay.js";
 import {
-  asFetchOngoingIndex,
+  asAnimeForRoutes,
   asFetchTimetable,
 } from "../services/animeSchedule.service.js";
 import { animeScheduleToAniMedia } from "../services/adapters/animeScheduleToAniMedia.js";
@@ -237,12 +237,25 @@ export async function getSchedule(
         // the 253 series it itself calls ongoing, MAL records a broadcast day
         // for 112 of 377, and neither schedules donghua at all. Where they
         // overlap they agree, so the merge adds coverage rather than noise.
-        const [timetable, asIndex, calendar, malNodes] = await Promise.all([
+        const [timetable, calendar, malNodes] = await Promise.all([
           asFetchTimetable(),
-          asFetchOngoingIndex(),
           shikiFetchCalendar(),
           malFetchAiring(),
         ]);
+
+        // Resolved for the routes in the requested range only — including a
+        // series whose finale is in it, which the ongoing index has already
+        // dropped. See asAnimeForRoutes.
+        const rangeStart = cdmxDayStart(firstDay);
+        const rangeEnd = cdmxDayStart(lastDay + 1) - 1;
+        const asRecords = await asAnimeForRoutes(
+          timetable
+            .filter((row) => {
+              const at = Math.floor(Date.parse(row.episodeDate) / 1000);
+              return at >= rangeStart && at <= rangeEnd;
+            })
+            .map((row) => row.route),
+        );
         const malAiring = malNodes.filter((n) => n.status === "currently_airing");
 
         const fallbackSchedules: AiringSchedule[] = [];
@@ -260,7 +273,7 @@ export async function getSchedule(
             if (!Number.isFinite(airingAt)) continue;
             if (airingAt < dayStart || airingAt > dayEnd) continue;
 
-            const record = asIndex.get(row.route);
+            const record = asRecords.get(row.route);
             const media = record && animeScheduleToAniMedia(record);
             if (!media || seen.has(media.id)) continue;
             seen.add(media.id);
