@@ -38,20 +38,14 @@ import Select, { type SelectOption } from "@/components/custom/Select";
 import { Pagination } from "@/components/custom/Pagination";
 import Icon from "@/components/custom/Icon";
 import { cn } from "@/lib/utils";
+import { SurfaceBackdrop } from "@/components/common/SurfaceBackdrop";
+import { seasonHue } from "@/lib/surface";
 
 const SORT_OPTIONS: SelectOption[] = [
   { value: "rating", label: "Rating" },
   { value: "popularity", label: "Popularidad" },
   { value: "title", label: "Título (A-Z)" },
 ];
-
-// Colores base sutiles para el resplandor de temporada
-const SEASON_COLORS: Record<string, string> = {
-  WINTER: "from-blue-900/20 via-background to-background",
-  SPRING: "from-pink-900/20 via-background to-background",
-  SUMMER: "from-cyan-900/20 via-background to-background",
-  FALL: "from-orange-900/20 via-background to-background",
-};
 
 /* -------------------------------------------------------------------------- */
 /* SeasonPage                                                                */
@@ -269,7 +263,9 @@ export default function SeasonPage({
   /* RENDER CORREGIDO Y PULIDO                                                */
   /* ========================================================================= */
 
-  const activeGlow = SEASON_COLORS[seasonMeta?.season ?? "WINTER"] || SEASON_COLORS.WINTER;
+  // The URL knows the season before the response does, so the tone is right
+  // from the first frame of the loading state instead of switching on arrival.
+  const hue = seasonHue(seasonMeta?.season ?? urlSeason);
   // Always the season's own backdrop, never the scoped list's: the hero should
   // not swap images every time a chip is pressed.
   const heroImage = pickBackdrop(catalogue.seasonal);
@@ -279,8 +275,9 @@ export default function SeasonPage({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background pt-32 px-6 md:px-10 lg:px-16 pb-16">
-        <div className="max-w-7xl mx-auto">
+      <div className="relative min-h-screen pt-32 px-4 md:px-10 lg:px-16 pb-16">
+        <SurfaceBackdrop hue={hue} />
+        <div className="relative z-10 max-w-7xl mx-auto">
           <div className="h-16 w-64 bg-white/5 rounded-lg animate-pulse mb-12" />
           <GridSkeleton variant="grid" count={20} />
         </div>
@@ -290,12 +287,13 @@ export default function SeasonPage({
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center text-center px-6">
-        <p className="text-white/50 text-lg mb-4">No se pudo cargar la temporada</p>
+      <div className="relative min-h-screen flex flex-col items-center justify-center text-center px-6">
+        <SurfaceBackdrop hue={hue} />
+        <p className="relative z-10 text-white/50 text-lg mb-4">No se pudo cargar la temporada</p>
         <button
           type="button"
           onClick={retry}
-          className="h-11 px-6 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors cursor-pointer"
+          className="relative z-10 h-11 px-6 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors cursor-pointer"
         >
           Reintentar
         </button>
@@ -304,10 +302,14 @@ export default function SeasonPage({
   }
 
   return (
-    <div className="relative min-h-screen bg-background selection:bg-primary/30 pb-16">
+    <div className="relative min-h-screen selection:bg-primary/30 pb-16">
+      <SurfaceBackdrop hue={hue} />
       
       {/* ===== 1. HERO BACKDROP (Sin interponerse en la navegación) ===== */}
-      <div className="absolute top-0 left-0 w-full h-[55vh] -z-10 pointer-events-none overflow-hidden">
+      {/* `z-0`, not `-z-10`: at a negative index the page container's own
+          background painted over it and the image never showed. It is
+          content now, and the season's colour lives in the backdrop below. */}
+      <div className="absolute top-0 left-0 w-full h-[55vh] z-0 pointer-events-none overflow-hidden">
         {heroImage && (
           <motion.img 
             initial={{ opacity: 0 }}
@@ -318,7 +320,6 @@ export default function SeasonPage({
             className="w-full h-full object-cover"
           />
         )}
-        <div className={cn("absolute inset-0 bg-gradient-to-b opacity-90", activeGlow)} />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
       </div>
 

@@ -6,7 +6,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import Icon from "@/components/custom/Icon";
 import { FavoritesBanner } from "./FavoritesBanner";
 import { CollectionsTab } from "./CollectionsTab";
-import { ListsBackdrop } from "./ListsBackdrop";
+import { SurfaceBackdrop } from "@/components/common/SurfaceBackdrop";
 
 export default function MyAnimePage() {
   const { user, loading: authLoading } = useAuth();
@@ -33,7 +33,7 @@ export default function MyAnimePage() {
           background here paints at step 4 of the CSS painting algorithm and would
           hide the backdrop. `body` already supplies the base colour, and the
           backdrop paints its own full-viewport base on top of that. */}
-      <ListsBackdrop />
+      <SurfaceBackdrop />
 
       {/* `relative z-10` lifts the content above the backdrop, which now sits at
           `z-0` instead of behind the page. */}

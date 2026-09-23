@@ -20,7 +20,7 @@ import Icon from "@/components/custom/Icon";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { normalizeViewMode } from "@/lib/season";
-import { ListsBackdrop } from "./ListsBackdrop";
+import { SurfaceBackdrop } from "@/components/common/SurfaceBackdrop";
 // The bar's colours, its reading order and the counting are shared with
 // ListCard. They used to be local constants here, which is exactly how two
 // surfaces showing the same list end up disagreeing about it.
@@ -245,7 +245,7 @@ export function CollectionDetail({
       <div className="min-h-screen pt-24 px-4 md:px-10 lg:px-16 pb-16 bg-background">
         {/* Also on the early returns: without it the backdrop pops in only once
             the data lands, which reads as the page changing colour mid-load. */}
-        <ListsBackdrop />
+        <SurfaceBackdrop />
         <div className="relative z-10 max-w-7xl mx-auto">
           <div className="h-8 w-48 bg-white/5 rounded-lg animate-pulse mb-8" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -261,7 +261,7 @@ export function CollectionDetail({
   if (fetchError) {
     return (
       <div className="min-h-screen pt-24 px-4 md:px-10 lg:px-16 pb-16 bg-background">
-        <ListsBackdrop />
+        <SurfaceBackdrop />
         <div className="relative z-10 max-w-7xl mx-auto">
           <Link
             href="/lists"
@@ -295,7 +295,7 @@ export function CollectionDetail({
 
   return (
     <div className="min-h-screen pt-24 px-4 md:px-10 lg:px-16 pb-16 bg-background">
-      <ListsBackdrop />
+      <SurfaceBackdrop />
 
       <div className="relative z-10 max-w-7xl mx-auto">
         <Link
