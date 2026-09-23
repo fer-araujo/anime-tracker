@@ -6,7 +6,8 @@ const mockTimetable = vi.fn();
 const mockIndex = vi.fn();
 vi.mock("../services/animeSchedule.service.js", () => ({
   asFetchRecentTimetable: () => mockTimetable(),
-  asFetchOngoingIndex: () => mockIndex(),
+  asAnimeForRoutes: () => mockIndex(),
+  AS_IMAGE_BASE: "https://img.test/",
 }));
 
 const mockRecords = vi.fn();
@@ -130,6 +131,35 @@ describe("POST /notifications", () => {
     expect(res.body.data.map((n: { animeId: number }) => n.animeId)).toEqual([
       2, 3, 1,
     ]);
+  });
+
+  it("names a series from its schedule record when no card is cached", async () => {
+    // A finale resolved by route a moment ago has never been rendered as a
+    // card, so the card cache has nothing. It still has to read as the series,
+    // not as "#135865".
+    mockTimetable.mockResolvedValue([row("youjo-senki-ii", 12, 5)]);
+    mockIndex.mockResolvedValue(
+      new Map([
+        [
+          "youjo-senki-ii",
+          {
+            route: "youjo-senki-ii",
+            title: "Youjo Senki II",
+            names: { english: "Saga of Tanya the Evil II" },
+            imageVersionRoute: "anime/jpg/default/youjo.jpg",
+            websites: { aniList: "anilist.co/anime/135865/x" },
+          },
+        ],
+      ]),
+    );
+
+    const res = await post({ animeIds: [135865], since: DAY_AGO });
+
+    expect(res.body.data[0]).toMatchObject({
+      episode: 12,
+      title: "Saga of Tanya the Evil II",
+      poster: "https://img.test/anime/jpg/default/youjo.jpg",
+    });
   });
 
   it("answers an empty watching list without touching the upstream", async () => {

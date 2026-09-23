@@ -182,3 +182,86 @@ export async function asFetchRecentTimetable(
 
   return results.flat();
 }
+
+const ROUTE_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const ROUTE_MISS_TTL_MS = 1000 * 60 * 60 * 24;
+/** Per call. The API throttled a burst of ~30 requests while this was measured. */
+const MAX_ROUTE_LOOKUPS = 20;
+const LOOKUP_CONCURRENCY = 5;
+
+/**
+ * Series records for a set of timetable routes, including ones the ongoing
+ * index has already dropped.
+ *
+ * The index is "what is airing now", and a series leaves it the moment its last
+ * episode goes out. The timetable keeps that broadcast, so the finale — the one
+ * episode people are most waiting for — came back with no AniList id and was
+ * silently discarded: Youjo Senki II episode 12 aired on 2026-09-23 and never
+ * reached the notification bell or the airing shelf. Premieres fall into the
+ * same gap from the other side, until a day-old cached index catches up.
+ *
+ * So the index answers first and a per-series lookup covers the rest. There
+ * are only a handful of such routes in a week, and an id never changes, so each
+ * lookup is cached for a month. A route the API does not know is cached too,
+ * for a day, as a record with no AniList link — the adapter already drops those
+ * — so a dead route is not asked about again on every poll.
+ */
+export async function asAnimeForRoutes(
+  routes: string[],
+): Promise<Map<string, AsAnime>> {
+  const index = await asFetchOngoingIndex();
+  const found = new Map<string, AsAnime>();
+  const missing: string[] = [];
+
+  for (const route of new Set(routes)) {
+    const record = index.get(route);
+    if (record) found.set(route, record);
+    else missing.push(route);
+  }
+
+  const auth = headers();
+  if (!auth || missing.length === 0) return found;
+
+  const lookup = async (route: string) => {
+    const key = `animeschedule:route:${route}`;
+    const cached = await hybridCache.get<AsAnime>(key);
+    if (cached) {
+      found.set(route, cached);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `${AS_BASE}/anime/${encodeURIComponent(route)}`,
+        { headers: auth, signal: AbortSignal.timeout(8000) },
+      );
+      if (res.status === 404) {
+        await hybridCache.set(
+          key,
+          { route, title: route, websites: null },
+          ROUTE_MISS_TTL_MS,
+        );
+        return;
+      }
+      if (!res.ok) {
+        logger.warn(`[animeschedule] route ${route} HTTP ${res.status}`);
+        return;
+      }
+      const record = (await res.json()) as AsAnime;
+      found.set(route, record);
+      await hybridCache.set(key, record, ROUTE_TTL_MS);
+    } catch (err) {
+      logger.warn({ err }, `[animeschedule] route ${route} lookup failed`);
+    }
+  };
+
+  // Capped and in small groups. Past the cap, the remaining routes resolve on
+  // later requests as the cache fills — at the start of a season, when dozens
+  // premiere at once, that is the difference between a slow first poll and a
+  // throttled one.
+  const queue = missing.slice(0, MAX_ROUTE_LOOKUPS);
+  for (let i = 0; i < queue.length; i += LOOKUP_CONCURRENCY) {
+    await Promise.all(queue.slice(i, i + LOOKUP_CONCURRENCY).map(lookup));
+  }
+
+  return found;
+}

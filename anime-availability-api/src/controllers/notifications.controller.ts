@@ -6,7 +6,8 @@ import type {
 import { setCacheControl } from "../utils/cache.js";
 import { getCachedAnimeRecords } from "../utils/formatAnimeList.js";
 import {
-  asFetchOngoingIndex,
+  AS_IMAGE_BASE,
+  asAnimeForRoutes,
   asFetchRecentTimetable,
 } from "../services/animeSchedule.service.js";
 
@@ -58,28 +59,41 @@ export async function getNotifications(
     // rather than as an error: the bell is not worth failing a page over.
     const from = Number.isFinite(sinceMs) ? Math.max(sinceMs, floor) : floor;
 
-    const [timetable, index] = await Promise.all([
-      asFetchRecentTimetable(now),
-      asFetchOngoingIndex(),
-    ]);
+    const timetable = await asFetchRecentTimetable(now);
 
-    const matches: { animeId: number; episode: number; airedAt: number }[] = [];
-    for (const row of timetable) {
+    // Strictly in the past. A broadcast scheduled for tonight has not
+    // happened, and announcing it as released would be a lie the user can
+    // check.
+    const aired = timetable.filter((row) => {
+      const at = Date.parse(row.episodeDate);
+      return Number.isFinite(at) && at <= now && at > from;
+    });
+
+    // Resolved per route rather than read off the ongoing index alone: a
+    // series drops out of that index the moment its finale airs, which is how
+    // a last episode — the one most waited for — never reached the bell.
+    const records = await asAnimeForRoutes(aired.map((row) => row.route));
+
+    const matches: {
+      animeId: number;
+      episode: number;
+      airedAt: number;
+      route: string;
+    }[] = [];
+    for (const row of aired) {
       const airedAt = Date.parse(row.episodeDate);
-      // Strictly in the past. A broadcast scheduled for tonight has not
-      // happened, and announcing it as released would be a lie the user can
-      // check.
-      if (!Number.isFinite(airedAt) || airedAt > now || airedAt <= from) {
-        continue;
-      }
-
       const anilistId = Number(
-        index.get(row.route)?.websites?.aniList?.match(/anime\/(\d+)/)?.[1] ??
+        records.get(row.route)?.websites?.aniList?.match(/anime\/(\d+)/)?.[1] ??
           NaN,
       );
       if (!Number.isFinite(anilistId) || !watching.has(anilistId)) continue;
 
-      matches.push({ animeId: anilistId, episode: row.episodeNumber, airedAt });
+      matches.push({
+        animeId: anilistId,
+        episode: row.episodeNumber,
+        airedAt,
+        route: row.route,
+      });
     }
 
     // Newest first: the bell is read from the top and the most recent episode
@@ -89,16 +103,29 @@ export async function getNotifications(
     // Titles and posters come from the per-anime cache, which every surface
     // that has rendered these cards already filled. No upstream call is made to
     // decorate a notification.
-    const records = await getCachedAnimeRecords(matches.map((m) => m.animeId));
+    const cards = await getCachedAnimeRecords(matches.map((m) => m.animeId));
 
+    // The card cache first, since it has the Spanish title the rest of the app
+    // shows. A series nobody has opened yet is not in it — a finale fetched a
+    // moment ago by route is the usual case — and then the AnimeSchedule record
+    // this request already holds supplies both, rather than a bare "#135865".
     const data: EpisodeNotification[] = matches.map((m) => {
-      const record = records.get(m.animeId);
+      const card = cards.get(m.animeId);
+      const source = records.get(m.route);
       return {
         animeId: m.animeId,
         episode: m.episode,
         airedAt: new Date(m.airedAt).toISOString(),
-        title: record?.title ?? `#${m.animeId}`,
-        poster: record?.images?.poster ?? null,
+        title:
+          card?.title ??
+          source?.names?.english ??
+          source?.title ??
+          `#${m.animeId}`,
+        poster:
+          card?.images?.poster ??
+          (source?.imageVersionRoute
+            ? `${AS_IMAGE_BASE}${source.imageVersionRoute}`
+            : null),
       };
     });
 
