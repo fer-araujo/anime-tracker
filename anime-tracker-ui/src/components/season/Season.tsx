@@ -21,7 +21,6 @@ import {
   getDefaultYear,
   normalizeFormatKey,
   normalizeViewMode,
-  pickBackdrop,
   seasonLabel,
   selectByFormat,
   sortAnime,
@@ -266,9 +265,6 @@ export default function SeasonPage({
   // The URL knows the season before the response does, so the tone is right
   // from the first frame of the loading state instead of switching on arrival.
   const hue = seasonHue(seasonMeta?.season ?? urlSeason);
-  // Always the season's own backdrop, never the scoped list's: the hero should
-  // not swap images every time a chip is pressed.
-  const heroImage = pickBackdrop(catalogue.seasonal);
   const seasonHeading = seasonMeta && seasonMeta.year > 0
     ? `${seasonLabel(seasonMeta.season || "Desconocida")} ${seasonMeta.year}`
     : "Temporada";
@@ -305,23 +301,9 @@ export default function SeasonPage({
     <div className="relative min-h-screen selection:bg-primary/30 pb-16">
       <SurfaceBackdrop hue={hue} />
       
-      {/* ===== 1. HERO BACKDROP (Sin interponerse en la navegación) ===== */}
-      {/* `z-0`, not `-z-10`: at a negative index the page container's own
-          background painted over it and the image never showed. It is
-          content now, and the season's colour lives in the backdrop below. */}
-      <div className="absolute top-0 left-0 w-full h-[55vh] z-0 pointer-events-none overflow-hidden">
-        {heroImage && (
-          <motion.img 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.35 }}
-            transition={{ duration: 1.5 }}
-            src={heroImage} 
-            alt="Season Backdrop" 
-            className="w-full h-full object-cover"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
-      </div>
+      {/* No poster behind the season. It was tried and rejected: artwork from
+          one title sitting under a page about fifty reads as that title's page.
+          The season is carried by its tone in the backdrop, nothing else. */}
 
       {/* A fixed ceiling, not `max-w-3/4`. Three-quarters of the viewport is
           ~1400 px on a wide monitor, which is the look worth keeping, and ~270 px

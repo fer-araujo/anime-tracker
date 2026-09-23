@@ -166,10 +166,13 @@ export function CollectionDetail({
     if (missing.length === 0) return;
     for (const id of missing) requested.current.add(id);
 
-    let cancelled = false;
+    // No cancellation, on purpose. The results are a cache keyed by id, so
+    // applying them late is always correct — and a cancel flag here left the
+    // page loading forever: React runs this effect twice in development, the
+    // first run's fetch was cancelled, and the second found every id already
+    // marked as requested and fetched nothing. A page turn mid-request would
+    // do the same in production.
     fetchAnimeBatch(missing).then((data) => {
-      if (cancelled) return;
-
       if (data.size === 0) {
         // Forget them, so revisiting the page retries instead of showing
         // placeholders forever. Only a failure with nothing loaded yet is an
@@ -197,10 +200,6 @@ export function CollectionDetail({
         return next;
       });
     });
-
-    return () => {
-      cancelled = true;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageKey]);
 
