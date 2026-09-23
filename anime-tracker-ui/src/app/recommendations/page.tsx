@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { SurfaceBackdrop } from "@/components/common/SurfaceBackdrop";
 import type { Metadata } from "next";
 import { RecommendationsPage } from "@/components/recommendations/RecommendationsPage";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
@@ -25,8 +26,9 @@ export default function RecommendationsRoute() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-background">
-          <main className="max-w-[1400px] mx-auto px-4 md:px-10 lg:px-16 pt-32 md:pt-40">
+        <div className="relative min-h-screen">
+          <SurfaceBackdrop />
+          <main className="relative z-10 max-w-[1400px] mx-auto px-4 md:px-10 lg:px-16 pt-32 md:pt-40">
             <div className="h-14 w-72 bg-white/5 rounded-lg animate-pulse mb-10" />
             <GridSkeleton variant="grid" count={10} />
           </main>

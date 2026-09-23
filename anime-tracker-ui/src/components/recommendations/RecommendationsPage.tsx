@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { SurfaceBackdrop } from "@/components/common/SurfaceBackdrop";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
@@ -119,7 +120,10 @@ export function RecommendationsPage() {
   );
 
   return (
-    <div className="relative min-h-screen bg-background pb-16">
+    <div className="relative min-h-screen pb-16">
+      {/* Brand green, like lists: recommendations are the user's own, and
+          seasonal tones are kept for the calendar. */}
+      <SurfaceBackdrop />
       {/* A fixed ceiling, not `max-w-3/4`. Three-quarters of the viewport is
           ~1400 px on a wide monitor, which is the look worth keeping, and ~270 px
           on a phone, which squeezed the whole page into a column a third of the

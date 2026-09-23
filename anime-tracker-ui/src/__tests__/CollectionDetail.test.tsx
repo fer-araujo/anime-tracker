@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -247,6 +248,19 @@ describe("CollectionDetail", () => {
     await waitFor(() =>
       expect(screen.queryByTestId("card-1")).not.toBeInTheDocument(),
     );
+  });
+
+  it("finishes loading under StrictMode", async () => {
+    // Development runs every effect twice. A cancel flag discarded the first
+    // fetch while the second found every id already marked as requested, and
+    // the page sat on its skeleton forever.
+    render(
+      <StrictMode>
+        <CollectionDetail listId="list-1" listName="Mi colección" animeIds={[1, 2]} />
+      </StrictMode>,
+    );
+
+    expect(await screen.findByTestId("card-1")).toBeInTheDocument();
   });
 
   it("shows no paginator for a collection that fits on one page", async () => {

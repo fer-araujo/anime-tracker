@@ -20,7 +20,7 @@ import Icon from "@/components/custom/Icon";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { normalizeViewMode } from "@/lib/season";
-import { ListsBackdrop } from "./ListsBackdrop";
+import { SurfaceBackdrop } from "@/components/common/SurfaceBackdrop";
 // The bar's colours, its reading order and the counting are shared with
 // ListCard. They used to be local constants here, which is exactly how two
 // surfaces showing the same list end up disagreeing about it.
@@ -166,10 +166,13 @@ export function CollectionDetail({
     if (missing.length === 0) return;
     for (const id of missing) requested.current.add(id);
 
-    let cancelled = false;
+    // No cancellation, on purpose. The results are a cache keyed by id, so
+    // applying them late is always correct — and a cancel flag here left the
+    // page loading forever: React runs this effect twice in development, the
+    // first run's fetch was cancelled, and the second found every id already
+    // marked as requested and fetched nothing. A page turn mid-request would
+    // do the same in production.
     fetchAnimeBatch(missing).then((data) => {
-      if (cancelled) return;
-
       if (data.size === 0) {
         // Forget them, so revisiting the page retries instead of showing
         // placeholders forever. Only a failure with nothing loaded yet is an
@@ -197,10 +200,6 @@ export function CollectionDetail({
         return next;
       });
     });
-
-    return () => {
-      cancelled = true;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageKey]);
 
@@ -245,7 +244,7 @@ export function CollectionDetail({
       <div className="min-h-screen pt-24 px-4 md:px-10 lg:px-16 pb-16 bg-background">
         {/* Also on the early returns: without it the backdrop pops in only once
             the data lands, which reads as the page changing colour mid-load. */}
-        <ListsBackdrop />
+        <SurfaceBackdrop />
         <div className="relative z-10 max-w-7xl mx-auto">
           <div className="h-8 w-48 bg-white/5 rounded-lg animate-pulse mb-8" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -261,7 +260,7 @@ export function CollectionDetail({
   if (fetchError) {
     return (
       <div className="min-h-screen pt-24 px-4 md:px-10 lg:px-16 pb-16 bg-background">
-        <ListsBackdrop />
+        <SurfaceBackdrop />
         <div className="relative z-10 max-w-7xl mx-auto">
           <Link
             href="/lists"
@@ -295,7 +294,7 @@ export function CollectionDetail({
 
   return (
     <div className="min-h-screen pt-24 px-4 md:px-10 lg:px-16 pb-16 bg-background">
-      <ListsBackdrop />
+      <SurfaceBackdrop />
 
       <div className="relative z-10 max-w-7xl mx-auto">
         <Link
