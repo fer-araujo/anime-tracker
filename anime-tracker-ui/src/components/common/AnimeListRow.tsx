@@ -69,7 +69,11 @@ export function AnimeListRow({
     // actions sit beside it as siblings.
     <div
       className={cn(
-        "group relative w-full flex items-stretch gap-3 p-2.5 rounded-xl",
+        // `h-full` because the collection wraps each row in an animated cell:
+        // the grid stretches that cell to the taller of two neighbours, but the
+        // row inside kept its own height, so side-by-side boxes did not match.
+        // Where the row is the grid item itself this changes nothing.
+        "group relative w-full h-full flex items-stretch gap-3 p-2.5 rounded-xl",
         "bg-white/5 border border-white/10 transition-colors",
         "[@media(hover:hover)]:hover:bg-white/10 [@media(hover:hover)]:hover:border-white/20",
         "focus-within:border-primary/40",

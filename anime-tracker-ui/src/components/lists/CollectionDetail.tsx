@@ -464,8 +464,14 @@ export function CollectionDetail({
                           />
                         ) : (
                           // A slot for a card still on its way, so the grid
-                          // keeps its shape while the next page loads.
-                          <div className="aspect-[2/3] rounded-md bg-white/5 animate-pulse" />
+                          // keeps its shape while the next page loads. The
+                          // empty block below matches the card's reserved
+                          // two-line title, so the slot is a card's full height
+                          // and the row does not grow when the anime lands.
+                          <div aria-hidden="true">
+                            <div className="aspect-[2/3] rounded-md bg-white/5 animate-pulse" />
+                            <div className="mt-2 min-h-[2lh] text-[0.9rem] leading-tight" />
+                          </div>
                         )}
                       </motion.div>
                     );
