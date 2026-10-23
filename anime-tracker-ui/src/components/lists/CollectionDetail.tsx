@@ -24,8 +24,8 @@ import { SurfaceBackdrop } from "@/components/common/SurfaceBackdrop";
 // The bar's colours, its reading order and the counting are shared with
 // ListCard. They used to be local constants here, which is exactly how two
 // surfaces showing the same list end up disagreeing about it.
-import { STATUS_BAR_COLORS, buildStatusBreakdown } from "@/lib/lists";
-import type { Anime, TrackingStatus } from "@/types/anime";
+import { STATUS_BAR_COLORS, buildStatusBreakdown, restoreId } from "@/lib/lists";
+import type { Anime, EntryChange, TrackingStatus } from "@/types/anime";
 import type { ViewMode } from "@/types/view";
 
 const STATUS_TABS: { key: TrackingStatus | "all"; label: string }[] = [
@@ -48,10 +48,16 @@ export function CollectionDetail({
   listId,
   listName,
   animeIds,
+  favorites = false,
 }: {
   listId?: string;
   listName: string;
   animeIds: number[];
+  /**
+   * The collection is "every favourite", not a `user_lists` row, so the
+   * favourite flag is its membership: un-favouriting takes the anime out.
+   */
+  favorites?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -83,7 +89,16 @@ export function CollectionDetail({
   // Tracking rows come from Supabase, which has no fifty-id ceiling, and the
   // status filter, the average and the bar all need the whole collection — so
   // this one query keeps every id while the anime details stay per page.
-  const { entriesMap } = useBatchAnimeEntries(ids);
+  //
+  // Every write made from this page patches `entriesMap` and then refetches
+  // it. The header reads only this map, and nothing used to refetch it: a
+  // status picked in the dialog or a favourite toggled on a card reached
+  // Supabase while the count, average and bar kept the values of page load.
+  const {
+    entriesMap,
+    refetch: refetchEntries,
+    patchEntry,
+  } = useBatchAnimeEntries(ids);
   const { lists, refetch: refetchLists } = useUserLists();
 
   const viewMode = normalizeViewMode(searchParams.get("view"));
@@ -218,7 +233,7 @@ export function CollectionDetail({
   );
 
   const handleToggleFavorite = useCallback(
-    (anime: Anime, next: boolean) => {
+    async (anime: Anime, next: boolean) => {
       if (!user) {
         try {
           if (sessionStorage.getItem("auth_prompt_seen")) return;
@@ -228,9 +243,48 @@ export function CollectionDetail({
         setSelectedAnime(anime);
         return;
       }
-      toggleFavoriteAction(anime.id.anilist, next);
+
+      const animeId = anime.id.anilist;
+      // The card flips its heart on its own, but it also re-syncs from
+      // `animeEntry.favorite` — patching the map keeps the two agreeing, so a
+      // failed write that the refetch reverts actually reverts the heart.
+      patchEntry(animeId, { favorite: next });
+
+      // On Favoritos the flag is the membership, so un-favouriting removes
+      // the card now rather than leaving it there until a reload.
+      const leaves = favorites && !next;
+      const index = ids.indexOf(animeId);
+      if (leaves) setIds((prev) => prev.filter((id) => id !== animeId));
+
+      let ok = false;
+      try {
+        ok = (await toggleFavoriteAction(animeId, next)).success;
+      } catch {
+        // A network failure is a failed write; handled below with the rest.
+      }
+      if (!ok && leaves) setIds((prev) => restoreId(prev, animeId, index));
+
+      refetchEntries();
+      // Favourites seed the recommendation library the provider holds.
+      refetchLists();
     },
-    [user],
+    [user, favorites, ids, patchEntry, refetchEntries, refetchLists],
+  );
+
+  const handleEntryChanged = useCallback(
+    (animeId: number, change: EntryChange) => {
+      if (change.kind === "status") {
+        patchEntry(animeId, { status: change.status });
+      } else {
+        patchEntry(animeId, null);
+        // Removing the record deletes the whole row, favourite included.
+        if (favorites) setIds((prev) => prev.filter((id) => id !== animeId));
+      }
+      // The patch covers a row this page already had; a first status on an
+      // untracked anime creates a row only the refetch can bring back.
+      refetchEntries();
+    },
+    [favorites, patchEntry, refetchEntries],
   );
 
   const prefersReduced =
@@ -454,8 +508,13 @@ export function CollectionDetail({
               animeId={selectedAnime.id.anilist}
               currentEntry={entriesMap.get(selectedAnime.id.anilist) ?? null}
               onClose={() => setSelectedAnime(null)}
+              onEntryChanged={(change) =>
+                handleEntryChanged(selectedAnime.id.anilist, change)
+              }
+              // The dialog refreshes the shared lists itself, so the counts on
+              // the cards and on /lists follow; this only has to drop the card
+              // when the list being viewed is the one that was unticked.
               onListsChanged={({ removed }) => {
-                refetchLists();
                 if (listId && removed.includes(listId)) {
                   const removedId = selectedAnime.id.anilist;
                   setIds((prev) => prev.filter((id) => id !== removedId));

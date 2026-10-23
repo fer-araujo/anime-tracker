@@ -3,6 +3,7 @@ import {
   buildStatusBreakdown,
   resolveListAccent,
   resolveMosaicLayout,
+  restoreId,
 } from "@/lib/lists";
 import type { TrackingStatus } from "@/types/anime";
 
@@ -67,5 +68,19 @@ describe("resolveMosaicLayout", () => {
     expect(resolveMosaicLayout(3)).toBe("three");
     expect(resolveMosaicLayout(4)).toBe("four");
     expect(resolveMosaicLayout(9)).toBe("four");
+  });
+});
+
+describe("restoreId", () => {
+  it("puts the id back where it was", () => {
+    expect(restoreId([1, 3], 2, 1)).toEqual([1, 2, 3]);
+  });
+
+  it("never shows a card twice when the id already came back", () => {
+    expect(restoreId([1, 2, 3], 2, 1)).toEqual([1, 2, 3]);
+  });
+
+  it("clamps an index past the end, since the list may have shrunk meanwhile", () => {
+    expect(restoreId([1], 5, 4)).toEqual([1, 5]);
   });
 });

@@ -164,6 +164,18 @@ export type AnimeEntry = {
   updated_at: string;
 };
 
+/**
+ * What a confirmed tracking dialog did to the entry, reported after the write
+ * succeeded. A surface holding its own copy of the entries (a collection, a
+ * shelf) needs this to stay in step: the dialog only used to report list
+ * membership, so a status picked there never reached the page that opened it.
+ *
+ * `removed` deletes the whole row — favourite and score go with the status.
+ */
+export type EntryChange =
+  | { kind: "status"; status: TrackingStatus }
+  | { kind: "removed" };
+
 export type ArtworkCandidate = {
   lang: string | null;
   source: "anilist-cover" | "anilist-banner" | "tmdb-poster" | "tmdb-backdrop";

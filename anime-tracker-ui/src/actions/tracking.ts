@@ -59,19 +59,11 @@ export async function updateStatus(
   if (!userId) return unauthorized();
   if (!checkRateLimit(`tracking:${userId}`)) return rateLimited();
 
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("user_anime")
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq("user_id", userId)
-    .eq("anime_id", animeId);
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  return { success: true };
+  // Through `patchEntry`, not a bare `.update()`. Callers pick this action when
+  // they believe a row exists, and that belief comes from client state that
+  // can be stale — a row removed in another tab, or from a page that had not
+  // refetched. A bare update then matched zero rows and reported success.
+  return patchEntry(userId, animeId, { status });
 }
 
 /**

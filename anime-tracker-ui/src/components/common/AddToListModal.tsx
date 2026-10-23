@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import Icon from "@/components/custom/Icon";
 import { cn } from "@/lib/utils";
-import type { AnimeEntry, TrackingStatus } from "@/types/anime";
+import type { AnimeEntry, EntryChange, TrackingStatus } from "@/types/anime";
 import {
   addToTracking,
   updateStatus,
@@ -25,6 +25,8 @@ interface AddToListModalProps {
   currentEntry: AnimeEntry | null;
   onClose: () => void;
   onListsChanged?: (changes: { added: string[]; removed: string[] }) => void;
+  /** Called after a status write or a removal succeeded, before `onClose`. */
+  onEntryChanged?: (change: EntryChange) => void;
 }
 
 export function AddToListModal({
@@ -32,6 +34,7 @@ export function AddToListModal({
   currentEntry,
   onClose,
   onListsChanged,
+  onEntryChanged,
 }: AddToListModalProps) {
   const [selectedStatus, setSelectedStatus] = useState<TrackingStatus | null>(
     currentEntry?.status ?? null,
@@ -99,9 +102,17 @@ export function AddToListModal({
         setError("No se pudo guardar. Intenta de nuevo.");
         setIsSubmitting(false);
       } else {
+        // A status change refreshes the shared lists too, not only a list
+        // change: the provider derives each list's status bar, the watching
+        // ids behind the notification bell and the recommendation library
+        // from `user_anime`. Refreshing on list changes alone left /lists
+        // showing the old bar after a status was picked here.
+        refetchLists();
         if (listsChanged) {
-          refetchLists();
           onListsChanged?.({ added: listsToAdd, removed: listsToRemove });
+        }
+        if (statusChanged) {
+          onEntryChanged?.({ kind: "status", status: selectedStatus });
         }
         onClose();
       }
@@ -118,6 +129,7 @@ export function AddToListModal({
     isSubmitting,
     onClose,
     onListsChanged,
+    onEntryChanged,
     refetchLists,
   ]);
 
@@ -128,6 +140,12 @@ export function AddToListModal({
     try {
       const result = await removeFromTracking(animeId);
       if (result.success) {
+        // Removal used to close silently, so the surface that opened the
+        // dialog kept rendering the deleted row — and kept offering it as
+        // `currentEntry`, which turned the next pick into an update of a row
+        // that no longer existed.
+        refetchLists();
+        onEntryChanged?.({ kind: "removed" });
         onClose();
       } else {
         setError("No se pudo eliminar. Intenta de nuevo.");
@@ -137,7 +155,7 @@ export function AddToListModal({
       setError("No se pudo eliminar. Intenta de nuevo.");
       setIsSubmitting(false);
     }
-  }, [animeId, onClose]);
+  }, [animeId, onClose, onEntryChanged, refetchLists]);
 
   const topStatuses: TrackingStatus[] = [
     "watching",
