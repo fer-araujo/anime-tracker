@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 
 const mockUser = { id: "user-1" };
@@ -120,5 +120,69 @@ describe("useNotifications", () => {
 
     await waitFor(() => expect(result.current.items).toEqual([]));
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("reads an older API's answer, which had no range and no upcoming flag", async () => {
+    const { result } = renderHook(() => useNotifications());
+
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    expect(result.current.items[0].range).toEqual({ from: 4, to: 4, total: null });
+    expect(result.current.items[0].upcoming).toBe(false);
+  });
+});
+
+describe("useNotifications with today's pending episodes", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("does not count an episode still due as unread, and counts it once it airs", async () => {
+    // Counting it while pending lights a badge that closing the bell cannot
+    // clear (its air time is ahead of any "seen" instant), then lights it again
+    // for the same episode once it airs.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const dueIn30s = new Date(Date.now() + 30_000).toISOString();
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [{ ...episode(154587, 0), airedAt: dueIn30s, upcoming: true }],
+      }),
+    } as Response);
+
+    const { result } = renderHook(() => useNotifications());
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+
+    expect(result.current.isPending(result.current.items[0])).toBe(true);
+    expect(result.current.unreadCount).toBe(0);
+
+    // The bell's clock ticks each minute; the episode has aired by then.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(61_000);
+    });
+
+    expect(result.current.isPending(result.current.items[0])).toBe(false);
+    expect(result.current.unreadCount).toBe(1);
+  });
+
+  it("asks again after a failed request instead of staying empty until a reload", async () => {
+    // Render's free tier takes most of a minute to wake; the first request of
+    // the day used to time out and leave the bell blank for the whole visit.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.mocked(fetch)
+      .mockRejectedValueOnce(new Error("timeout"))
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: [episode(154587, 3)] }),
+      } as Response);
+
+    const { result } = renderHook(() => useNotifications());
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000);
+    });
+
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 });
