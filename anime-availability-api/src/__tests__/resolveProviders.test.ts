@@ -394,3 +394,140 @@ describe("resolveProvidersForAnimeDetailed — entries nothing streams", () => {
     expect(mockStore).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * "Checked, nothing" is a claim about today's catalogues. For a series that is
+ * still airing it goes stale within hours of a premiere, so it must not be
+ * trusted for the 7 days (memory) or 90 days (store) a settled verdict gets.
+ */
+describe("resolveProvidersForAnimeDetailed — empty verdicts on airing titles", () => {
+  const TWELVE_HOURS = 1000 * 60 * 60 * 12;
+  const hoursAgo = (h: number) =>
+    new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    cacheStore.clear();
+    global.fetch = vi.fn();
+    mockGetStored.mockResolvedValue(null);
+    mockTryConsume.mockReturnValue(true);
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ shows: [] }),
+    });
+  });
+
+  it("re-asks upstream when a stored empty verdict on an airing title is old", async () => {
+    // The regression: a row banked just after a premiere, before TMDB had the
+    // region, kept the series on "Pirata" for months while it streamed on
+    // Crunchyroll. Other countries, never asked before, resolved correctly.
+    mockGetStored.mockResolvedValue({
+      providers: [],
+      source: "none",
+      resolvedAt: hoursAgo(48),
+    });
+    mockTmdbDetailed.mockResolvedValue({
+      ok: true,
+      providers: [{ id: 1, name: "Crunchyroll" }],
+    });
+
+    const result = await resolveProvidersForAnimeDetailed(
+      30,
+      "MX",
+      313346,
+      "Chii Fuyo",
+      2026,
+      "tv",
+      true,
+    );
+
+    expect(mockTmdbDetailed).toHaveBeenCalled();
+    expect(result.providers).toEqual(["Crunchyroll"]);
+    // The healed answer replaces the poisoned row, not just the memory entry.
+    expect(mockStore).toHaveBeenCalledWith(30, "MX", ["Crunchyroll"], "tmdb");
+  });
+
+  it("still trusts a recent stored empty verdict on an airing title", async () => {
+    mockGetStored.mockResolvedValue({
+      providers: [],
+      source: "none",
+      resolvedAt: hoursAgo(1),
+    });
+
+    const result = await resolveProvidersForAnimeDetailed(
+      31,
+      "MX",
+      555,
+      "Some Show",
+      2026,
+      "tv",
+      true,
+    );
+
+    expect(result.providers).toEqual(["Pirata"]);
+    expect(mockTmdbDetailed).not.toHaveBeenCalled();
+  });
+
+  it("keeps trusting an old stored empty verdict on a title that is not airing", async () => {
+    // A finished series with no licence in the region is a settled fact;
+    // re-asking would only spend budget to hear the same answer.
+    mockGetStored.mockResolvedValue({
+      providers: [],
+      source: "none",
+      resolvedAt: hoursAgo(24 * 60),
+    });
+
+    const result = await resolveProvidersForAnimeDetailed(
+      32,
+      "MX",
+      555,
+      "Old Show",
+      2024,
+      "tv",
+      false,
+    );
+
+    expect(result.providers).toEqual(["Pirata"]);
+    expect(mockTmdbDetailed).not.toHaveBeenCalled();
+  });
+
+  it("keeps trusting an old stored provider list on an airing title", async () => {
+    mockGetStored.mockResolvedValue({
+      providers: ["Netflix"],
+      source: "tmdb",
+      resolvedAt: hoursAgo(24 * 30),
+    });
+
+    const result = await resolveProvidersForAnimeDetailed(
+      33,
+      "MX",
+      555,
+      "Some Show",
+      2026,
+      "tv",
+      true,
+    );
+
+    expect(result.providers).toEqual(["Netflix"]);
+    expect(mockTmdbDetailed).not.toHaveBeenCalled();
+  });
+
+  it("caches a confirmed empty verdict on an airing title only briefly", async () => {
+    mockTmdbDetailed.mockResolvedValue({ ok: true, providers: [] });
+
+    const result = await resolveProvidersForAnimeDetailed(
+      34,
+      "MX",
+      555,
+      "Some Show",
+      2026,
+      "tv",
+      true,
+    );
+
+    // Confirmed by both sources, so it is still persisted — it just expires.
+    expect(result.saOk).toBe(true);
+    expect(cachedTtlFor(34)).toBe(TWELVE_HOURS);
+    expect(mockStore).toHaveBeenCalledWith(34, "MX", [], "none");
+  });
+});
