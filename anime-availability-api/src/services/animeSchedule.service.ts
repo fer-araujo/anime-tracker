@@ -1,6 +1,8 @@
+import type { EpisodeRange } from "../types/notifications.js";
 import { logger } from "../utils/logger.js";
 import { hybridCache } from "../utils/cache.js";
-import { isoWeek } from "../utils/isoWeek.js";
+import { isoWeeksBetween } from "../utils/isoWeek.js";
+import { cdmxDayStart, cdmxTodayIndex } from "../utils/cdmxCalendar.js";
 
 const AS_BASE = "https://animeschedule.net/api/v3";
 
@@ -14,7 +16,20 @@ export type AsTimetableEntry = {
   route: string;
   /** An exact instant, not a weekly slot — this is why the source is worth it. */
   episodeDate: string;
+  /** The last episode this row releases. */
   episodeNumber: number;
+  /**
+   * The first episode of a multi-episode release; absent on an ordinary one.
+   *
+   * This is how a Netflix-style season drop arrives: Cyberpunk: Edgerunners 2
+   * is a single row on 2026-10-20 with `episodeNumber: 10`,
+   * `subtractedEpisodeNumber: 1` and `episodes: 10`, not ten rows. Measured over
+   * every 2026 timetable up to week 43 (6,515 rows): the field appears only on
+   * such rows — double premieres (`2` from `1`), split finales (`13` from `12`)
+   * and whole seasons — so reading `episodeNumber` alone announced a season
+   * drop as "episode 10".
+   */
+  subtractedEpisodeNumber?: number | null;
   episodes?: number | null;
   lengthMin?: number | null;
   donghua?: boolean;
@@ -42,6 +57,31 @@ export type AsAnime = {
   websites?: { aniList?: string | null; mal?: string | null } | null;
 };
 
+/**
+ * The AniList id a series record links to, or null when it links nowhere.
+ *
+ * The timetable carries no ids, so this link is the only bridge to the user's
+ * library. One reading of it, shared by the adapter and the notification bell:
+ * two copies of the regex were already in the tree, and the first to be
+ * "fixed" would have made the bell and the shelf disagree about a series.
+ */
+export function asAnilistId(record: AsAnime | null | undefined): number | null {
+  const id = Number(record?.websites?.aniList?.match(/anime\/(\d+)/)?.[1] ?? NaN);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+/**
+ * The episodes a timetable row releases. See `subtractedEpisodeNumber` for why
+ * `episodeNumber` alone is not the answer. A start past the end would be a
+ * corrupt row; it is read as the single episode the row names.
+ */
+export function asEpisodeRange(row: AsTimetableEntry): EpisodeRange {
+  const to = row.episodeNumber;
+  const start = row.subtractedEpisodeNumber;
+  const from = typeof start === "number" && start > 0 && start <= to ? start : to;
+  return { from, to, total: row.episodes ?? null };
+}
+
 function headers(): Record<string, string> | null {
   const token = process.env.ANIMESCHEDULE_TOKEN;
   return token ? { Authorization: `Bearer ${token}` } : null;
@@ -67,8 +107,8 @@ export async function asFetchTimetable(week?: {
   const auth = headers();
   if (!auth) return [];
 
-  // Without a week the API answers the running ISO week, which is what the
-  // airing shelf wants and all it ever asked for.
+  // Without a week the API answers the running *UTC* ISO week. Callers with a
+  // CDMX range go through asFetchTimetableRange, which always names the week.
   const query = week ? `?week=${week.week}&year=${week.year}` : "";
   try {
     const res = await fetch(`${AS_BASE}/timetables/raw${query}`, {
@@ -150,24 +190,26 @@ export async function asFetchOngoingIndex(): Promise<Map<string, AsAnime>> {
 const TIMETABLE_TTL_MS = 1000 * 60 * 15;
 
 /**
- * The running ISO week and the one before it.
+ * Every broadcast between two instants, inclusive, read from as many weekly
+ * timetables as the range touches.
  *
- * The API answers one week at a time, and "the last seven days" straddles two
- * of them on every day but Sunday. Reading only the running week meant a bell
- * opened on a Monday could see a few hours of broadcasts and nothing from the
- * weekend. The previous week is found by stepping the instant back seven days
- * rather than the week number back one, which would ask for week 0 in January.
+ * The API answers one UTC ISO week at a time, and every caller's range is
+ * drawn in CDMX days — which never line up with those weeks. Asking for "the
+ * week of now" lost the CDMX Sunday evening (already next week in UTC) and,
+ * after 18:00 that Sunday, lost the whole day instead. So the weeks are derived
+ * from the range (see `isoWeeksBetween`) and the rows filtered back to it by
+ * exact timestamp: whatever the week split, the answer is the range asked for.
  *
  * Each week is cached under its own key, so the notification bell — polled on
- * every page load — costs no upstream request once warm.
+ * every page load — costs no upstream request once warm, and a range that
+ * reaches into the next week pays for it once per TTL, not per poll.
  */
-export async function asFetchRecentTimetable(
-  now: number = Date.now(),
+export async function asFetchTimetableRange(
+  fromMs: number,
+  toMs: number,
 ): Promise<AsTimetableEntry[]> {
-  const weeks = [isoWeek(now - 7 * 86_400_000), isoWeek(now)];
-
   const results = await Promise.all(
-    weeks.map(async (week) => {
+    isoWeeksBetween(fromMs, toMs).map(async (week) => {
       const key = `animeschedule:timetable:${week.year}-${week.week}`;
       const cached = await hybridCache.get<AsTimetableEntry[]>(key);
       if (cached) return cached;
@@ -180,7 +222,25 @@ export async function asFetchRecentTimetable(
     }),
   );
 
-  return results.flat();
+  return results.flat().filter((row) => {
+    const at = Date.parse(row.episodeDate);
+    return Number.isFinite(at) && at >= fromMs && at <= toMs;
+  });
+}
+
+/**
+ * The last seven days and the rest of today, CDMX.
+ *
+ * Seven days back because "the last seven days" is what the bell promises;
+ * reading only the running week once meant a bell opened on a Monday saw a few
+ * hours of broadcasts and nothing from the weekend. To the end of the CDMX day
+ * because today's remaining broadcasts are listed in the bell as upcoming.
+ */
+export async function asFetchRecentTimetable(
+  now: number = Date.now(),
+): Promise<AsTimetableEntry[]> {
+  const endOfToday = cdmxDayStart(cdmxTodayIndex(now) + 1) * 1000 - 1;
+  return asFetchTimetableRange(now - 7 * 86_400_000, endOfToday);
 }
 
 const ROUTE_TTL_MS = 1000 * 60 * 60 * 24 * 30;
