@@ -164,3 +164,16 @@ export function buildStatusBreakdown(
     count: counts.get(status) ?? 0,
   })).filter((slice) => slice.count > 0);
 }
+
+/**
+ * Put `id` back at `index` after an optimistic removal whose write failed.
+ *
+ * Back where it was rather than at the end, so a failed un-favourite does not
+ * also reshuffle the page. A no-op if the id already returned some other way
+ * (a refetch that landed first), so the card is never shown twice.
+ */
+export function restoreId(ids: number[], id: number, index: number): number[] {
+  if (ids.includes(id)) return ids;
+  const at = Math.max(0, Math.min(index, ids.length));
+  return [...ids.slice(0, at), id, ...ids.slice(at)];
+}

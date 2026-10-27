@@ -78,17 +78,33 @@ describe("Tracking Server Actions — auth guard", () => {
       expect(result.error).toBeUndefined();
     });
 
-    it("updateStatus updates and returns success", async () => {
+    it("updateStatus updates the existing row and returns success", async () => {
+      const insert = vi.fn();
       mockFrom.mockReturnValue({
-        update: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn().mockResolvedValue({ error: null }),
-          })),
-        })),
+        update: patchUpdateChain([{ id: "row-1" }]),
+        insert,
       });
 
       const result = await updateStatus(1, "completed");
       expect(result.success).toBe(true);
+      expect(insert).not.toHaveBeenCalled();
+    });
+
+    it("updateStatus creates the row when the caller's entry was stale", async () => {
+      // The caller chooses updateStatus because its client state says a row
+      // exists. If that row was deleted meanwhile, a bare update matched zero
+      // rows and reported success without writing anything.
+      const insert = vi.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValue({
+        update: patchUpdateChain([]),
+        insert,
+      });
+
+      const result = await updateStatus(3, "watching");
+      expect(result.success).toBe(true);
+      expect(insert).toHaveBeenCalledWith(
+        expect.objectContaining({ anime_id: 3, status: "watching" }),
+      );
     });
 
     it("toggleFavorite updates the existing row and returns success", async () => {

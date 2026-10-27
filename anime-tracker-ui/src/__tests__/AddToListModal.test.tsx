@@ -42,7 +42,7 @@ vi.mock("@/components/lists/CreateListDialog", () => ({
 
 import { AddToListModal } from "@/components/common/AddToListModal";
 import { useUserLists } from "@/hooks/useUserLists";
-import { addToTracking } from "@/actions/tracking";
+import { addToTracking, removeFromTracking } from "@/actions/tracking";
 import { addToList, removeFromList } from "@/actions/lists";
 
 const mockLists = [
@@ -177,6 +177,68 @@ describe("AddToListModal", () => {
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(onListsChanged).not.toHaveBeenCalled();
+  });
+
+  it("reports a status-only change and refreshes the shared lists", async () => {
+    // A status picked here used to reach no one: onListsChanged only fires on
+    // membership, and the provider was refreshed only then too — so the page
+    // that opened the dialog and the bars on /lists kept the old status.
+    vi.mocked(addToTracking).mockResolvedValue({ success: true });
+
+    const onEntryChanged = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <AddToListModal
+        animeId={1}
+        currentEntry={null}
+        onClose={onClose}
+        onEntryChanged={onEntryChanged}
+      />,
+    );
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("radio", { name: /plan para ver/i }));
+    await user.click(screen.getByRole("button", { name: /añadir a mi lista/i }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(onEntryChanged).toHaveBeenCalledWith({
+      kind: "status",
+      status: "plan_to_watch",
+    });
+    expect(mockRefetchLists).toHaveBeenCalled();
+  });
+
+  it("reports a removed record and refreshes the shared lists", async () => {
+    vi.mocked(removeFromTracking).mockResolvedValue({ success: true });
+
+    const onEntryChanged = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <AddToListModal
+        animeId={1}
+        currentEntry={{
+          id: "row-1",
+          user_id: "u1",
+          anime_id: 1,
+          status: "watching",
+          favorite: true,
+          score: 7,
+          progress: 0,
+          notes: null,
+          created_at: "",
+          updated_at: "",
+        }}
+        onClose={onClose}
+        onEntryChanged={onEntryChanged}
+      />,
+    );
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: /eliminar registro/i }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(onEntryChanged).toHaveBeenCalledWith({ kind: "removed" });
+    expect(mockRefetchLists).toHaveBeenCalled();
   });
 
   it("cancel does not write status or list changes", async () => {

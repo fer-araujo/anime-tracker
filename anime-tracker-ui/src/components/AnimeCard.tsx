@@ -293,9 +293,14 @@ export function AnimeCard({
 
       {showTitleBelow && (
         <div className="mt-2 px-1">
+          {/* Two lines reserved whether the title needs them or not. Clamped
+              but unreserved, a one-line title made its card 1.125rem shorter
+              than a two-line neighbour, so a grid row of short titles sat
+              tighter against the next row than one with a long title — the
+              spacing between rows changed with the copy. */}
           <h4
             aria-hidden="true"
-            className="text-[0.9rem] font-normal leading-tight text-white/95 line-clamp-2 select-text"
+            className="min-h-[2lh] text-[0.9rem] font-normal leading-tight text-white/95 line-clamp-2 select-text"
             title={anime.title}
           >
             {anime.title}

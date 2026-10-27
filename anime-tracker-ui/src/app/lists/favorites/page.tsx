@@ -18,5 +18,5 @@ export default async function FavoritesPage() {
 
   const animeIds = (favs ?? []).map((e) => e.anime_id);
 
-  return <CollectionDetail listName="Favoritos" animeIds={animeIds} />;
+  return <CollectionDetail listName="Favoritos" animeIds={animeIds} favorites />;
 }

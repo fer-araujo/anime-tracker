@@ -43,11 +43,34 @@ vi.mock("@/lib/fetchAnimeBatch", () => ({
   }),
 }));
 
-vi.mock("@/hooks/useBatchAnimeEntries", () => ({
-  useBatchAnimeEntries: () => ({
-    entriesMap: new Map([
-      [1, { status: "watching", favorite: false, score: 8 }],
-    ]),
+// The real useBatchAnimeEntries runs against this table. It used to be mocked
+// as a constant map, which is exactly why no test could see that nothing ever
+// refetched it: writes below mutate `db`, and only a refetch shows them.
+type Row = {
+  anime_id: number;
+  status: string | null;
+  favorite: boolean;
+  score: number | null;
+};
+const { db } = vi.hoisted(() => ({ db: new Map<number, Row>() }));
+
+function seedDb() {
+  db.clear();
+  db.set(1, { anime_id: 1, status: "watching", favorite: false, score: 8 });
+}
+
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          in: async (_col: string, ids: number[]) => ({
+            data: ids.flatMap((id) => (db.has(id) ? [{ ...db.get(id)! }] : [])),
+            error: null,
+          }),
+        }),
+      }),
+    }),
   }),
 }));
 
@@ -74,22 +97,36 @@ vi.mock("@/hooks/useResponsiveModalVariant", () => ({
   useResponsiveModalVariant: () => "center",
 }));
 
+// Writes land in `db`, as the server action would land them in Supabase.
 vi.mock("@/actions/tracking", () => ({
-  toggleFavorite: vi.fn(),
+  toggleFavorite: vi.fn(async (animeId: number, next: boolean) => {
+    const row = db.get(animeId);
+    if (row) row.favorite = next;
+    else db.set(animeId, { anime_id: animeId, status: null, favorite: next, score: null });
+    return { success: true };
+  }),
 }));
 
 vi.mock("@/components/AnimeCard", () => ({
-  AnimeCard: ({ anime, animeEntry, listCount, onAddToList }: any) => (
+  AnimeCard: ({ anime, animeEntry, listCount, onAddToList, onToggleFavorite }: any) => (
     <div data-testid={`card-${anime.id.anilist}`}>
       <span data-testid={`listcount-${anime.id.anilist}`}>{listCount}</span>
       <span data-testid={`status-${anime.id.anilist}`}>
         {animeEntry?.status ?? "none"}
+      </span>
+      <span data-testid={`fav-${anime.id.anilist}`}>
+        {animeEntry?.favorite ? "fav" : "not-fav"}
       </span>
       <span data-testid={`providers-${anime.id.anilist}`}>
         {anime.providers?.length ? anime.providers.join(",") : "Pirata"}
       </span>
       <button onClick={() => onAddToList(anime)}>
         trigger-add-{anime.id.anilist}
+      </button>
+      <button
+        onClick={() => onToggleFavorite(anime, !animeEntry?.favorite)}
+      >
+        toggle-fav-{anime.id.anilist}
       </button>
     </div>
   ),
@@ -103,11 +140,32 @@ vi.mock("@/components/common/AuthPrompt", () => ({
   AuthPrompt: () => <div>auth-prompt</div>,
 }));
 
+// Mirrors the real dialog's contract: write first, then report, then close.
 vi.mock("@/components/common/AddToListModal", () => ({
-  AddToListModal: ({ onClose, onListsChanged }: any) => (
+  AddToListModal: ({ animeId, onClose, onListsChanged, onEntryChanged }: any) => (
     <div>
       <button onClick={() => onListsChanged({ added: [], removed: ["list-1"] })}>
         remove-from-this-list
+      </button>
+      <button
+        onClick={() => {
+          const row = db.get(animeId);
+          if (row) row.status = "completed";
+          else db.set(animeId, { anime_id: animeId, status: "completed", favorite: false, score: null });
+          onEntryChanged({ kind: "status", status: "completed" });
+          onClose();
+        }}
+      >
+        pick-completed
+      </button>
+      <button
+        onClick={() => {
+          db.delete(animeId);
+          onEntryChanged({ kind: "removed" });
+          onClose();
+        }}
+      >
+        remove-record
       </button>
       <button onClick={onClose}>close-modal</button>
     </div>
@@ -127,12 +185,14 @@ vi.mock("@/components/custom/Pagination", () => ({
 
 import { CollectionDetail } from "@/components/lists/CollectionDetail";
 import { fetchAnimeBatch } from "@/lib/fetchAnimeBatch";
+import { toggleFavorite } from "@/actions/tracking";
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 
 describe("CollectionDetail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    seedDb();
   });
 
   it("passes animeEntry and listCount down to AnimeCard", async () => {
@@ -200,7 +260,151 @@ describe("CollectionDetail", () => {
       expect(screen.queryByTestId("card-1")).not.toBeInTheDocument(),
     );
     expect(screen.getByTestId("card-2")).toBeInTheDocument();
-    expect(mockRefetchLists).toHaveBeenCalled();
+    // Refreshing the shared lists is the dialog's job now (it does so for
+    // status writes too); see AddToListModal.test.
+  });
+
+  it("reflects a status picked in the dialog on the card and in the header", async () => {
+    // The reported bug: the dialog wrote the status, but nothing refetched the
+    // entries this page renders, so the card, the tabs and the bar kept their
+    // page-load values until a reload.
+    const { container } = render(
+      <CollectionDetail listId="list-1" listName="Mi colección" animeIds={[1, 2]} />,
+    );
+    const user = userEvent.setup();
+
+    expect(await screen.findByText("8.0 promedio")).toBeInTheDocument();
+    expect(container.querySelector(".bg-emerald-500")).toBeNull();
+
+    // Anime 2 has no row at all: only a refetch can bring its new one back.
+    await user.click(screen.getByText("trigger-add-2"));
+    await user.click(await screen.findByText("pick-completed"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("status-2")).toHaveTextContent("completed"),
+    );
+    const completedSlice = container.querySelector<HTMLElement>(".bg-emerald-500");
+    expect(completedSlice).not.toBeNull();
+    expect(completedSlice!.style.width).toBe("50%");
+
+    // Anime 1 already had a row: the change shows without waiting on the read.
+    await user.click(screen.getByText("trigger-add-1"));
+    await user.click(await screen.findByText("pick-completed"));
+    await waitFor(() =>
+      expect(screen.getByTestId("status-1")).toHaveTextContent("completed"),
+    );
+    await waitFor(() =>
+      expect(container.querySelector<HTMLElement>(".bg-emerald-500")!.style.width).toBe(
+        "100%",
+      ),
+    );
+    expect(container.querySelector(".bg-sky-500")).toBeNull();
+  });
+
+  it("drops the score from the average when the record is removed", async () => {
+    // Removing the record deletes the whole row, score included; the dialog
+    // used to close without telling the page.
+    render(
+      <CollectionDetail listId="list-1" listName="Mi colección" animeIds={[1, 2]} />,
+    );
+    const user = userEvent.setup();
+
+    expect(await screen.findByText("8.0 promedio")).toBeInTheDocument();
+    await user.click(screen.getByText("trigger-add-1"));
+    await user.click(await screen.findByText("remove-record"));
+
+    await waitFor(() =>
+      expect(screen.queryByText(/promedio/)).not.toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("status-1")).toHaveTextContent("none");
+    // A custom list is membership by `list_entries`, not by the row.
+    expect(screen.getByTestId("card-1")).toBeInTheDocument();
+    expect(screen.getByText("2 animes")).toBeInTheDocument();
+  });
+
+  it("keeps a card in a custom list when it is un-favourited, and refreshes", async () => {
+    db.get(1)!.favorite = true;
+    render(
+      <CollectionDetail listId="list-1" listName="Mi colección" animeIds={[1, 2]} />,
+    );
+    const user = userEvent.setup();
+
+    await waitFor(() => expect(screen.getByTestId("fav-1")).toHaveTextContent("fav"));
+    await user.click(screen.getByText("toggle-fav-1"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("fav-1")).toHaveTextContent("not-fav"),
+    );
+    expect(toggleFavorite).toHaveBeenCalledWith(1, false);
+    expect(db.get(1)!.favorite).toBe(false);
+    expect(screen.getByTestId("card-1")).toBeInTheDocument();
+    // Favourites seed the recommendation library held by the provider.
+    await waitFor(() => expect(mockRefetchLists).toHaveBeenCalled());
+  });
+
+  it("removes an un-favourited anime from Favoritos and updates the count", async () => {
+    db.set(2, { anime_id: 2, status: null, favorite: true, score: null });
+    db.get(1)!.favorite = true;
+    render(
+      <CollectionDetail listName="Favoritos" animeIds={[1, 2]} favorites />,
+    );
+    const user = userEvent.setup();
+
+    await screen.findByTestId("card-1");
+    expect(screen.getByText("2 animes")).toBeInTheDocument();
+    await user.click(screen.getByText("toggle-fav-1"));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("card-1")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("1 anime")).toBeInTheDocument();
+    // Anime 1 carried the only score.
+    expect(screen.queryByText(/promedio/)).not.toBeInTheDocument();
+    expect(toggleFavorite).toHaveBeenCalledWith(1, false);
+  });
+
+  it("puts the card back in place on Favoritos when the write fails", async () => {
+    vi.mocked(toggleFavorite).mockResolvedValueOnce({
+      success: false,
+      error: "Too many requests. Try again later.",
+    });
+    for (const id of [1, 2, 3]) {
+      db.set(id, { anime_id: id, status: null, favorite: true, score: null });
+    }
+    render(
+      <CollectionDetail listName="Favoritos" animeIds={[1, 2, 3]} favorites />,
+    );
+    const user = userEvent.setup();
+
+    await screen.findByTestId("card-2");
+    await user.click(screen.getByText("toggle-fav-2"));
+
+    await waitFor(() => expect(screen.getByText("3 animes")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId("fav-2")).toHaveTextContent("fav"),
+    );
+    const order = screen
+      .getAllByTestId(/^card-\d+$/)
+      .map((el) => el.getAttribute("data-testid"));
+    expect(order).toEqual(["card-1", "card-2", "card-3"]);
+  });
+
+  it("removes the card from Favoritos when the whole record is deleted", async () => {
+    db.get(1)!.favorite = true;
+    db.set(2, { anime_id: 2, status: null, favorite: true, score: null });
+    render(
+      <CollectionDetail listName="Favoritos" animeIds={[1, 2]} favorites />,
+    );
+    const user = userEvent.setup();
+
+    await screen.findByTestId("card-1");
+    await user.click(screen.getByText("trigger-add-1"));
+    await user.click(await screen.findByText("remove-record"));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("card-1")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("1 anime")).toBeInTheDocument();
   });
 
   it("keeps the anime visible when the modal closes without a list change", async () => {

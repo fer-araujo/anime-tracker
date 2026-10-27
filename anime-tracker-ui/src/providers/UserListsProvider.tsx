@@ -100,41 +100,50 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
     setError(null);
     const supabase = createClient();
 
-    const { data: raw, error: fetchError } = await supabase
-      .from("user_lists")
-      .select("id, name, color, list_entries(anime_id)")
-      .eq("user_id", user.id)
-      .order("sort_order");
+    // The three reads are independent and run together. `user_anime` used to
+    // wait behind `user_lists` and was skipped when it failed, which left the
+    // notification bell's watching ids and the recommendation library empty
+    // even though neither depends on a single list.
+    const [listsResult, trackedResult, dismissedResult] = await Promise.all([
+      supabase
+        .from("user_lists")
+        .select("id, name, color, list_entries(anime_id)")
+        .eq("user_id", user.id)
+        .order("sort_order"),
+      // One query for the whole page, not one per list: `user_anime` holds
+      // every anime this user tracks, so a single fetch plus a local lookup
+      // covers all the lists at once. The tracking status lives here and
+      // nowhere in `user_lists`, which is why /lists could not draw a status
+      // bar before.
+      //
+      // `favorite` and `score` come along for the recommendation page. They
+      // are two more columns on a query that was already running, which is
+      // cheaper than any separate hook could be.
+      supabase
+        .from("user_anime")
+        .select("anime_id, status, favorite, score")
+        .eq("user_id", user.id),
+      // Dismissed recommendations. Selected separately because they are not
+      // part of the library — a dismissal says "this means nothing to me", the
+      // exact opposite of what a `user_anime` row means, which is why it is
+      // its own table rather than a flag that every other query would have to
+      // remember to filter out.
+      supabase
+        .from("user_dismissed_recommendations")
+        .select("anime_id")
+        .eq("user_id", user.id),
+    ]);
 
-    if (fetchError) {
-      setError(fetchError.message);
-      setLoading(false);
-      return;
+    const { data: raw, error: fetchError } = listsResult;
+    const { data: trackedRows, error: trackedError } = trackedResult;
+    const { data: dismissedRows } = dismissedResult;
+
+    // A failed read is not "watching nothing". Coercing it to an empty array
+    // made a network error indistinguishable from an empty library, and the
+    // next refetch would publish that emptiness as fact.
+    if (trackedError) {
+      console.error("user_anime fetch error:", trackedError.message);
     }
-
-    // One query for the whole page, not one per list: `user_anime` holds every
-    // anime this user tracks, so a single fetch plus a local lookup covers all
-    // the lists at once. The tracking status lives here and nowhere in
-    // `user_lists`, which is why /lists could not draw a status bar before.
-    // A failure here is not fatal — the cards simply render without their bar.
-    //
-    // `favorite` and `score` come along for the recommendation page. They are
-    // two more columns on a query that was already running, which is cheaper
-    // than any separate hook could be.
-    const { data: trackedRows } = await supabase
-      .from("user_anime")
-      .select("anime_id, status, favorite, score")
-      .eq("user_id", user.id);
-
-    // Dismissed recommendations. Selected separately because they are not part
-    // of the library — a dismissal says "this means nothing to me", the exact
-    // opposite of what a `user_anime` row means, which is why it is its own
-    // table rather than a flag that every other query would have to remember
-    // to filter out.
-    const { data: dismissedRows } = await supabase
-      .from("user_dismissed_recommendations")
-      .select("anime_id")
-      .eq("user_id", user.id);
 
     const tracked = (trackedRows ?? []) as {
       anime_id: number;
@@ -148,7 +157,11 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
       if (row.status) statusByAnimeId.set(row.anime_id, row.status);
     }
 
-    const mapped: UserList[] = (raw ?? []).map(
+    if (fetchError) setError(fetchError.message);
+
+    // On a failed `user_lists` read the previous lists stay on screen, as they
+    // always did; only the `user_anime`-derived state below moves on.
+    const mapped: UserList[] = (fetchError ? [] : (raw ?? [])).map(
       (l: {
         id: string;
         name: string;
@@ -210,19 +223,25 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
       excluded.add(row.anime_id);
     }
 
-    setLibrary({
-      seeds,
-      excludedIds: [...excluded],
-      completedIds: tracked
-        .filter((row) => row.status === "completed")
-        .map((row) => row.anime_id),
-    });
+    // Kept as they were when `user_anime` failed: stale ids are closer to the
+    // truth than an empty library or a bell that thinks nothing is airing.
+    if (!trackedError) {
+      setLibrary({
+        seeds,
+        excludedIds: [...excluded],
+        completedIds: tracked
+          .filter((row) => row.status === "completed")
+          .map((row) => row.anime_id),
+      });
 
-    setWatchingIds(
-      tracked.filter((row) => row.status === "watching").map((row) => row.anime_id),
-    );
+      setWatchingIds(
+        tracked
+          .filter((row) => row.status === "watching")
+          .map((row) => row.anime_id),
+      );
+    }
 
-    setLists(mapped);
+    if (!fetchError) setLists(mapped);
     setLoading(false);
   }, [user]);
 
