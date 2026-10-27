@@ -6,6 +6,7 @@ import { tmdbWatchProvidersDetailed } from "../services/tmdb.service.js";
 import { getTitleVariations } from "./tmdb.enrich.js";
 import { tryConsumeRapidApiCall } from "./quotaGuard.js";
 import { getStoredProviders, storeProviders } from "./providerStore.js";
+import { isStoredVerdictTrusted, verdictTtlMs } from "./providerVerdict.js";
 
 const RAPIDAPI_KEY =
   process.env.STREAMING_AVAILABILITY_KEY ||
@@ -198,17 +199,24 @@ export async function resolveProvidersForAnimeDetailed(
   if (cached) return cached as ProvidersResolved;
 
   const stored = await getStoredProviders(anilistId, upperCountry);
-  if (stored) {
+  if (stored && isStoredVerdictTrusted(stored, isReleasing)) {
     // Only conclusive verdicts are ever written, so anything read back is
     // trustworthy — including an empty list, which means "checked, nothing
-    // available in this country".
+    // available in this country". The exception is an empty list on a title
+    // that is still airing: it expires early (see providerVerdict), so a row
+    // banked before the catalogues caught up is re-resolved here instead of
+    // pinning the series to "Pirata" for the rest of its 90-day window.
     const payload: ProvidersResolved = {
       providers: stored.providers.length ? stored.providers : ["Pirata"],
       usedSource: (stored.source as ProvidersResolved["usedSource"]) ?? "none",
       tmdbOk: true,
       saOk: true,
     };
-    memoryCache.set(cacheKey, payload, 1000 * 60 * 60 * 24 * 7);
+    memoryCache.set(
+      cacheKey,
+      payload,
+      verdictTtlMs(true, stored.providers.length > 0, isReleasing),
+    );
     return payload;
   }
 
@@ -357,9 +365,7 @@ export async function resolveProvidersForAnimeDetailed(
   const allSourcesAnswered = tmdbOk && (!saWasNeeded || saOk);
   const conclusive = foundProvider || allSourcesAnswered;
 
-  const ttlMs = conclusive
-    ? 1000 * 60 * 60 * 24 * 7
-    : 1000 * 60 * 10;
+  const ttlMs = verdictTtlMs(conclusive, foundProvider, isReleasing);
 
   if (!conclusive) {
     logger.info(
