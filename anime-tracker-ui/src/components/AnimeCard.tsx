@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import { ProviderBadge } from "./ProviderBadge";
 import { uniqueNormalizedProviders } from "@/lib/providers";
 import { cn, handleImageLoad } from "@/lib/utils";
+import { formatAiringCaption } from "@/lib/episodes";
 import type { AnimeCardProps } from "@/types/anime";
 import { Pill } from "./common/Pills";
 import { ScoreBadge } from "./common/ScoreBadge";
@@ -299,6 +300,13 @@ export function AnimeCard({
           >
             {anime.title}
           </h4>
+          {/* Only the airing shelf sends this. A season dropped at once is
+              one card saying so, not one card per episode. */}
+          {anime.airing && (
+            <p className="mt-1 text-xs text-white/60 truncate">
+              {formatAiringCaption(anime.airing)}
+            </p>
+          )}
         </div>
       )}
     </div>

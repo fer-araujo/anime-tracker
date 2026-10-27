@@ -1,3 +1,5 @@
+import type { EpisodeRange } from "./notifications";
+
 /** A neighbouring entry in the same franchise, reduced to what a card labels. */
 export type RelatedMediaRef = {
   id: number;
@@ -18,6 +20,19 @@ export type ExternalLink = {
   type: string | null;
   color: string | null;
   icon: string | null;
+};
+
+/**
+ * One release on the airing shelf. A season dropped at once arrives as a
+ * single entry whose `range` spans it, not as one card per episode.
+ */
+export type AiringInfo = {
+  /** The last episode released, same as `range.to`. */
+  episode: number | null;
+  /** Null when the source names a slot but not an episode. */
+  range?: EpisodeRange | null;
+  /** ISO-8601; the earliest broadcast when several were merged. */
+  airingAt: string;
 };
 
 // --- NUEVOS TIPOS PARA LA PÁGINA DE DETALLES ---
@@ -58,6 +73,12 @@ export type Anime = {
     logo?: string | null;
     poster?: string | null;
   };
+
+  /**
+   * The broadcast a row of the airing shelf is about; only the schedule
+   * endpoint sends it. `range` is absent from an API older than it.
+   */
+  airing?: AiringInfo;
 
   franchise?: FranchiseItem[]; // <-- NUEVO
   episodesData?: StreamingEpisode[]; // <-- NUEVO

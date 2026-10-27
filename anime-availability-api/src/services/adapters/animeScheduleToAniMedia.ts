@@ -1,6 +1,10 @@
 import type { AniMedia } from "../../types/animeCore.js";
 import { genresFor } from "../../utils/idMap.js";
-import { AS_IMAGE_BASE, type AsAnime } from "../animeSchedule.service.js";
+import {
+  AS_IMAGE_BASE,
+  asAnilistId,
+  type AsAnime,
+} from "../animeSchedule.service.js";
 
 /** AnimeSchedule spells media types in prose; AniList expects these. */
 const FORMAT: Record<string, string> = {
@@ -26,10 +30,8 @@ const FORMAT: Record<string, string> = {
  * that does not exist.
  */
 export function animeScheduleToAniMedia(anime: AsAnime): AniMedia | null {
-  const anilistId = Number(
-    anime.websites?.aniList?.match(/anime\/(\d+)/)?.[1] ?? NaN,
-  );
-  if (!Number.isFinite(anilistId) || anilistId <= 0) return null;
+  const anilistId = asAnilistId(anime);
+  if (anilistId === null) return null;
 
   const poster = anime.imageVersionRoute
     ? `${AS_IMAGE_BASE}${anime.imageVersionRoute}`

@@ -1,22 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import Icon from "@/components/custom/Icon";
+import { NotificationRow } from "@/components/common/NotificationRow";
 import { useNotifications } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
 
-/** "hace 3 h", "hace 2 d" — enough precision for something that aired today. */
-function timeAgo(iso: string): string {
-  const minutes = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
-  if (minutes < 60) return `hace ${minutes} min`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `hace ${hours} h`;
-  return `hace ${Math.round(hours / 24)} d`;
-}
-
 /**
- * Episodes released for the anime the user is watching.
+ * Episodes of the anime the user is watching: what came out, and what is
+ * still due today.
  *
  * The popover carries its own opaque background rather than inheriting the
  * header's. The header is `fixed top-0` and switches to `backdrop-blur-xl` on
@@ -24,7 +16,8 @@ function timeAgo(iso: string): string {
  * there would show the page sliding underneath the text.
  */
 export default function NotificationBell() {
-  const { items, unreadCount, isUnread, markRead } = useNotifications();
+  const { items, unreadCount, isUnread, isPending, now, markRead } =
+    useNotifications();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const wasOpen = useRef(false);
@@ -46,6 +39,17 @@ export default function NotificationBell() {
     if (wasOpen.current && !open && unreadCount > 0) void markRead();
     wasOpen.current = open;
   }, [open, unreadCount, markRead]);
+
+  // Split against the live clock rather than the API's flag, so an episode
+  // moves out of "Más tarde hoy" the minute it airs. Released newest first;
+  // pending soonest first, under them — what is out is what the badge is for.
+  const released = items
+    .filter((n) => !isPending(n))
+    .sort((a, b) => Date.parse(b.airedAt) - Date.parse(a.airedAt));
+  const pending = items
+    .filter((n) => isPending(n))
+    .sort((a, b) => Date.parse(a.airedAt) - Date.parse(b.airedAt));
+  const close = () => setOpen(false);
 
   return (
     <div className="relative" ref={ref}>
@@ -85,8 +89,10 @@ export default function NotificationBell() {
           )}
         >
           <div className="px-5 py-4 border-b border-white/10">
-            <p className="text-base font-semibold text-white">Nuevos episodios</p>
-            <p className="text-xs text-white/50 mt-0.5">Últimas 24 horas</p>
+            <p className="text-base font-semibold text-white">Episodios</p>
+            <p className="text-xs text-white/50 mt-0.5">
+              Últimas 24 horas y lo que sale hoy
+            </p>
           </div>
 
           {items.length === 0 ? (
@@ -95,53 +101,41 @@ export default function NotificationBell() {
               viendo.
             </p>
           ) : (
-            <ul className="max-h-[60vh] md:max-h-[28rem] overflow-y-auto divide-y divide-white/5">
-              {items.map((n) => {
-                const unread = isUnread(n);
-                return (
-                  <li key={`${n.animeId}-${n.episode}`}>
-                    <Link
-                      href={`/anime/${n.animeId}`}
-                      onClick={() => setOpen(false)}
-                      className={cn(
-                        "flex items-center gap-4 px-5 py-3.5 hover:bg-white/5 transition-colors",
-                        // Dimmed, not removed: a read episode is still the
-                        // answer to "which one came out today".
-                        !unread && "opacity-60",
-                      )}
-                    >
-                      {/* 2:3, the poster's own ratio. */}
-                      {n.poster ? (
-                        <img
-                          src={n.poster}
-                          alt=""
-                          className="w-12 h-[4.5rem] rounded-md object-cover shrink-0"
-                        />
-                      ) : (
-                        <div className="w-12 h-[4.5rem] rounded-md bg-white/10 shrink-0" />
-                      )}
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[15px] font-medium text-white line-clamp-2">
-                          {n.title}
-                        </span>
-                        <span className="block mt-1 text-sm text-white/60">
-                          Episodio {n.episode} · {timeAgo(n.airedAt)}
-                        </span>
-                      </span>
-                      {unread && (
-                        <span className="shrink-0 flex items-center">
-                          <span
-                            className="w-2 h-2 rounded-full bg-primary"
-                            aria-hidden="true"
-                          />
-                          <span className="sr-only">Sin leer</span>
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="max-h-[60vh] md:max-h-[28rem] overflow-y-auto">
+              {released.length > 0 && (
+                <ul className="divide-y divide-white/5">
+                  {released.map((n) => (
+                    <NotificationRow
+                      key={`${n.animeId}-${n.airedAt}`}
+                      n={n}
+                      upcoming={false}
+                      unread={isUnread(n)}
+                      now={now}
+                      onNavigate={close}
+                    />
+                  ))}
+                </ul>
+              )}
+              {pending.length > 0 && (
+                <>
+                  <p className="px-5 pt-4 pb-1 text-xs font-medium uppercase tracking-wide text-white/40">
+                    Más tarde hoy
+                  </p>
+                  <ul className="divide-y divide-white/5">
+                    {pending.map((n) => (
+                      <NotificationRow
+                        key={`${n.animeId}-${n.airedAt}`}
+                        n={n}
+                        upcoming
+                        unread={false}
+                        now={now}
+                        onNavigate={close}
+                      />
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
           )}
         </div>
       )}

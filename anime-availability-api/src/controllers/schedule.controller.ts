@@ -1,6 +1,13 @@
 // src/controllers/schedule.controller.ts
 import type { Request, Response, NextFunction } from "express";
 import type { AniMedia } from "../types/animeCore.js";
+import type {
+  AiringEntry,
+  AiringSchedule,
+  DayGroup,
+} from "../types/airing.js";
+import type { EpisodeRange, SameDayDrop } from "../types/notifications.js";
+import { collapseSameDayDrops } from "../utils/episodeDrops.js";
 import { hybridCache, setCacheControl } from "../utils/cache.js";
 import { anilistFetch } from "../utils/anilistRateLimit.js";
 import {
@@ -19,7 +26,8 @@ import {
 import { airingsOnDay, broadcastsOnDay } from "../utils/airingDay.js";
 import {
   asAnimeForRoutes,
-  asFetchTimetable,
+  asEpisodeRange,
+  asFetchTimetableRange,
 } from "../services/animeSchedule.service.js";
 import { animeScheduleToAniMedia } from "../services/adapters/animeScheduleToAniMedia.js";
 import {
@@ -43,25 +51,6 @@ const DEFAULT_COUNTRY = process.env.DEFAULT_COUNTRY || "MX";
  * pathological response walk the limiter into starvation.
  */
 const MAX_PAGES = 5;
-
-type AiringSchedule = {
-  media: AniMedia;
-  airingAt?: number | null;
-  episode?: number | null;
-};
-
-type FormattedAnime = Awaited<ReturnType<typeof formatAnimeList>>[number];
-
-/** A formatted anime plus the specific broadcast this row is about. */
-type AiringEntry = FormattedAnime & {
-  airing: { episode: number | null; airingAt: string };
-};
-
-type DayGroup = {
-  day: string;
-  date: string;
-  items: AiringEntry[];
-};
 
 function byRatingThenTitle(
   a: { title: string; meta?: { rating?: number | null } },
@@ -122,6 +111,13 @@ async function fetchAllPages<T>(
  * the second airing. So the media are made unique first, enriched once, then
  * each schedule entry is paired back with its formatted record. That also
  * halves the enrichment cost for those series instead of doubling it.
+ *
+ * Two airings on the same CDMX day are a different matter: that is one
+ * release, not two rows. AniList lists a season dropped at once as one airing
+ * per episode at the same instant, and "Emisión de Hoy" showed Cyberpunk:
+ * Edgerunners 2 ten times on 2026-10-20. Those are merged into one entry whose
+ * `range` says how much came out (see `collapseSameDayDrops`), here, so the
+ * healthy path and every fallback share it.
  */
 async function formatSchedules(
   schedules: AiringSchedule[],
@@ -130,10 +126,22 @@ async function formatSchedules(
   year: number,
   level: EnrichmentLevel,
 ): Promise<AiringEntry[]> {
-  const uniqueMedia = new Map<number, AniMedia>();
+  const rows: (SameDayDrop & { media: AniMedia })[] = [];
   for (const s of schedules) {
-    if (!s.media || s.media.isAdult) continue;
-    if (!uniqueMedia.has(s.media.id)) uniqueMedia.set(s.media.id, s.media);
+    if (!s.media || s.media.isAdult || typeof s.airingAt !== "number") continue;
+    const total = s.media.episodes ?? null;
+    const range: EpisodeRange | null = s.range
+      ? { ...s.range, total: s.range.total ?? total }
+      : s.episode
+        ? { from: s.episode, to: s.episode, total }
+        : null;
+    rows.push({ anilistId: s.media.id, airingAt: s.airingAt, range, media: s.media });
+  }
+  const drops = collapseSameDayDrops(rows);
+
+  const uniqueMedia = new Map<number, AniMedia>();
+  for (const d of drops) {
+    if (!uniqueMedia.has(d.media.id)) uniqueMedia.set(d.media.id, d.media);
   }
 
   const formatted = await formatAnimeList(
@@ -146,14 +154,15 @@ async function formatSchedules(
   const byId = new Map(formatted.map((f) => [f.id.anilist, f]));
 
   const entries: AiringEntry[] = [];
-  for (const s of schedules) {
-    const record = s.media && byId.get(s.media.id);
-    if (!record || typeof s.airingAt !== "number") continue;
+  for (const d of drops) {
+    const record = byId.get(d.anilistId);
+    if (!record) continue;
     entries.push({
       ...record,
       airing: {
-        episode: s.episode ?? null,
-        airingAt: new Date(s.airingAt * 1000).toISOString(),
+        episode: d.range?.to ?? null,
+        range: d.range,
+        airingAt: new Date(d.airingAt * 1000).toISOString(),
       },
     });
   }
@@ -237,8 +246,11 @@ export async function getSchedule(
         // the 253 series it itself calls ongoing, MAL records a broadcast day
         // for 112 of 377, and neither schedules donghua at all. Where they
         // overlap they agree, so the merge adds coverage rather than noise.
+        // The timetable is read for the CDMX range itself, not for "the
+        // running week": its weeks are UTC, so the latter lost the CDMX Sunday
+        // evening and, once that evening began, the whole Sunday.
         const [timetable, calendar, malNodes] = await Promise.all([
-          asFetchTimetable(),
+          asFetchTimetableRange(greater * 1000, lesser * 1000 + 999),
           shikiFetchCalendar(),
           malFetchAiring(),
         ]);
@@ -246,15 +258,8 @@ export async function getSchedule(
         // Resolved for the routes in the requested range only — including a
         // series whose finale is in it, which the ongoing index has already
         // dropped. See asAnimeForRoutes.
-        const rangeStart = cdmxDayStart(firstDay);
-        const rangeEnd = cdmxDayStart(lastDay + 1) - 1;
         const asRecords = await asAnimeForRoutes(
-          timetable
-            .filter((row) => {
-              const at = Math.floor(Date.parse(row.episodeDate) / 1000);
-              return at >= rangeStart && at <= rangeEnd;
-            })
-            .map((row) => row.route),
+          timetable.map((row) => row.route),
         );
         const malAiring = malNodes.filter((n) => n.status === "currently_airing");
 
@@ -275,12 +280,17 @@ export async function getSchedule(
 
             const record = asRecords.get(row.route);
             const media = record && animeScheduleToAniMedia(record);
-            if (!media || seen.has(media.id)) continue;
+            if (!media) continue;
+            // `seen` only keeps the weaker sources out. A second AnimeSchedule
+            // row for the same series that day is more of the same release,
+            // and formatSchedules merges it into the range instead of the
+            // first row silently standing for both.
             seen.add(media.id);
             fallbackSchedules.push({
               media,
               airingAt,
               episode: row.episodeNumber || null,
+              range: row.episodeNumber ? asEpisodeRange(row) : null,
             });
           }
 

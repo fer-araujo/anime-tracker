@@ -4,7 +4,10 @@ import express from "express";
 
 const mockTimetable = vi.fn();
 const mockIndex = vi.fn();
-vi.mock("../services/animeSchedule.service.js", () => ({
+vi.mock("../services/animeSchedule.service.js", async (importOriginal) => ({
+  // The pure readers (`asAnilistId`, `asEpisodeRange`) stay real: they are
+  // what decides which series and which episodes a row is about.
+  ...(await importOriginal<object>()),
   asFetchRecentTimetable: () => mockTimetable(),
   asAnimeForRoutes: () => mockIndex(),
   AS_IMAGE_BASE: "https://img.test/",
@@ -19,11 +22,26 @@ const { default: routes } = await import("../routes/notifications.routes.js");
 
 const app = express().use(express.json()).use("/", routes);
 
-/** A timetable row for `route`, aired `hoursAgo` before now. */
-const row = (route: string, episodeNumber: number, hoursAgo: number) => ({
+/**
+ * Thursday 22 October 2026, 10:00 CDMX. Fixed, because "later today" depends
+ * on where in the CDMX day the test happens to run: at 23:00 there is no
+ * "six hours from now" left in it.
+ */
+const NOW = Date.parse("2026-10-22T16:00:00Z");
+vi.useFakeTimers({ toFake: ["Date"] });
+vi.setSystemTime(NOW);
+
+/** A timetable row for `route`, aired `hoursAgo` before now (negative: ahead). */
+const row = (
+  route: string,
+  episodeNumber: number,
+  hoursAgo: number,
+  extra: object = {},
+) => ({
   route,
   episodeNumber,
   episodeDate: new Date(Date.now() - hoursAgo * 3600_000).toISOString(),
+  ...extra,
 });
 
 /** The index entry that maps a route to an AniList id. */
@@ -53,18 +71,89 @@ describe("POST /notifications", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(1);
-    expect(res.body.data[0]).toMatchObject({ animeId: 154587, episode: 4 });
+    expect(res.body.data[0]).toMatchObject({
+      animeId: 154587,
+      episode: 4,
+      range: { from: 4, to: 4, total: null },
+      upcoming: false,
+    });
   });
 
-  it("never announces an episode that has not aired yet", async () => {
-    // The timetable is a schedule, so it carries tonight's broadcast too.
-    // Reporting it as released is a lie the user can check against the clock.
+  it("lists an episode due later today, flagged upcoming and never as released", async () => {
+    // 16:00 CDMX tonight. Listed from the start of the day so the user knows
+    // it is coming; flagged so no client can render it as already out.
     mockTimetable.mockResolvedValue([row("frieren", 5, -6)]);
     mockIndex.mockResolvedValue(indexed([["frieren", 154587]]));
 
     const res = await post({ animeIds: [154587], since: DAY_AGO });
 
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0]).toMatchObject({
+      episode: 5,
+      upcoming: true,
+      airedAt: "2026-10-22T22:00:00.000Z",
+    });
+  });
+
+  it("never lists an episode due after today's CDMX day ends", async () => {
+    // 15 h ahead is 01:00 CDMX on Friday: tomorrow, however close.
+    mockTimetable.mockResolvedValue([row("frieren", 5, -15)]);
+    mockIndex.mockResolvedValue(indexed([["frieren", 154587]]));
+
+    const res = await post({ animeIds: [154587], since: DAY_AGO });
+
     expect(res.body.data).toEqual([]);
+  });
+
+  it("shows a season dropped at once as one entry with its range", async () => {
+    // How AnimeSchedule sent Cyberpunk: Edgerunners 2 on 2026-10-20.
+    mockTimetable.mockResolvedValue([
+      row("edgerunners-2", 10, 3, { subtractedEpisodeNumber: 1, episodes: 10 }),
+    ]);
+    mockIndex.mockResolvedValue(indexed([["edgerunners-2", 195539]]));
+
+    const res = await post({ animeIds: [195539], since: DAY_AGO });
+
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0]).toMatchObject({
+      episode: 10,
+      range: { from: 1, to: 10, total: 10 },
+    });
+  });
+
+  it("collapses separate same-day rows of one series into one entry", async () => {
+    mockTimetable.mockResolvedValue([
+      row("frieren", 7, 2),
+      row("frieren", 6, 3),
+    ]);
+    mockIndex.mockResolvedValue(indexed([["frieren", 154587]]));
+
+    const res = await post({ animeIds: [154587], since: DAY_AGO });
+
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].range).toEqual({ from: 6, to: 7, total: null });
+  });
+
+  it("keeps the released half of a day apart from the pending half", async () => {
+    // Merged, the pair would have to be called released (a lie) or upcoming
+    // (hiding an episode already watchable).
+    mockTimetable.mockResolvedValue([
+      row("frieren", 6, 2),
+      row("frieren", 7, -2),
+    ]);
+    mockIndex.mockResolvedValue(indexed([["frieren", 154587]]));
+
+    const res = await post({ animeIds: [154587], since: DAY_AGO });
+
+    expect(
+      res.body.data.map((n: { episode: number; upcoming: boolean }) => [
+        n.episode,
+        n.upcoming,
+      ]),
+    ).toEqual([
+      [6, false],
+      [7, true],
+    ]);
   });
 
   it("ignores anime the user is not watching", async () => {

@@ -31,7 +31,16 @@ export const memoryCache = new TTLCache<string, unknown>(1000 * 60 * 60 * 12);
 export interface CacheAdapter {
   get<T>(key: string): Promise<T | undefined> | T | undefined;
   set<T>(key: string, value: T, ttlMs: number): Promise<void> | void;
+  /** Milliseconds the key has left; undefined when unknown or unbounded. */
+  remainingMs?(key: string): Promise<number | undefined>;
 }
+
+/**
+ * How long a value read back from Redis may live in memory when Redis cannot
+ * say how long it has left. Short on purpose: memory is checked first and never
+ * asks Redis again, so whatever this is, the value is frozen for that long.
+ */
+const PROMOTION_FALLBACK_TTL_MS = 1000 * 60;
 
 // ─── Hybrid Cache (memory + optional Redis) ──────────────────────────────────
 
@@ -63,6 +72,11 @@ export class HybridCache {
         async set<T>(key: string, value: T, ttlMs: number): Promise<void> {
           await client.set(key, value, { px: ttlMs });
         },
+        async remainingMs(key: string): Promise<number | undefined> {
+          // -2: no such key, -1: no expiry. Neither is a lifetime to copy.
+          const ms = await client.pttl(key);
+          return ms > 0 ? ms : undefined;
+        },
       };
       logger.info("[cache] Redis adapter initialised");
     } catch (err) {
@@ -84,8 +98,15 @@ export class HybridCache {
     if (redis) {
       const val = await redis.get<T>(key);
       if (val !== undefined) {
-        // Promote to memory (use default TTL — callers set via set())
-        this.memory.set(key, val as unknown, 1000 * 60 * 60 * 12);
+        // Promoted for whatever Redis says it has left, never a fixed span.
+        // This used to be twelve hours for every key, so after a restart the
+        // first read of a 15-minute timetable or a 5-minute "airing today"
+        // payload pinned it in memory for up to twelve hours, and the bell and
+        // the shelf kept answering from that snapshot while the process lived.
+        const left = await Promise.resolve(redis.remainingMs?.(key)).catch(
+          () => undefined,
+        );
+        this.memory.set(key, val as unknown, left ?? PROMOTION_FALLBACK_TTL_MS);
       }
       return val;
     }
