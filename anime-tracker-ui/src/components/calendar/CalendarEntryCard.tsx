@@ -2,6 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatCdmxTime, formatEpisodeRange } from "@/lib/episodes";
 import { STATUS_LABELS } from "@/constants/tracking";
+import {
+  CARD_FOCUS,
+  CARD_HOVER_SHADOW,
+  CARD_SURFACE,
+  CHIP_ON_IMAGE,
+  IMAGE_HOVER_ZOOM,
+  SCRIM_BOTTOM,
+  STATUS_LINE,
+} from "@/lib/cardStyles";
 import { STATUS_BAR_COLORS } from "@/lib/lists";
 import { cn } from "@/lib/utils";
 import type { TrackingStatus } from "@/types/anime";
@@ -32,14 +41,23 @@ export function CalendarEntryCard({
   return (
     <Link
       href={`/anime/${entry.animeId}`}
-      className="group/card relative isolate block aspect-[16/10] overflow-hidden rounded-md border border-white/10 bg-neutral-950 transition-shadow duration-300 ease-out md:hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className={cn(
+        "group/card relative isolate block aspect-[16/10] overflow-hidden",
+        CARD_SURFACE,
+        CARD_HOVER_SHADOW,
+        CARD_FOCUS,
+      )}
     >
       <span
         aria-hidden="true"
         data-testid="entry-art"
         className={cn(
           "absolute inset-0 -z-10 bg-neutral-800",
-          "motion-safe:transition-[filter,transform] motion-safe:duration-500 motion-safe:group-hover/card:scale-[1.04]",
+          IMAGE_HOVER_ZOOM,
+          // cn() does not merge conflicting utilities and Tailwind emits the token's
+          // transition-transform later, so only `!` keeps the grayscale lift fading in.
+          // `scale` is listed because v4's scale-* sets that property, not transform.
+          "motion-safe:transition-[filter,transform,scale]!",
           dimmed &&
             "grayscale group-hover/card:grayscale-0 group-focus-visible/card:grayscale-0",
         )}
@@ -57,12 +75,12 @@ export function CalendarEntryCard({
 
       <span
         aria-hidden="true"
-        className="absolute inset-x-0 bottom-0 h-3/5 -z-10 bg-[linear-gradient(to_top,rgba(0,0,0,0.90)_20%,rgba(0,0,0,0.55)_60%,rgba(0,0,0,0)_100%)]"
+        className={cn("absolute inset-x-0 bottom-0 h-3/5 -z-10", SCRIM_BOTTOM)}
       />
 
       <time
         dateTime={entry.airingAt}
-        className="absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-white backdrop-blur-sm"
+        className={cn("absolute left-2 top-2 tabular-nums", CHIP_ON_IMAGE)}
       >
         {formatCdmxTime(entry.airingAt)}
       </time>
@@ -81,7 +99,7 @@ export function CalendarEntryCard({
         <span
           aria-hidden="true"
           data-status-tint={status}
-          className={cn("absolute inset-x-0 bottom-0 h-0.5", STATUS_BAR_COLORS[status])}
+          className={cn("absolute inset-x-0 bottom-0", STATUS_LINE, STATUS_BAR_COLORS[status])}
         />
       ) : null}
     </Link>
