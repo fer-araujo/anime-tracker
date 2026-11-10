@@ -91,7 +91,10 @@ export function AnimeListRow({
         aria-label={`Ver detalles de ${anime.title}`}
         // Stretched over the row so the whole surface stays clickable, but
         // underneath the actions, which sit above it in the stacking order.
-        className={cn("absolute inset-0 z-0 rounded-md cursor-pointer", CARD_FOCUS)}
+        className={cn(
+          "absolute inset-0 z-0 rounded-md cursor-pointer",
+          CARD_FOCUS,
+        )}
       />
 
       {/* A smaller radius than the row so the corner nests inside the row's padding. */}
@@ -110,20 +113,9 @@ export function AnimeListRow({
       </div>
 
       <div className="relative z-10 min-w-0 flex-1 flex flex-col gap-1 py-0.5 pointer-events-none">
-        {/* The score sits at the title's end on every screen, in the same chip
-            and colour, so phone and desktop read the same row. It is narrow
-            enough to share the line; the action buttons are what used to crush
-            the text column. */}
-        <div className="flex items-start justify-between gap-2">
-          <p className="min-w-0 text-sm font-medium text-white/90 leading-tight line-clamp-2">
-            {anime.title}
-          </p>
-          {typeof rating === "number" ? (
-            <span className="shrink-0">
-              <ScoreBadge value={rating} surface="plain" />
-            </span>
-          ) : null}
-        </div>
+        <p className="text-sm font-medium text-white/90 leading-tight line-clamp-2">
+          {anime.title}
+        </p>
 
         <p className="text-xs text-white/50 truncate">
           {anime.meta?.studio ?? "Estudio desconocido"}
@@ -158,54 +150,67 @@ export function AnimeListRow({
         </div>
       </div>
 
-      <div className="relative z-10 shrink-0 self-center flex flex-col sm:flex-row items-center gap-1 pr-0.5">
-        {/* The same two controls the poster card uses, from the same module.
-            A row with its own heart would be a second answer to a question
-            already settled. */}
-        {onToggleFavorite && (
-          <FavButton
-            active={isFav}
-            onClick={(e) => {
-              e.stopPropagation();
-              const next = !isFav;
-              setFav(next);
-              onToggleFavorite(anime, next);
-            }}
-          />
+      {/* Score on top, actions at the bottom, both flush with the row's right
+          edge. Beside the title the score ended wherever the text column did,
+          so it never lined up with the buttons below it. */}
+      <div className="relative z-10 shrink-0 self-stretch flex flex-col items-end justify-between gap-2 py-0.5 pr-0.5">
+        {typeof rating === "number" ? (
+          <span className="pointer-events-none">
+            <ScoreBadge value={rating} surface="plain" />
+          </span>
+        ) : (
+          <span />
         )}
 
-        {/* A square the size of the heart, with the list count as a small
-            badge on its corner, like the bell's: "+ 1" as text made this button
-            twice as wide as the one beside it. */}
-        {onAddToList && (
-          <span className="relative">
-            <ActionButton
-              variant="soft"
-              size="sm"
-              iconOnly
-              ariaLabel={
-                listCount > 0
-                  ? `Añadir a una lista (está en ${listCount})`
-                  : "Añadir a una lista"
-              }
-              icon={<Icon name="Plus" size={14} />}
+        <div className="flex items-center gap-1">
+          {/* The same two controls the poster card uses, from the same module.
+            A row with its own heart would be a second answer to a question
+            already settled. */}
+          {onToggleFavorite && (
+            <FavButton
+              active={isFav}
               onClick={(e) => {
                 e.stopPropagation();
-                onAddToList(anime);
+                const next = !isFav;
+                setFav(next);
+                onToggleFavorite(anime, next);
               }}
-            >
-              Añadir a una lista
-            </ActionButton>
-            {listCount > 0 ? (
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-white tabular-nums"
+            />
+          )}
+
+          {/* A square the size of the heart, with the list count as a small
+            badge on its corner, like the bell's: "+ 1" as text made this button
+            twice as wide as the one beside it. */}
+          {onAddToList && (
+            <span className="relative">
+              <ActionButton
+                variant="soft"
+                size="sm"
+                iconOnly
+                ariaLabel={
+                  listCount > 0
+                    ? `Añadir a una lista (está en ${listCount})`
+                    : "Añadir a una lista"
+                }
+                icon={<Icon name="Plus" size={14} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToList(anime);
+                }}
               >
-                {listCount}
-              </span>
-            ) : null}
-          </span>
-        )}
+                Añadir a una lista
+              </ActionButton>
+              {listCount > 0 ? (
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-neutral-700 px-1 text-[10px] font-bold leading-none text-white tabular-nums ring-2 ring-neutral-950"
+                >
+                  {listCount}
+                </span>
+              ) : null}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
