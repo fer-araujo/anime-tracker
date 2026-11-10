@@ -1,12 +1,12 @@
-import { TimeGrid } from "@/components/calendar/TimeGrid";
+import { DayEntryList } from "@/components/calendar/DayEntryList";
 import { formatDayLabel } from "@/lib/calendar";
 import { cn } from "@/lib/utils";
 import type { StatusByAnimeId } from "@/types/anime";
 import type { CalendarDay } from "@/types/calendar";
 
 /**
- * The week for narrow screens: a strip of days choosing which one the time grid
- * below shows.
+ * The week for narrow screens: a strip of days choosing which one is listed
+ * below.
  *
  * Mounted next to the wide grid and swapped by breakpoint in CSS rather than in
  * JS, because the server render cannot know the viewport and a JS choice would
@@ -18,14 +18,12 @@ export function DayPicker({
   selected,
   onSelect,
   statuses,
-  now,
 }: {
   days: CalendarDay[];
   today: string | null;
   selected: string | null;
   onSelect: (date: string) => void;
   statuses: StatusByAnimeId;
-  now: number;
 }) {
   const current = days.find((d) => d.date === selected);
   return (
@@ -70,16 +68,7 @@ export function DayPicker({
           );
         })}
       </div>
-      {current ? (
-        <TimeGrid
-          days={[current]}
-          today={today}
-          statuses={statuses}
-          now={now}
-          dimInactive={false}
-          showHeaders={false}
-        />
-      ) : null}
+      {current ? <DayEntryList day={current} statuses={statuses} /> : null}
     </div>
   );
 }

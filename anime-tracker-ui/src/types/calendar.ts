@@ -24,16 +24,6 @@ export type CalendarDay = {
 /** The status the calendar is narrowed to, or all of them. */
 export type CalendarStatusFilter = TrackingStatus | "all";
 
-/** An entry with its place on the time grid; minutes are since CDMX midnight. */
-export type PlacedEntry = {
-  entry: CalendarEntry;
-  startMinute: number;
-  /** Which side-by-side column it takes among the entries it overlaps. */
-  lane: number;
-  /** How many columns that group of overlapping entries needs. */
-  lanes: number;
-};
-
 /** What the calendar page is showing; one at a time, in this order of precedence. */
 export type CalendarView = "loading" | "untracked" | "error" | "ready";
 

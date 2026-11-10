@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DayPicker } from "@/components/calendar/DayPicker";
-import { TimeGrid } from "@/components/calendar/TimeGrid";
+import { WeekGrid } from "@/components/calendar/WeekGrid";
 import { ActionButton } from "@/components/common/Buttons";
 import { EmptyState } from "@/components/common/EmptyState";
 import { FilterChips } from "@/components/common/FilterChips";
@@ -11,7 +11,6 @@ import { SurfaceBackdrop } from "@/components/common/SurfaceBackdrop";
 import Icon from "@/components/custom/Icon";
 import Skeleton from "@/components/custom/Skeleton";
 import { useAiringCalendar } from "@/hooks/useAiringCalendar";
-import { useNow } from "@/hooks/useNow";
 import {
   calendarHref,
   calendarStatusChips,
@@ -26,9 +25,6 @@ import {
 } from "@/lib/calendar";
 import { useAuth } from "@/providers/AuthProvider";
 import type { CalendarStatusFilter, CalendarWeek } from "@/types/calendar";
-
-/** The "now" line moves with the minute, which is all the precision it shows. */
-const NOW_TICK_MS = 60 * 1000;
 
 /**
  * Everything the user has given a status that airs this week.
@@ -46,7 +42,6 @@ export function AiringCalendarPage() {
   const requestedStatus = normalizeStatusFilter(searchParams.get("status"));
   const { calendar, failed, loading, retry, hasTrackedAnime, statusByAnimeId } =
     useAiringCalendar(week);
-  const [now] = useNow(NOW_TICK_MS);
   const [pickedDay, setPickedDay] = useState<string | null>(null);
 
   useEffect(() => {
@@ -91,7 +86,7 @@ export function AiringCalendarPage() {
   return (
     <div className="relative min-h-screen pb-16">
       <SurfaceBackdrop />
-      <main className="relative z-10 max-w-[1500px] mx-auto px-4 md:px-10 lg:px-16 pt-24 md:pt-32 flex flex-col gap-6">
+      <main className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-10 lg:px-16 xl:px-10 pt-24 md:pt-32 flex flex-col gap-6">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-3xl md:text-4xl font-bold text-white">
@@ -179,12 +174,7 @@ export function AiringCalendarPage() {
             {/* Paired with DayPicker's `xl:hidden`: both are mounted and CSS
                 picks one, so the layout is right in the server render. */}
             <div className="hidden xl:block" data-testid="week-grid">
-              <TimeGrid
-                days={days}
-                today={today}
-                statuses={statusByAnimeId}
-                now={now}
-              />
+              <WeekGrid days={days} today={today} statuses={statusByAnimeId} />
             </div>
             <DayPicker
               days={days}
@@ -192,7 +182,6 @@ export function AiringCalendarPage() {
               selected={selected}
               onSelect={setPickedDay}
               statuses={statusByAnimeId}
-              now={now}
             />
           </>
         ) : null}
