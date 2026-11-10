@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CARD_FOCUS } from "@/lib/cardStyles";
 import { formatCdmxTime, formatEpisodeRange, timeAgo } from "@/lib/episodes";
 import { cn } from "@/lib/utils";
 import type { EpisodeNotification } from "@/types/notifications";
@@ -26,6 +27,7 @@ export function NotificationRow({
         onClick={onNavigate}
         className={cn(
           "flex items-center gap-4 px-5 py-3.5 hover:bg-white/5 transition-colors",
+          CARD_FOCUS,
           // Dimmed, not removed: a read episode is still the answer to "which
           // one came out today". A pending one is not dimmed — it has not been
           // read, it has not happened.

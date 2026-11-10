@@ -162,7 +162,8 @@ describe("GridSkeleton grid variant", () => {
     expect(wrapper.className).toContain("grid");
     expect(wrapper.className).toContain("grid-cols-2");
     expect(wrapper.className).toContain("md:grid-cols-3");
-    expect(wrapper.className).toContain("lg:grid-cols-5");
+    expect(wrapper.className).toContain("lg:grid-cols-4");
+    expect(wrapper.className).toContain("xl:grid-cols-5");
   });
 
   it("renders aspect-[3/4] cards in grid mode", () => {

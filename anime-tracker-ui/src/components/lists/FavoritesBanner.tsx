@@ -7,6 +7,7 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 import { fetchAnimeBatch } from "@/lib/fetchAnimeBatch";
+import { CARD_FOCUS } from "@/lib/cardStyles";
 import { resolveRailWidth } from "@/lib/lists";
 import Icon from "@/components/custom/Icon";
 
@@ -109,7 +110,7 @@ export function FavoritesBanner() {
       role="button"
       tabIndex={0}
       aria-label={`Favoritos, ${count} ${count === 1 ? "serie guardada" : "series guardadas"}`}
-      className={`${BANNER_SHELL} group cursor-pointer transition-colors [@media(hover:hover)]:hover:border-pink-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400`}
+      className={`${BANNER_SHELL} group cursor-pointer transition-colors [@media(hover:hover)]:hover:border-pink-400/40 ${CARD_FOCUS}`}
       whileHover="hover"
       onClick={() => router.push("/lists/favorites")}
       onKeyDown={(event) => {
