@@ -7,6 +7,7 @@ import { ScoreBadge } from "@/components/common/ScoreBadge";
 import { ActionButton, FavButton } from "@/components/common/Buttons";
 import Icon from "@/components/custom/Icon";
 import { uniqueNormalizedProviders } from "@/lib/providers";
+import { CARD_FOCUS, CARD_HOVER_SHADOW, CARD_SURFACE } from "@/lib/cardStyles";
 import { cn } from "@/lib/utils";
 import type { Anime, AnimeEntry } from "@/types/anime";
 
@@ -73,9 +74,14 @@ export function AnimeListRow({
         // the grid stretches that cell to the taller of two neighbours, but the
         // row inside kept its own height, so side-by-side boxes did not match.
         // Where the row is the grid item itself this changes nothing.
-        "group relative w-full h-full flex items-stretch gap-3 p-2.5 rounded-xl",
-        "bg-white/5 border border-white/10 transition-colors",
-        "[@media(hover:hover)]:hover:bg-white/10 [@media(hover:hover)]:hover:border-white/20",
+        "group relative w-full h-full flex items-stretch gap-3 p-2.5",
+        CARD_SURFACE,
+        CARD_HOVER_SHADOW,
+        // The token's transition-shadow and this list both set transition-property, and
+        // cn() does not merge them, so `!` lets the border lighten fade with the shadow
+        // instead of snapping.
+        "transition-[border-color,box-shadow]!",
+        "[@media(hover:hover)]:hover:border-white/20",
         "focus-within:border-primary/40",
       )}
     >
@@ -85,10 +91,11 @@ export function AnimeListRow({
         aria-label={`Ver detalles de ${anime.title}`}
         // Stretched over the row so the whole surface stays clickable, but
         // underneath the actions, which sit above it in the stacking order.
-        className="absolute inset-0 z-0 rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className={cn("absolute inset-0 z-0 rounded-md cursor-pointer", CARD_FOCUS)}
       />
 
-      <div className="relative z-10 w-14 sm:w-16 shrink-0 aspect-2/3 rounded-lg overflow-hidden bg-white/5 pointer-events-none">
+      {/* A smaller radius than the row so the corner nests inside the row's padding. */}
+      <div className="relative z-10 w-14 sm:w-16 shrink-0 aspect-2/3 rounded-sm overflow-hidden bg-white/5 pointer-events-none">
         {poster && (
           <Image
             src={poster}

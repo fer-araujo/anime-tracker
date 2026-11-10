@@ -189,15 +189,15 @@ export default function SearchOverlay({
                 onMouseEnter={() => setActiveIndex(i)}
                 onClick={() => onSelect(it)}
                 className={cn(
-                  "group flex items-center gap-4 px-3 py-2 cursor-pointer outline-none rounded-xl transition-[background-color,transform] duration-200 mb-1",
+                  "group flex items-center gap-4 px-3 py-2 cursor-pointer outline-none rounded-md transition-colors duration-200 mb-1",
                   CARD_FOCUS,
-                  isActive
-                    ? "bg-white/15 shadow-lg shadow-black/20 ring-1 ring-white/10 translate-x-1"
-                    : "hover:bg-white/5 hover:translate-x-0.5 text-white/70",
+                  // Hover and keyboard selection share one highlight, chosen per branch so the
+                  // active item never carries two background utilities at once.
+                  isActive ? "bg-white/10" : "hover:bg-white/10 text-white/70",
                 )}
               >
                 {showThumbs && (
-                  <div className="relative h-[84px] w-14 shrink-0 overflow-hidden rounded-md bg-white/5 border border-white/5 group-hover:border-white/20 transition-colors">
+                  <div className="relative h-[84px] w-14 shrink-0 overflow-hidden rounded-sm bg-white/5 border border-white/5 group-hover:border-white/20 transition-colors">
                     {it.poster ? (
                       <Image
                         src={it.poster}
