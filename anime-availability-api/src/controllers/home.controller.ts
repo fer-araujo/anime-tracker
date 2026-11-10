@@ -205,7 +205,7 @@ export async function getHomeHero(
 
     const payload = { data: items };
     await hybridCache.set(cacheKey, payload, 1000 * 60 * 5);
-    setCacheControl(res, "hero");
+    setCacheControl(res);
     return res.json(payload);
   } catch (err) {
     next(err);

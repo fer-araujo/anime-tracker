@@ -134,26 +134,30 @@ export const hybridCache = new HybridCache();
 
 // ─── Cache-Control Helper ────────────────────────────────────────────────────
 
-export type CacheType = "hero" | "season" | "anime" | "schedule";
+/**
+ * Every response must be revalidated by the browser before it is used.
+ *
+ * These were `s-maxage` plus `stale-while-revalidate`, written for a CDN that
+ * does not exist here: Cloudflare answers `cf-cache-status: DYNAMIC` for this
+ * API, and the Next data cache ignores response headers. The only reader left
+ * was the browser, and with no `max-age` a browser still honours
+ * `stale-while-revalidate` — so /season could paint a copy up to twelve hours
+ * old and fetch the real one in the background, where it only showed after
+ * another reload.
+ *
+ * `no-cache` still stores the response; it just asks first, and Express's ETag
+ * makes an unchanged answer a 304. Freshness is decided in one place, the
+ * server's own cache, instead of being stacked on top of it.
+ */
+const CACHE_CONTROL = "no-cache";
 
-const CACHE_CONTROL_MAP: Record<CacheType, string> = {
-  hero: "public, s-maxage=21600, stale-while-revalidate=86400",
-  season: "public, s-maxage=3600, stale-while-revalidate=43200",
-  anime: "public, s-maxage=7200, stale-while-revalidate=43200",
-  schedule: "public, s-maxage=1800, stale-while-revalidate=3600",
-};
-
-export function setCacheControl(
-  res: {
-    setHeader?: (name: string, value: string) => void;
-    header?: (name: string, value: string) => void;
-  },
-  type: CacheType,
-): void {
-  const value = CACHE_CONTROL_MAP[type];
+export function setCacheControl(res: {
+  setHeader?: (name: string, value: string) => void;
+  header?: (name: string, value: string) => void;
+}): void {
   if (res.setHeader) {
-    res.setHeader("Cache-Control", value);
+    res.setHeader("Cache-Control", CACHE_CONTROL);
   } else {
-    res.header?.("Cache-Control", value);
+    res.header?.("Cache-Control", CACHE_CONTROL);
   }
 }
