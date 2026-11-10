@@ -8,72 +8,82 @@ import type { TrackingStatus } from "@/types/anime";
 import type { CalendarEntry } from "@/types/calendar";
 
 /**
- * One broadcast as a calendar event: flat and nearly square, like the events
- * of a desktop calendar, so a column of them reads as a schedule and not as a
- * stack of cards.
+ * One broadcast as a film still: the poster fills the frame and the title sits
+ * on it like a credit, in the same visual language as AnimeCard.
  *
- * The poster is large enough to recognise. Titles here are long English
- * translations that get cut to "The Laid-Off Cheat-…", and fans know a show by
- * its cover first; a thumbnail too small to read would cost the room without
- * giving that back.
+ * Landscape rather than portrait so a busy day stays one screen tall; the crop
+ * favours the upper third of the poster, where faces usually are. Text reads
+ * over a scrim whose dark end is under the text, the same gradient AnimeCard
+ * uses, and a card with no poster keeps that frame so the column stays even.
  *
- * The status shows as an edge bar plus a faint wash in the status bar's own
- * colours, so blue means "Viendo" here and on /lists alike. The name is also
- * written out for screen readers, since colour alone tells them nothing.
+ * `dimmed` turns only the picture grey, never the text, so the title keeps its
+ * contrast. Colour returns while this card, and only this card, is hovered or
+ * focused; the day is still told apart by its header, not by grey alone.
  */
 export function CalendarEntryCard({
   entry,
   status,
+  dimmed = false,
 }: {
   entry: CalendarEntry;
   status: TrackingStatus | undefined;
+  dimmed?: boolean;
 }) {
   return (
     <Link
       href={`/anime/${entry.animeId}`}
-      className="relative flex gap-2.5 overflow-hidden rounded-[4px] bg-white/[0.03] py-1.5 pl-2.5 pr-2 transition-colors hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="group/card relative isolate block aspect-[16/10] overflow-hidden rounded-md border border-white/10 bg-neutral-950 transition-shadow duration-300 ease-out md:hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
-      {status ? (
-        <>
-          <span
-            aria-hidden="true"
-            data-status-tint={status}
-            className={cn("absolute inset-0 opacity-15", STATUS_BAR_COLORS[status])}
-          />
-          <span
-            aria-hidden="true"
-            className={cn("absolute inset-y-0 left-0 w-[3px]", STATUS_BAR_COLORS[status])}
-          />
-        </>
-      ) : null}
-
-      <span className="relative w-12 aspect-2/3 shrink-0 overflow-hidden rounded-[2px] bg-white/10">
+      <span
+        aria-hidden="true"
+        data-testid="entry-art"
+        className={cn(
+          "absolute inset-0 -z-10 bg-neutral-800",
+          "motion-safe:transition-[filter,transform] motion-safe:duration-500 motion-safe:group-hover/card:scale-[1.04]",
+          dimmed &&
+            "grayscale group-hover/card:grayscale-0 group-focus-visible/card:grayscale-0",
+        )}
+      >
         {entry.poster ? (
           <Image
             src={entry.poster}
             alt=""
             fill
-            sizes="48px"
-            className="object-cover"
+            sizes="(min-width: 1280px) 220px, (min-width: 640px) 50vw, 100vw"
+            className="object-cover object-[center_25%]"
           />
         ) : null}
       </span>
 
-      <span className="relative min-w-0 flex flex-col justify-center gap-0.5">
-        <span className="text-[13px] font-semibold leading-tight text-white line-clamp-2">
+      <span
+        aria-hidden="true"
+        className="absolute inset-x-0 bottom-0 h-3/5 -z-10 bg-[linear-gradient(to_top,rgba(0,0,0,0.90)_20%,rgba(0,0,0,0.55)_60%,rgba(0,0,0,0)_100%)]"
+      />
+
+      <time
+        dateTime={entry.airingAt}
+        className="absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-white backdrop-blur-sm"
+      >
+        {formatCdmxTime(entry.airingAt)}
+      </time>
+
+      <span className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 px-2.5 pb-2.5">
+        <span className="text-[13px] font-semibold leading-tight text-white line-clamp-2 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
           {entry.title}
         </span>
-        <time
-          dateTime={entry.airingAt}
-          className="text-xs font-semibold tabular-nums text-white/90"
-        >
-          {formatCdmxTime(entry.airingAt)}
-        </time>
-        <span className="text-xs text-white/65 truncate">
+        <span className="text-xs text-white/75 truncate">
           {formatEpisodeRange(entry.range)}
         </span>
         {status ? <span className="sr-only">{STATUS_LABELS[status]}</span> : null}
       </span>
+
+      {status ? (
+        <span
+          aria-hidden="true"
+          data-status-tint={status}
+          className={cn("absolute inset-x-0 bottom-0 h-0.5", STATUS_BAR_COLORS[status])}
+        />
+      ) : null}
     </Link>
   );
 }

@@ -5,18 +5,13 @@ import type { StatusByAnimeId } from "@/types/anime";
 import type { CalendarDay } from "@/types/calendar";
 
 /**
- * The other days of a week that contains today: turned down at all times so
- * today stands out, and brought back while the pointer or focus is on them.
- * The lift uses `group-hover`, which Tailwind already limits to devices that
- * can hover.
- */
-const DIMMED_BODY =
-  "opacity-55 saturate-[.35] group-hover:opacity-100 group-hover:saturate-100 group-focus-within:opacity-100 group-focus-within:saturate-100 motion-safe:transition-[opacity,filter] motion-safe:duration-200";
-
-/**
  * The week as one table of seven columns split by hairlines, the way desktop
  * calendars draw it, instead of seven floating cards. Columns share one height
  * so an empty day still reads as a day.
+ *
+ * Hovering a column only lights its background. The cards of the other days
+ * stay grey until each one is hovered on its own, so pointing at a day does not
+ * flood it with colour.
  */
 export function WeekGrid({
   days,
@@ -28,7 +23,7 @@ export function WeekGrid({
   statuses: StatusByAnimeId;
 }) {
   return (
-    <div className="grid grid-cols-7 overflow-hidden rounded-lg border border-white/10 bg-black/20">
+    <div className="grid grid-cols-7 overflow-hidden rounded-md border border-white/10 bg-neutral-950/60">
       {days.map((day, index) => {
         const isToday = day.date === today;
         const dimmed = today !== null && !isToday;
@@ -40,9 +35,13 @@ export function WeekGrid({
             aria-label={`${weekday} ${number}`}
             data-dimmed={dimmed || undefined}
             className={cn(
-              "group flex min-w-0 flex-col",
+              "flex min-w-0 flex-col transition-colors",
               index > 0 && "border-l border-white/10",
-              isToday && "bg-primary/[0.06]",
+              // A light from above rather than a flat wash: today reads as the
+              // lit stage of the week.
+              isToday
+                ? "bg-[linear-gradient(to_bottom,color-mix(in_oklab,var(--color-primary)_14%,transparent),transparent_45%)]"
+                : "hover:bg-white/[0.03]",
             )}
           >
             <h2
@@ -68,11 +67,8 @@ export function WeekGrid({
                 {number}
               </span>
             </h2>
-            <div
-              data-testid="day-body"
-              className={cn("min-h-[28rem] flex-1 p-2", dimmed && DIMMED_BODY)}
-            >
-              <DayEntryList day={day} statuses={statuses} />
+            <div data-testid="day-body" className="min-h-[28rem] flex-1 p-2">
+              <DayEntryList day={day} statuses={statuses} dimmed={dimmed} />
             </div>
           </section>
         );

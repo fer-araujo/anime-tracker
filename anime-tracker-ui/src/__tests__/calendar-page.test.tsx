@@ -118,19 +118,26 @@ describe("AiringCalendarPage", () => {
     expect(view.getByText("Viendo")).toBeInTheDocument();
   });
 
-  it("marks today and dims only the other days", async () => {
-    fetchAiringCalendar.mockResolvedValue(calendar(DATES[4]));
+  it("marks today and greys only the pictures of the other days", async () => {
+    fetchAiringCalendar.mockResolvedValue(
+      calendar(DATES[4], {
+        [DATES[3]]: [entry(1, "Ayer")],
+        [DATES[4]]: [entry(1, "Hoy")],
+      }),
+    );
 
     render(<AiringCalendarPage />);
     const sections = (await grid()).querySelectorAll("section");
+    const art = (s: Element) => s.querySelector("[data-testid=entry-art]")!;
+    const body = (s: Element) => s.querySelector("[data-testid=day-body]")!;
 
     expect(sections[4]).toHaveAttribute("aria-current", "date");
-    expect(sections[4]).not.toHaveAttribute("data-dimmed");
     expect(sections[3]).toHaveAttribute("data-dimmed");
-    // The attribute only labels it; this is what actually turns the day down.
-    const body = (s: Element) => s.querySelector("[data-testid=day-body]")!;
-    expect(body(sections[3]).className).toContain("opacity-55");
-    expect(body(sections[4]).className).not.toContain("opacity-55");
+    expect(art(sections[3]).className).toContain("grayscale");
+    expect(art(sections[4]).className).not.toContain("grayscale");
+    // Per card, not per column: the column itself carries no dimming, so
+    // hovering it cannot light every card at once.
+    expect(body(sections[3]).className).not.toMatch(/opacity|saturate|grayscale/);
   });
 
   it("dims nothing in a week that does not contain today", async () => {
