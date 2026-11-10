@@ -69,6 +69,7 @@ describe("AddToListModal", () => {
       error: null,
       refetch: mockRefetchLists,
       watchingIds: [],
+      statusByAnimeId: new Map(),
       // Rides on the same provider but is nothing to do with this modal.
       library: { seeds: [], excludedIds: [], completedIds: [] },
     });

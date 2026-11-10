@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  bucketByCdmxDay,
   cdmxDateISO,
   cdmxDayIndex,
   cdmxDayName,
@@ -99,5 +100,33 @@ describe("cdmxRangeBounds", () => {
     const { firstDay, lastDay } = cdmxRange(7, MONDAY_EARLY_UTC);
     const { greater, lesser } = cdmxRangeBounds(firstDay, lastDay);
     expect(lesser - greater).toBe(7 * 86400 - 1);
+  });
+});
+
+describe("bucketByCdmxDay", () => {
+  const at = (day: number, hour: number) => cdmxDayStart(day) + hour * 3600;
+  const seconds = (n: number) => n;
+
+  it("gives every day a bucket, even an empty one", () => {
+    const buckets = bucketByCdmxDay<number>([], 100, 106, seconds);
+
+    expect([...buckets.keys()]).toEqual([100, 101, 102, 103, 104, 105, 106]);
+    expect([...buckets.values()].every((b) => b.length === 0)).toBe(true);
+  });
+
+  it("files an item under its CDMX day, not its UTC one", () => {
+    // 23:00 CDMX is already the next day in UTC.
+    const lateEvening = at(100, 23);
+
+    expect(bucketByCdmxDay([lateEvening], 100, 101, seconds).get(100)).toEqual([
+      lateEvening,
+    ]);
+  });
+
+  it("drops what falls outside the range", () => {
+    // ISO weeks overhang the CDMX days a caller asked for.
+    const buckets = bucketByCdmxDay([at(99, 12), at(102, 12)], 100, 101, seconds);
+
+    expect([...buckets.values()].flat()).toEqual([]);
   });
 });
