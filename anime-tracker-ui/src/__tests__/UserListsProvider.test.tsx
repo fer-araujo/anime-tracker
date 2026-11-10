@@ -38,11 +38,15 @@ import {
 } from "@/providers/UserListsProvider";
 
 function Probe() {
-  const { watchingIds, lists, loading, error } = useUserListsContext();
+  const { watchingIds, statusByAnimeId, lists, loading, error } =
+    useUserListsContext();
   return (
     <div>
       <span data-testid="loading">{String(loading)}</span>
       <span data-testid="watching">{watchingIds.join(",")}</span>
+      <span data-testid="statuses">
+        {[...statusByAnimeId].map(([id, s]) => `${id}:${s}`).join(",")}
+      </span>
       <span data-testid="lists">{lists.map((l) => l.id).join(",")}</span>
       <span data-testid="error">{error ?? ""}</span>
     </div>
@@ -82,6 +86,23 @@ describe("UserListsProvider", () => {
     await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
     expect(screen.getByTestId("watching")).toHaveTextContent(/^10$/);
     expect(screen.getByTestId("lists")).toHaveTextContent("list-1");
+  });
+
+  it("maps every status, and leaves out an anime that is only favourited", async () => {
+    // The calendar is for what the user has placed somewhere. A heart with no
+    // status has not been placed anywhere, so it must not switch the icon on.
+    tables.user_anime = {
+      data: [
+        { anime_id: 10, status: "watching", favorite: false, score: null },
+        { anime_id: 20, status: "dropped", favorite: false, score: null },
+        { anime_id: 30, status: null, favorite: true, score: null },
+      ],
+      error: null,
+    };
+    renderProvider();
+
+    await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
+    expect(screen.getByTestId("statuses")).toHaveTextContent(/^10:watching,20:dropped$/);
   });
 
   it("still delivers watchingIds when the user_lists read fails", async () => {

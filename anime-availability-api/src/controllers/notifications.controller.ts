@@ -1,19 +1,18 @@
 import type { Request, Response, NextFunction } from "express";
 import type {
   EpisodeNotification,
-  EpisodeRange,
   NotificationsRequest,
-  SameDayDrop,
 } from "../types/notifications.js";
 import { setCacheControl } from "../utils/cache.js";
 import { getCachedAnimeRecords } from "../utils/formatAnimeList.js";
 import { cdmxDayIndex, cdmxTodayIndex } from "../utils/cdmxCalendar.js";
 import { collapseSameDayDrops } from "../utils/episodeDrops.js";
 import {
-  AS_IMAGE_BASE,
-  asAnilistId,
+  broadcastLabel,
+  matchTrackedBroadcasts,
+} from "../utils/trackedBroadcasts.js";
+import {
   asAnimeForRoutes,
-  asEpisodeRange,
   asFetchRecentTimetable,
 } from "../services/animeSchedule.service.js";
 
@@ -85,24 +84,7 @@ export async function getNotifications(
     // a last episode — the one most waited for — never reached the bell.
     const records = await asAnimeForRoutes(relevant.map((row) => row.route));
 
-    const rows: (SameDayDrop & {
-      range: EpisodeRange;
-      route: string;
-      upcoming: boolean;
-    })[] = [];
-    for (const row of relevant) {
-      const anilistId = asAnilistId(records.get(row.route));
-      if (anilistId === null || !watching.has(anilistId)) continue;
-
-      const at = Date.parse(row.episodeDate);
-      rows.push({
-        anilistId,
-        airingAt: Math.floor(at / 1000),
-        range: asEpisodeRange(row),
-        route: row.route,
-        upcoming: at > now,
-      });
-    }
+    const rows = matchTrackedBroadcasts(relevant, watching, records, now);
 
     // One entry per series per day, collapsed separately for what has aired
     // and what has not. Merged, a double broadcast with one half out and one
@@ -118,36 +100,16 @@ export async function getNotifications(
     pending.sort((a, b) => a.airingAt - b.airingAt);
     const matches = [...released, ...pending];
 
-    // Titles and posters come from the per-anime cache, which every surface
-    // that has rendered these cards already filled. No upstream call is made to
-    // decorate a notification.
     const cards = await getCachedAnimeRecords(matches.map((m) => m.anilistId));
 
-    // The card cache first, since it has the Spanish title the rest of the app
-    // shows. A series nobody has opened yet is not in it — a finale fetched a
-    // moment ago by route is the usual case — and then the AnimeSchedule record
-    // this request already holds supplies both, rather than a bare "#135865".
-    const data: EpisodeNotification[] = matches.map((m) => {
-      const card = cards.get(m.anilistId);
-      const source = records.get(m.route);
-      return {
-        animeId: m.anilistId,
-        episode: m.range.to,
-        range: m.range,
-        airedAt: new Date(m.airingAt * 1000).toISOString(),
-        upcoming: m.upcoming,
-        title:
-          card?.title ??
-          source?.names?.english ??
-          source?.title ??
-          `#${m.anilistId}`,
-        poster:
-          card?.images?.poster ??
-          (source?.imageVersionRoute
-            ? `${AS_IMAGE_BASE}${source.imageVersionRoute}`
-            : null),
-      };
-    });
+    const data: EpisodeNotification[] = matches.map((m) => ({
+      animeId: m.anilistId,
+      episode: m.range.to,
+      range: m.range,
+      airedAt: new Date(m.airingAt * 1000).toISOString(),
+      upcoming: m.upcoming,
+      ...broadcastLabel(m, cards, records),
+    }));
 
     setCacheControl(res, "schedule");
     return res.json({ data });

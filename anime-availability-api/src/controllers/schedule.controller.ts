@@ -17,7 +17,7 @@ import {
 import { getCurrentSeasonYearLocal } from "../utils/season.js";
 import {
   cdmxDateISO,
-  cdmxDayIndex,
+  bucketByCdmxDay,
   cdmxDayName,
   cdmxRange,
   cdmxRangeBounds,
@@ -175,18 +175,9 @@ function groupByDay(
   firstDay: number,
   lastDay: number,
 ): DayGroup[] {
-  const byDay = new Map<number, AiringEntry[]>();
-  for (let d = firstDay; d <= lastDay; d++) byDay.set(d, []);
-
-  for (const entry of entries) {
-    const airingAtSeconds = Math.floor(
-      new Date(entry.airing.airingAt).getTime() / 1000,
-    );
-    const bucket = byDay.get(cdmxDayIndex(airingAtSeconds));
-    // A timestamp outside the requested window means AniList returned an entry
-    // the filter should have excluded; drop it rather than inventing a column.
-    if (bucket) bucket.push(entry);
-  }
+  const byDay = bucketByCdmxDay(entries, firstDay, lastDay, (entry) =>
+    Math.floor(new Date(entry.airing.airingAt).getTime() / 1000),
+  );
 
   return [...byDay.entries()].map(([dayIndex, items]) => ({
     day: cdmxDayName(dayIndex),

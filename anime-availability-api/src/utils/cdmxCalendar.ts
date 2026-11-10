@@ -89,3 +89,25 @@ export function cdmxRangeBounds(
     lesser: cdmxDayStart(lastDay + 1) - 1,
   };
 }
+
+/**
+ * Items sorted into one bucket per day of an inclusive range, in day order.
+ *
+ * Every day gets a bucket even when empty, because a weekly view needs its empty
+ * columns. An item outside the range is dropped rather than given a day of its
+ * own: a caller fetches whole ISO weeks, which overhang the CDMX days it wants.
+ */
+export function bucketByCdmxDay<T>(
+  items: T[],
+  firstDay: number,
+  lastDay: number,
+  unixSecondsOf: (item: T) => number,
+): Map<number, T[]> {
+  const buckets = new Map<number, T[]>();
+  for (let day = firstDay; day <= lastDay; day++) buckets.set(day, []);
+
+  for (const item of items) {
+    buckets.get(cdmxDayIndex(unixSecondsOf(item)))?.push(item);
+  }
+  return buckets;
+}

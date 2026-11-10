@@ -20,6 +20,8 @@ import type { RecommendationLibrary, Seed } from "@/types/recommendations";
 /** A score at or above this is a signal on its own, matching the API's rule. */
 const SEED_SCORE_THRESHOLD = 8;
 
+const NO_STATUSES: ReadonlyMap<number, TrackingStatus> = new Map();
+
 const EMPTY_LIBRARY: RecommendationLibrary = {
   seeds: [],
   excludedIds: [],
@@ -61,6 +63,14 @@ export type UserListsContextValue = {
    * second round-trip for rows this query already holds.
    */
   watchingIds: number[];
+  /**
+   * The status of every anime that has one, whatever it is.
+   *
+   * Favouriting alone creates a row with a null status, so the absence here is
+   * meaningful: this is what the user has actually placed somewhere. It decides
+   * whether the calendar exists for them and which colour each entry takes.
+   */
+  statusByAnimeId: ReadonlyMap<number, TrackingStatus>;
 };
 
 const UserListsContext = createContext<UserListsContextValue | null>(null);
@@ -83,6 +93,7 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [lists, setLists] = useState<UserList[]>([]);
   const [watchingIds, setWatchingIds] = useState<number[]>([]);
+  const [statuses, setStatuses] = useState(NO_STATUSES);
   const [library, setLibrary] = useState<RecommendationLibrary>(EMPTY_LIBRARY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +103,7 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
       setLists([]);
       setLibrary(EMPTY_LIBRARY);
       setWatchingIds([]);
+      setStatuses(NO_STATUSES);
       setError(null);
       setLoading(false);
       return;
@@ -234,6 +246,8 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
           .map((row) => row.anime_id),
       });
 
+      setStatuses(statusByAnimeId);
+
       setWatchingIds(
         tracked
           .filter((row) => row.status === "watching")
@@ -250,8 +264,16 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
   }, [refetch]);
 
   const value = useMemo(
-    () => ({ lists, loading, error, refetch, library, watchingIds }),
-    [lists, loading, error, refetch, library, watchingIds],
+    () => ({
+      lists,
+      loading,
+      error,
+      refetch,
+      library,
+      watchingIds,
+      statusByAnimeId: statuses,
+    }),
+    [lists, loading, error, refetch, library, watchingIds, statuses],
   );
 
   return (

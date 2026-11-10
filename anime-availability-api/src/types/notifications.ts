@@ -25,6 +25,14 @@ export type SameDayDrop = {
   range: EpisodeRange | null;
 };
 
+/** One timetable row matched to a series the user follows. */
+export type TrackedBroadcast = SameDayDrop & {
+  range: EpisodeRange;
+  route: string;
+  /** True while the broadcast is still ahead of the request's clock. */
+  upcoming: boolean;
+};
+
 /** Episodes of something the user is watching: released, or due later today. */
 export type EpisodeNotification = {
   animeId: number;
