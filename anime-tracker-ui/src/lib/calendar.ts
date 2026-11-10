@@ -1,16 +1,14 @@
 import { STATUS_LABELS } from "@/constants/tracking";
 import { API_BASE } from "@/lib/api";
-import { CDMX_TIME_ZONE, formatCdmxTime } from "@/lib/episodes";
+import { CDMX_TIME_ZONE } from "@/lib/episodes";
 import { STATUS_BAR_COLORS, STATUS_BAR_ORDER } from "@/lib/lists";
 import type { StatusByAnimeId, TrackingStatus } from "@/types/anime";
 import type {
   AiringCalendar,
   CalendarDay,
-  CalendarEntry,
   CalendarStatusFilter,
   CalendarView,
   CalendarWeek,
-  PlacedEntry,
 } from "@/types/calendar";
 import type { FilterChipOption } from "@/types/view";
 
@@ -188,123 +186,4 @@ export function filterCalendarByStatus(
     ...day,
     items: day.items.filter((e) => statuses.get(e.animeId) === filter),
   }));
-}
-
-/**
- * How long a block stands for on the grid. Episodes run about 24 minutes, but a
- * block that short cannot hold a poster and two lines of title, so the grid
- * gives each one an hour and treats that hour as its footprint for overlaps.
- */
-export const BLOCK_MINUTES = 60;
-
-/** Below this the grid is so short that a single entry fills it edge to edge. */
-const MIN_SPAN_HOURS = 6;
-
-/** Where an empty week's grid starts: the morning, when most simulcasts land. */
-const DEFAULT_START_HOUR = 8;
-
-/** Height of one hour on the grid; a block is an hour, so also a card's room. */
-const HOUR_PX = 96;
-
-export function minutesToPx(minutes: number): number {
-  return (minutes / 60) * HOUR_PX;
-}
-
-/**
- * How much of its hour a block may draw. The grid ends at midnight, so a
- * broadcast after 23:00 gets only what is left instead of spilling past the
- * bottom of the column.
- */
-export function blockMinutes(startMinute: number, endHour: number): number {
-  return Math.min(BLOCK_MINUTES, endHour * 60 - startMinute);
-}
-
-/**
- * Minutes since CDMX midnight, read off the same clock the entries print so a
- * block can never sit at a different time from the one written on it. Parsing
- * "HH:mm" is safe because that formatter is pinned to `h23`.
- */
-export function cdmxMinuteOfDay(instant: string | number): number {
-  const [h, m] = formatCdmxTime(new Date(instant).toISOString())
-    .split(":")
-    .map(Number);
-  return h * 60 + m;
-}
-
-/**
- * The hours the grid covers: from the first broadcast to the end of the last
- * block, never less than MIN_SPAN_HOURS.
- *
- * Fitted to the week rather than to the whole day, because in CDMX almost
- * everything airs between one and noon. A 24-hour grid would be mostly empty
- * and push those blocks into a sliver.
- */
-export function calendarHourRange(days: CalendarDay[]): {
-  startHour: number;
-  endHour: number;
-} {
-  const minutes = days.flatMap((d) =>
-    d.items.map((e) => cdmxMinuteOfDay(e.airingAt)),
-  );
-  if (minutes.length === 0) {
-    return {
-      startHour: DEFAULT_START_HOUR,
-      endHour: DEFAULT_START_HOUR + MIN_SPAN_HOURS,
-    };
-  }
-
-  let startHour = Math.floor(Math.min(...minutes) / 60);
-  let endHour = Math.min(
-    24,
-    Math.ceil((Math.max(...minutes) + BLOCK_MINUTES) / 60),
-  );
-  if (endHour - startHour < MIN_SPAN_HOURS) {
-    endHour = Math.min(24, startHour + MIN_SPAN_HOURS);
-    startHour = endHour - MIN_SPAN_HOURS;
-  }
-  return { startHour, endHour };
-}
-
-/**
- * Places one day's entries on the time axis.
- *
- * Entries whose blocks overlap form a cluster that is split into side-by-side
- * lanes; each entry takes the first lane already free at its start. Every entry
- * in a cluster reports the cluster's lane count, so they all share one width.
- */
-export function layoutDayEntries(items: CalendarEntry[]): PlacedEntry[] {
-  const sorted = items
-    .map((entry) => ({ entry, startMinute: cdmxMinuteOfDay(entry.airingAt) }))
-    .sort((a, b) => a.startMinute - b.startMinute);
-
-  const placed: PlacedEntry[] = [];
-  let cluster: PlacedEntry[] = [];
-  let laneEnds: number[] = [];
-  // Below any real minute, so the first entry always opens a cluster.
-  let clusterEnd = -1;
-
-  // A cluster's lane count is only known once nothing else overlaps it, so it
-  // is written onto its entries here rather than when each one is placed.
-  const closeCluster = () => {
-    for (const p of cluster) p.lanes = laneEnds.length;
-    placed.push(...cluster);
-    cluster = [];
-    laneEnds = [];
-  };
-
-  for (const { entry, startMinute } of sorted) {
-    if (startMinute >= clusterEnd) closeCluster();
-    const end = startMinute + BLOCK_MINUTES;
-    let lane = laneEnds.findIndex((laneEnd) => laneEnd <= startMinute);
-    if (lane === -1) {
-      lane = laneEnds.length;
-      laneEnds.push(end);
-    } else {
-      laneEnds[lane] = end;
-    }
-    clusterEnd = Math.max(clusterEnd, end);
-    cluster.push({ entry, startMinute, lane, lanes: 1 });
-  }
-  closeCluster();
-  return placed;
 }

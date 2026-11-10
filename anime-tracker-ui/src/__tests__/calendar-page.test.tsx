@@ -15,10 +15,6 @@ const { lib, router, nav } = vi.hoisted(() => ({
   nav: { params: new URLSearchParams() },
 }));
 
-// 15:00 in CDMX on 2026-10-22, inside the hours the fixtures below occupy.
-const NOW = Date.parse("2026-10-22T21:00:00Z");
-vi.mock("@/hooks/useNow", () => ({ useNow: () => [NOW, () => {}] }));
-
 vi.mock("@/providers/AuthProvider", () => ({
   useAuth: () => ({ user: lib.user, loading: false }),
 }));
@@ -400,27 +396,5 @@ describe("AiringCalendarPage filters and time", () => {
     const view = within(await grid());
 
     expect(view.getByText("Uno")).toBeInTheDocument();
-  });
-
-  it("draws the current time in the column for today only", async () => {
-    fetchAiringCalendar.mockResolvedValue(
-      calendar(DATES[4], { [DATES[4]]: [entry(1, "Uno")] }),
-    );
-
-    render(<AiringCalendarPage />);
-    const sections = (await grid()).querySelectorAll("section");
-
-    expect(sections[4].querySelector("[data-testid=now-line]")).not.toBeNull();
-    expect(sections[3].querySelector("[data-testid=now-line]")).toBeNull();
-  });
-
-  it("draws no current time in a week without today", async () => {
-    fetchAiringCalendar.mockResolvedValue(
-      calendar(null, { [DATES[4]]: [entry(1, "Uno")] }),
-    );
-
-    render(<AiringCalendarPage />);
-
-    expect((await grid()).querySelector("[data-testid=now-line]")).toBeNull();
   });
 });

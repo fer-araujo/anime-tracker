@@ -8,35 +8,37 @@ import type { TrackingStatus } from "@/types/anime";
 import type { CalendarEntry } from "@/types/calendar";
 
 /**
- * One broadcast as a block on the time grid, filling the box the grid gives it.
+ * One broadcast as a calendar event: flat and nearly square, like the events
+ * of a desktop calendar, so a column of them reads as a schedule and not as a
+ * stack of cards.
+ *
+ * The poster is large enough to recognise. Titles here are long English
+ * translations that get cut to "The Laid-Off Cheat-…", and fans know a show by
+ * its cover first; a thumbnail too small to read would cost the room without
+ * giving that back.
  *
  * The status shows as an edge bar plus a faint wash in the status bar's own
  * colours, so blue means "Viendo" here and on /lists alike. The name is also
  * written out for screen readers, since colour alone tells them nothing.
- *
- * `compact` drops the poster for blocks sharing their hour with others, where
- * the column is split in lanes and a poster would leave no room for the title.
  */
 export function CalendarEntryCard({
   entry,
   status,
-  compact = false,
 }: {
   entry: CalendarEntry;
   status: TrackingStatus | undefined;
-  compact?: boolean;
 }) {
   return (
     <Link
       href={`/anime/${entry.animeId}`}
-      className="relative flex h-full gap-2.5 overflow-hidden rounded-xl border border-white/10 bg-white/[0.06] backdrop-blur-sm py-2 pl-3 pr-2 transition-colors hover:bg-white/10 hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="relative flex gap-2.5 overflow-hidden rounded-[4px] bg-white/[0.03] py-1.5 pl-2.5 pr-2 transition-colors hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       {status ? (
         <>
           <span
             aria-hidden="true"
             data-status-tint={status}
-            className={cn("absolute inset-0 opacity-10", STATUS_BAR_COLORS[status])}
+            className={cn("absolute inset-0 opacity-15", STATUS_BAR_COLORS[status])}
           />
           <span
             aria-hidden="true"
@@ -45,27 +47,20 @@ export function CalendarEntryCard({
         </>
       ) : null}
 
-      {!compact ? (
-        <span className="relative h-full aspect-2/3 shrink-0 overflow-hidden rounded-md bg-white/10">
-          {entry.poster ? (
-            <Image
-              src={entry.poster}
-              alt=""
-              fill
-              sizes="56px"
-              className="object-cover"
-            />
-          ) : null}
-        </span>
-      ) : null}
+      <span className="relative w-12 aspect-2/3 shrink-0 overflow-hidden rounded-[2px] bg-white/10">
+        {entry.poster ? (
+          <Image
+            src={entry.poster}
+            alt=""
+            fill
+            sizes="48px"
+            className="object-cover"
+          />
+        ) : null}
+      </span>
 
       <span className="relative min-w-0 flex flex-col justify-center gap-0.5">
-        <span
-          className={cn(
-            "font-semibold leading-snug text-white line-clamp-2",
-            compact ? "text-xs" : "text-sm",
-          )}
-        >
+        <span className="text-[13px] font-semibold leading-tight text-white line-clamp-2">
           {entry.title}
         </span>
         <time
@@ -74,11 +69,9 @@ export function CalendarEntryCard({
         >
           {formatCdmxTime(entry.airingAt)}
         </time>
-        {!compact ? (
-          <span className="text-xs text-white/70 truncate">
-            {formatEpisodeRange(entry.range)}
-          </span>
-        ) : null}
+        <span className="text-xs text-white/65 truncate">
+          {formatEpisodeRange(entry.range)}
+        </span>
         {status ? <span className="sr-only">{STATUS_LABELS[status]}</span> : null}
       </span>
     </Link>
