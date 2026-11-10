@@ -105,6 +105,7 @@ vi.mock("@/providers/UserListsProvider", () => ({
     loading: false,
     error: null,
     refetch: vi.fn(),
+    statusByAnimeId: new Map(),
   }),
   UserListsProvider: ({ children }: { children: React.ReactNode }) => children,
 }));

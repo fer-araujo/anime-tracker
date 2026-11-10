@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { AnimeTrackerLogo } from "./Logo";
 import { useAuth } from "@/providers/AuthProvider";
 import NotificationBell from "@/components/common/NotificationBell";
+import { CalendarLink } from "@/components/common/CalendarLink";
 
 export default function Header() {
   const pathname = usePathname();
@@ -102,7 +103,12 @@ export default function Header() {
         <div className="hidden md:flex items-center gap-3 lg:gap-4 shrink-0">
           {/* Signed-in only: the bell reads the user's own watching list, so
               there is nothing for it to say to a visitor. */}
-          {user ? <NotificationBell /> : null}
+          {user ? (
+            <>
+              <CalendarLink />
+              <NotificationBell />
+            </>
+          ) : null}
 
           {/* User section */}
           <div className="relative" ref={userMenuRef}>
@@ -168,7 +174,12 @@ export default function Header() {
           {/* Here as well as in the desktop cluster. It lived only there at
               first, so on a phone the one feature that says "something new
               came out" had no way in at all. */}
-          {user ? <NotificationBell /> : null}
+          {user ? (
+            <>
+              <CalendarLink />
+              <NotificationBell />
+            </>
+          ) : null}
 
           <button
             type="button"
