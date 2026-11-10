@@ -101,7 +101,7 @@ export async function getSeason(
     const cached = await hybridCache.get(cacheKey);
     if (cached) {
       logger.info(`[season] Cache HIT for ${cacheKey}`);
-      setCacheControl(res, "season");
+      setCacheControl(res);
       return res.json(cached);
     }
 
@@ -169,7 +169,7 @@ export async function getSeason(
     }
 
     if (!rawMedia || rawMedia.length === 0) {
-      setCacheControl(res, "season");
+      setCacheControl(res);
       return res.json({ meta: { country: resolvedCountry, season: rawSeason, year, total: 0, source: "AniList + TMDB" }, data: [], leftovers: [] });
     }
 
@@ -226,7 +226,7 @@ export async function getSeason(
       year,
     );
 
-    setCacheControl(res, "season");
+    setCacheControl(res);
 
     const responseBody = {
       meta: {
@@ -318,7 +318,7 @@ export async function getSeasonArchive(
     const cacheKey = `season:archive:${from}:${years}`;
     const cached = await hybridCache.get(cacheKey);
     if (cached) {
-      setCacheControl(res, "season");
+      setCacheControl(res);
       return res.json(cached);
     }
 
@@ -377,7 +377,7 @@ export async function getSeasonArchive(
     // A season that has already ended never gains or loses entries, and the
     // current one moves slowly enough that a day-stale count is harmless.
     await hybridCache.set(cacheKey, responseBody, 1000 * 60 * 60 * 24);
-    setCacheControl(res, "season");
+    setCacheControl(res);
     return res.json(responseBody);
   } catch (err) {
     next(err);

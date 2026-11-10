@@ -89,7 +89,7 @@ export async function fetchHomeHero(): Promise<HeroResponse> {
   const url = `${API_BASE}/home/hero`;
   const res = await fetch(url, {
     next: { revalidate: 21600 },
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) throw new Error("Failed to fetch home hero");
   const json = await res.json();
@@ -113,32 +113,29 @@ export async function fetchAnimeDetails(
   return res.json();
 }
 
+// Both of these throw on failure, on purpose. They used to catch and return an
+// empty list, which rendered as a blank shelf that SectionBoundary could not see
+// and therefore never retried: the only way out was reloading by hand, as many
+// times as the backend needed to wake up. A failed fetch is not stored by the
+// data cache, so the retry really does reach the network.
 export async function fetchAiringToday(): Promise<Anime[]> {
-  try {
-    const res = await fetch(`${API_BASE}/schedule?type=airing`, {
-      next: { revalidate: 1800 },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return [];
-    const json = await res.json();
-    return json.data as Anime[];
-  } catch {
-    return [];
-  }
+  const res = await fetch(`${API_BASE}/schedule?type=airing`, {
+    next: { revalidate: 1800 },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`schedule airing ${res.status}`);
+  const json = await res.json();
+  return json.data as Anime[];
 }
 
 export async function fetchComingSoon(): Promise<Anime[]> {
-  try {
-    const res = await fetch(`${API_BASE}/schedule?type=coming`, {
-      next: { revalidate: 3600 },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return [];
-    const json = await res.json();
-    return json.data as Anime[];
-  } catch {
-    return [];
-  }
+  const res = await fetch(`${API_BASE}/schedule?type=coming`, {
+    next: { revalidate: 3600 },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`schedule coming ${res.status}`);
+  const json = await res.json();
+  return json.data as Anime[];
 }
 
 export async function fetchAnimeRating(animeId: number): Promise<{

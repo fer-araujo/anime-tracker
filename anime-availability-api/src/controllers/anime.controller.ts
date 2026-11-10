@@ -248,7 +248,7 @@ export async function getAnimeDetails(
       },
     };
 
-    setCacheControl(res, 'anime');
+    setCacheControl(res);
     return res.json({ data: result });
   } catch (err) {
     logger.error({ err }, "Error crítico en getAnimeDetails");
@@ -408,7 +408,7 @@ export async function getAnimeBatch(
     for (const [id, record] of cachedRecords) results[id] = record;
     for (const anime of formatted) results[anime.id.anilist] = anime;
 
-    setCacheControl(res, "anime");
+    setCacheControl(res);
     return res.json({ data: results });
   } catch (err) {
     logger.error({ err }, "Error en getAnimeBatch");

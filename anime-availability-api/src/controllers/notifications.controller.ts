@@ -54,7 +54,7 @@ export async function getNotifications(
 
     const watching = new Set(body.animeIds);
     if (watching.size === 0) {
-      setCacheControl(res, "schedule");
+      setCacheControl(res);
       return res.json({ data: [] });
     }
 
@@ -149,7 +149,7 @@ export async function getNotifications(
       };
     });
 
-    setCacheControl(res, "schedule");
+    setCacheControl(res);
     return res.json({ data });
   } catch (err) {
     next(err);

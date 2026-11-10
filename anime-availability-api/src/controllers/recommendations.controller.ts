@@ -181,7 +181,7 @@ export async function getRecommendations(
     const key = cacheKey(body, country);
     const cached = await hybridCache.get(key);
     if (cached) {
-      setCacheControl(res, "anime");
+      setCacheControl(res);
       return res.json(cached);
     }
 
@@ -239,7 +239,7 @@ export async function getRecommendations(
         data: [],
       };
       await hybridCache.set(key, empty, CACHE_TTL_MS);
-      setCacheControl(res, "anime");
+      setCacheControl(res);
       return res.json(empty);
     }
 
@@ -317,7 +317,7 @@ export async function getRecommendations(
     };
 
     await hybridCache.set(key, payload, CACHE_TTL_MS);
-    setCacheControl(res, "anime");
+    setCacheControl(res);
     return res.json(payload);
   } catch (err) {
     next(err);

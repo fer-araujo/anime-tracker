@@ -212,7 +212,7 @@ export async function getSchedule(
     const cacheKey = type === "airing" ? `schedule:airing:${days}` : `schedule:${type}`;
     const cached = await hybridCache.get(cacheKey);
     if (cached) {
-      setCacheControl(res, "schedule");
+      setCacheControl(res);
       return res.json(cached);
     }
 
@@ -350,7 +350,7 @@ export async function getSchedule(
                 };
 
           await hybridCache.set(cacheKey, payload, 1000 * 60 * 30);
-          setCacheControl(res, "schedule");
+          setCacheControl(res);
           return res.json(payload);
         }
         return res.status(503).json({ error: "AniList unavailable" });
@@ -374,7 +374,7 @@ export async function getSchedule(
       if (days === 1) {
         const payload = { data: [...entries].sort(byRatingThenTitle) };
         await hybridCache.set(cacheKey, payload, 1000 * 60 * 5);
-        setCacheControl(res, "schedule");
+        setCacheControl(res);
         return res.json(payload);
       }
 
@@ -383,7 +383,7 @@ export async function getSchedule(
         data: groupByDay(entries, firstDay, lastDay),
       };
       await hybridCache.set(cacheKey, payload, 1000 * 60 * 30);
-      setCacheControl(res, "schedule");
+      setCacheControl(res);
       return res.json(payload);
     }
 
@@ -416,7 +416,7 @@ export async function getSchedule(
           const items = await formatAnimeList(split, country, season, year, "localized");
           const payload = { data: items.sort(byRatingThenTitle), degraded: true };
           await hybridCache.set(cacheKey, payload, 1000 * 60 * 30);
-          setCacheControl(res, "schedule");
+          setCacheControl(res);
           return res.json(payload);
         }
         return res.status(503).json({ error: "AniList unavailable" });
@@ -435,7 +435,7 @@ export async function getSchedule(
 
       const payload = { data: items };
       await hybridCache.set(cacheKey, payload, 1000 * 60 * 30);
-      setCacheControl(res, "schedule");
+      setCacheControl(res);
       return res.json(payload);
     }
 
