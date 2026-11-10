@@ -110,20 +110,22 @@ export function AnimeListRow({
       </div>
 
       <div className="relative z-10 min-w-0 flex-1 flex flex-col gap-1 py-0.5 pointer-events-none">
-        <p className="text-sm font-medium text-white/90 leading-tight line-clamp-2">
-          {anime.title}
-        </p>
+        {/* The score sits at the title's end on every screen, in the same chip
+            and colour, so phone and desktop read the same row. It is narrow
+            enough to share the line; the action buttons are what used to crush
+            the text column. */}
+        <div className="flex items-start justify-between gap-2">
+          <p className="min-w-0 text-sm font-medium text-white/90 leading-tight line-clamp-2">
+            {anime.title}
+          </p>
+          {typeof rating === "number" ? (
+            <span className="shrink-0">
+              <ScoreBadge value={rating} surface="plain" />
+            </span>
+          ) : null}
+        </div>
 
         <p className="text-xs text-white/50 truncate">
-          {/* On a phone the score moves into this line. Beside the actions it
-              pushed the text column down to about ninety pixels, which is where
-              titles and provider badges were being crushed. */}
-          {typeof rating === "number" && (
-            <span className="sm:hidden text-primary font-medium">
-              ★ {rating.toFixed(1)}
-              {" · "}
-            </span>
-          )}
           {anime.meta?.studio ?? "Estudio desconocido"}
           {type || episodes ? " · " : ""}
           {type ?? ""}
@@ -157,12 +159,6 @@ export function AnimeListRow({
       </div>
 
       <div className="relative z-10 shrink-0 self-center flex flex-col sm:flex-row items-center gap-1 pr-0.5">
-        {typeof rating === "number" && (
-          <div className="hidden sm:block pointer-events-none pr-1">
-            <ScoreBadge value={rating} surface="plain" />
-          </div>
-        )}
-
         {/* The same two controls the poster card uses, from the same module.
             A row with its own heart would be a second answer to a question
             already settled. */}
@@ -178,25 +174,37 @@ export function AnimeListRow({
           />
         )}
 
+        {/* A square the size of the heart, with the list count as a small
+            badge on its corner, like the bell's: "+ 1" as text made this button
+            twice as wide as the one beside it. */}
         {onAddToList && (
-          <ActionButton
-            variant="soft"
-            size="sm"
-            icon={<Icon name="Plus" size={14} />}
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddToList(anime);
-            }}
-          >
+          <span className="relative">
+            <ActionButton
+              variant="soft"
+              size="sm"
+              iconOnly
+              ariaLabel={
+                listCount > 0
+                  ? `Añadir a una lista (está en ${listCount})`
+                  : "Añadir a una lista"
+              }
+              icon={<Icon name="Plus" size={14} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToList(anime);
+              }}
+            >
+              Añadir a una lista
+            </ActionButton>
             {listCount > 0 ? (
-              listCount
-            ) : (
-              // Icon-only on a phone, but still named: `sr-only` rather than
-              // `hidden`, which would remove the word from the accessibility
-              // tree along with the pixels.
-              <span className="sr-only sm:not-sr-only">Añadir</span>
-            )}
-          </ActionButton>
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-white tabular-nums"
+              >
+                {listCount}
+              </span>
+            ) : null}
+          </span>
         )}
       </div>
     </div>
