@@ -48,6 +48,7 @@ export default function Tooltip({
   const [position, setPosition] = useState<{
     top: number;
     left: number;
+    maxWidth: number;
   } | null>(null);
 
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -90,15 +91,25 @@ export default function Tooltip({
           ? triggerRect.top - tooltipHeight - margin
           : triggerRect.bottom + margin;
 
-      // X-axis: center on trigger, then clamp to viewport bounds
-      const idealLeft =
-        triggerRect.left + (triggerRect.width - tooltipWidth) / 2;
-      const left = Math.max(
-        margin,
-        Math.min(idealLeft, window.innerWidth - tooltipWidth - margin),
-      );
+      // X-axis: center on trigger, then clamp to the horizontal bounds.
+      // The bounds are the viewport, narrowed to the nearest ancestor marked
+      // `data-tooltip-boundary`. A carousel marks its track so the tooltip
+      // stays between its arrows: this tooltip is hoverable on purpose, so
+      // anything it overlaps cannot be clicked while it is open.
+      const boundary = triggerRef.current
+        ?.closest("[data-tooltip-boundary]")
+        ?.getBoundingClientRect();
+      const minX = Math.max(0, boundary?.left ?? 0) + margin;
+      const maxX =
+        Math.min(window.innerWidth, boundary?.right ?? window.innerWidth) -
+        margin;
+      // Inline max-width overrides the class, so it carries the 35rem cap too.
+      const maxWidth = Math.max(0, Math.min(maxX - minX, 560));
+      const width = Math.min(tooltipWidth, maxWidth);
+      const idealLeft = triggerRect.left + (triggerRect.width - width) / 2;
+      const left = Math.max(minX, Math.min(idealLeft, maxX - width));
 
-      return { top, left };
+      return { top, left, maxWidth };
     },
     [],
   );
@@ -116,13 +127,14 @@ export default function Tooltip({
     const estimatedHeight = 40;
     const estimatedWidth = 200;
 
-    const { top, left } = computePosition(
-      triggerRect,
-      estimatedHeight,
-      estimatedWidth,
-      side,
-    );
-    setPosition({ top, left });
+    // Measured at the left edge, invisible. A fixed element can only grow up
+    // to the viewport's right edge, so measuring it where it would finally go
+    // (near that edge, for the last card in a row) read it narrower than it
+    // is; placed with that false width it then widened past its bounds.
+    setPosition({
+      ...computePosition(triggerRect, estimatedHeight, estimatedWidth, side),
+      left: 0,
+    });
     setTooltipState("measuring");
   }, [side, computePosition]);
 
@@ -149,14 +161,7 @@ export default function Tooltip({
     const tooltipHeight = tooltipRef.current.offsetHeight;
     const tooltipWidth = tooltipRef.current.offsetWidth;
     const triggerRect = triggerRef.current.getBoundingClientRect();
-    const { top, left } = computePosition(
-      triggerRect,
-      tooltipHeight,
-      tooltipWidth,
-      side,
-    );
-
-    setPosition({ top, left });
+    setPosition(computePosition(triggerRect, tooltipHeight, tooltipWidth, side));
     setTooltipState("visible");
   }, [tooltipState, side, computePosition]);
 
@@ -242,6 +247,7 @@ export default function Tooltip({
                 position: "fixed",
                 top: position.top,
                 left: position.left,
+                maxWidth: position.maxWidth,
                 zIndex: 50,
                 pointerEvents: "auto",
                 opacity: tooltipState === "measuring" ? 0 : 1,

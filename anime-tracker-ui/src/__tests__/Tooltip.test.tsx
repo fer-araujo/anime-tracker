@@ -246,3 +246,50 @@ describe("Tooltip", () => {
     });
   });
 });
+
+describe("Tooltip boundary", () => {
+  it("stays inside the nearest marked boundary, clear of what lies beyond it", () => {
+    // A carousel track from x=100 to x=300, with its arrow just past x=300.
+    // The trigger sits at the track's right end.
+    const rects: Record<string, Partial<DOMRect>> = {
+      boundary: { left: 100, right: 300, top: 0, bottom: 400, width: 200, height: 400 },
+      trigger: { left: 260, right: 300, top: 100, bottom: 140, width: 40, height: 40 },
+    };
+    const spy = vi
+      .spyOn(Element.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: Element) {
+        const key = this.hasAttribute("data-tooltip-boundary")
+          ? "boundary"
+          : this.textContent === "Trigger"
+            ? "trigger"
+            : null;
+        return { x: 0, y: 0, toJSON: () => ({}), ...(key ? rects[key] : {}) } as DOMRect;
+      });
+
+    // jsdom lays nothing out; give the tooltip the width a long synopsis has.
+    const width = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth");
+    Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+      configurable: true,
+      get(this: HTMLElement) {
+        return this.getAttribute("role") === "tooltip" ? 400 : 0;
+      },
+    });
+
+    render(
+      <div data-tooltip-boundary>
+        <Tooltip content="A long synopsis">
+          <span>Trigger</span>
+        </Tooltip>
+      </div>,
+    );
+    fireEvent.mouseEnter(screen.getByText("Trigger"));
+
+    const tip = screen.getByRole("tooltip");
+    const left = parseFloat(tip.style.left);
+    const maxWidth = parseFloat(tip.style.maxWidth);
+    expect(left).toBeGreaterThanOrEqual(108);
+    expect(left + maxWidth).toBeLessThanOrEqual(292);
+    spy.mockRestore();
+    if (width) Object.defineProperty(HTMLElement.prototype, "offsetWidth", width);
+  });
+});
