@@ -27,12 +27,13 @@ export const SCRIM_BOTTOM =
  * Small label laid over art; the blur keeps it readable whatever the poster shows behind it.
  * Fixed height with centred, leading-none text rather than vertical padding: padding is
  * added to the font's line box, whose extra room sits under the baseline, so the label
- * rode low inside the chip.
+ * rode low inside the chip. 24px leaves 6px above and below 12px text; 20px left 4px
+ * and read cramped.
  * Carries no text colour: chips whose colour means something add their own, and cn() cannot
  * resolve two text colours on one element.
  */
 export const CHIP_ON_IMAGE_BASE =
-  "inline-flex h-5 items-center rounded bg-black/60 px-2 text-xs font-semibold leading-none backdrop-blur-sm";
+  "inline-flex h-6 items-center rounded bg-black/60 px-2.5 text-xs font-semibold leading-none backdrop-blur-sm";
 
 export const CHIP_ON_IMAGE = `${CHIP_ON_IMAGE_BASE} text-white`;
 
@@ -41,7 +42,7 @@ export const CHIP_ON_IMAGE = `${CHIP_ON_IMAGE_BASE} text-white`;
  * as a hole rather than a label, and the blur has nothing behind it to soften.
  */
 export const CHIP_ON_SURFACE_BASE =
-  "inline-flex h-5 items-center rounded border border-white/10 bg-white/5 px-2 text-xs font-semibold leading-none";
+  "inline-flex h-6 items-center rounded border border-white/10 bg-white/5 px-2.5 text-xs font-semibold leading-none";
 
 /** One thickness for the tracking-status line so cards on different pages agree. */
 export const STATUS_LINE = "h-0.5";
