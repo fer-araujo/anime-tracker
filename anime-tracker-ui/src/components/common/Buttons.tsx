@@ -6,6 +6,9 @@ type ActionButtonProps =
       as?: "button";
       children: React.ReactNode;
       onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+      disabled?: boolean;
+      /** Required in practice when `children` is only an icon. */
+      ariaLabel?: string;
       variant?: "primary" | "solid" | "soft";
       icon?: React.ReactNode;
       size?: "sm" | "md";
@@ -34,7 +37,7 @@ export const ActionButton = (props: ActionButtonProps) => {
   } = props;
 
   const base = cn(
-    "inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold text-white border focus:outline-none hover:cursor-pointer focus:ring-2 focus:ring-white/40 transition-colors",
+    "inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold text-white border focus:outline-none hover:cursor-pointer focus:ring-2 focus:ring-white/40 transition-colors disabled:opacity-40 disabled:pointer-events-none",
     size === "sm" ? "text-xs h-8 px-2.5" : "text-sm h-10 px-4",
   );
   const styles =
@@ -64,8 +67,18 @@ export const ActionButton = (props: ActionButtonProps) => {
     );
   }
 
+  const { disabled, ariaLabel } = rest as {
+    disabled?: boolean;
+    ariaLabel?: string;
+  };
   return (
-    <button type="button" onClick={onClick as React.MouseEventHandler<HTMLButtonElement>} className={cn(base, styles)}>
+    <button
+      type="button"
+      onClick={onClick as React.MouseEventHandler<HTMLButtonElement>}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      className={cn(base, styles)}
+    >
       {icon}
       <span className="truncate">{children}</span>
     </button>
