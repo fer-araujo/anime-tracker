@@ -27,7 +27,7 @@ export const SCRIM_BOTTOM =
  * Small label laid over art; the blur keeps it readable whatever the poster shows behind it.
  * Fixed height with centred, leading-none text rather than vertical padding: padding is
  * added to the font's line box, whose extra room sits under the baseline, so the label
- * rode low inside the chip. 24px leaves 6px above and below 12px text; 20px left 4px
+ * rode low inside the chip. h-6 leaves room above and below text-xs; h-5 was too tight
  * and read cramped.
  * Carries no text colour: chips whose colour means something add their own, and cn() cannot
  * resolve two text colours on one element.
