@@ -15,3 +15,14 @@
  * has no hover to depend on.
  */
 export type ViewMode = "grid" | "list";
+
+/**
+ * One choice in a chip filter: what to call it and how many items sit behind it.
+ * `swatch` is a background class, for chips that double as a colour key.
+ */
+export type FilterChipOption<K extends string> = {
+  key: K;
+  label: string;
+  count: number;
+  swatch?: string;
+};
