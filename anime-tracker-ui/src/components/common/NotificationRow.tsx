@@ -26,7 +26,7 @@ export function NotificationRow({
         href={`/anime/${n.animeId}`}
         onClick={onNavigate}
         className={cn(
-          "flex items-center gap-4 px-5 py-3.5 hover:bg-white/5 transition-colors",
+          "flex items-center gap-4 px-5 py-3.5 hover:bg-white/10 transition-colors",
           CARD_FOCUS,
           // Dimmed, not removed: a read episode is still the answer to "which
           // one came out today". A pending one is not dimmed — it has not been
@@ -39,10 +39,10 @@ export function NotificationRow({
           <img
             src={n.poster}
             alt=""
-            className="w-12 h-[4.5rem] rounded-md object-cover shrink-0"
+            className="w-12 h-[4.5rem] rounded-sm object-cover shrink-0"
           />
         ) : (
-          <div className="w-12 h-[4.5rem] rounded-md bg-white/10 shrink-0" />
+          <div className="w-12 h-[4.5rem] rounded-sm bg-white/10 shrink-0" />
         )}
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-medium text-white line-clamp-2">

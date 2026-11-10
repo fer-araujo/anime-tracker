@@ -4,7 +4,7 @@ export function SearchRowSkeleton({ showThumb = true }: { showThumb?: boolean })
   return (
     <div className="mb-1 flex items-center gap-4 px-3 py-2">
       {showThumb && (
-        <div className="h-[84px] w-14 shrink-0 rounded-md border border-white/5 bg-white/5 animate-pulse" />
+        <div className="h-[84px] w-14 shrink-0 rounded-sm border border-white/5 bg-white/5 animate-pulse" />
       )}
       <div className="flex-1 min-w-0 space-y-2">
         <div className="h-3 w-2/3 bg-white/5 rounded animate-pulse" />

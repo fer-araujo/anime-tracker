@@ -9,6 +9,11 @@ type ActionButtonProps =
       disabled?: boolean;
       /** Required in practice when `children` is only an icon. */
       ariaLabel?: string;
+      /**
+       * A square beside FavButton. `children` still names the action, but only
+       * for screen readers, so the button stays as small as the heart next to it.
+       */
+      iconOnly?: boolean;
       variant?: "primary" | "solid" | "soft";
       icon?: React.ReactNode;
       size?: "sm" | "md";
@@ -38,7 +43,11 @@ export const ActionButton = (props: ActionButtonProps) => {
 
   const base = cn(
     "inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold text-white border focus:outline-none hover:cursor-pointer focus:ring-2 focus:ring-white/40 transition-colors disabled:opacity-40 disabled:pointer-events-none",
-    size === "sm" ? "text-xs h-8 px-2.5" : "text-sm h-10 px-4",
+    size === "sm"
+      ? (props as { iconOnly?: boolean }).iconOnly
+        ? "text-xs h-8 w-8"
+        : "text-xs h-8 px-2.5"
+      : "text-sm h-10 px-4",
   );
   const styles =
     variant === "primary"
@@ -67,9 +76,10 @@ export const ActionButton = (props: ActionButtonProps) => {
     );
   }
 
-  const { disabled, ariaLabel } = rest as {
+  const { disabled, ariaLabel, iconOnly } = rest as {
     disabled?: boolean;
     ariaLabel?: string;
+    iconOnly?: boolean;
   };
   return (
     <button
@@ -80,7 +90,7 @@ export const ActionButton = (props: ActionButtonProps) => {
       className={cn(base, styles)}
     >
       {icon}
-      <span className="truncate">{children}</span>
+      <span className={iconOnly ? "sr-only" : "truncate"}>{children}</span>
     </button>
   );
 };

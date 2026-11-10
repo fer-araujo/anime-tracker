@@ -7,6 +7,7 @@ import { ScoreBadge } from "@/components/common/ScoreBadge";
 import { ActionButton, FavButton } from "@/components/common/Buttons";
 import Icon from "@/components/custom/Icon";
 import { uniqueNormalizedProviders } from "@/lib/providers";
+import { CARD_FOCUS, CARD_HOVER_SHADOW, CARD_SURFACE } from "@/lib/cardStyles";
 import { cn } from "@/lib/utils";
 import type { Anime, AnimeEntry } from "@/types/anime";
 
@@ -73,9 +74,14 @@ export function AnimeListRow({
         // the grid stretches that cell to the taller of two neighbours, but the
         // row inside kept its own height, so side-by-side boxes did not match.
         // Where the row is the grid item itself this changes nothing.
-        "group relative w-full h-full flex items-stretch gap-3 p-2.5 rounded-xl",
-        "bg-white/5 border border-white/10 transition-colors",
-        "[@media(hover:hover)]:hover:bg-white/10 [@media(hover:hover)]:hover:border-white/20",
+        "group relative w-full h-full flex items-stretch gap-3 p-2.5",
+        CARD_SURFACE,
+        CARD_HOVER_SHADOW,
+        // The token's transition-shadow and this list both set transition-property, and
+        // cn() does not merge them, so `!` lets the border lighten fade with the shadow
+        // instead of snapping.
+        "transition-[border-color,box-shadow]!",
+        "[@media(hover:hover)]:hover:border-white/20",
         "focus-within:border-primary/40",
       )}
     >
@@ -85,10 +91,14 @@ export function AnimeListRow({
         aria-label={`Ver detalles de ${anime.title}`}
         // Stretched over the row so the whole surface stays clickable, but
         // underneath the actions, which sit above it in the stacking order.
-        className="absolute inset-0 z-0 rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className={cn(
+          "absolute inset-0 z-0 rounded-md cursor-pointer",
+          CARD_FOCUS,
+        )}
       />
 
-      <div className="relative z-10 w-14 sm:w-16 shrink-0 aspect-2/3 rounded-lg overflow-hidden bg-white/5 pointer-events-none">
+      {/* A smaller radius than the row so the corner nests inside the row's padding. */}
+      <div className="relative z-10 w-14 sm:w-16 shrink-0 aspect-2/3 rounded-sm overflow-hidden bg-white/5 pointer-events-none">
         {poster && (
           <Image
             src={poster}
@@ -108,15 +118,6 @@ export function AnimeListRow({
         </p>
 
         <p className="text-xs text-white/50 truncate">
-          {/* On a phone the score moves into this line. Beside the actions it
-              pushed the text column down to about ninety pixels, which is where
-              titles and provider badges were being crushed. */}
-          {typeof rating === "number" && (
-            <span className="sm:hidden text-primary font-medium">
-              ★ {rating.toFixed(1)}
-              {" · "}
-            </span>
-          )}
           {anime.meta?.studio ?? "Estudio desconocido"}
           {type || episodes ? " · " : ""}
           {type ?? ""}
@@ -149,48 +150,67 @@ export function AnimeListRow({
         </div>
       </div>
 
-      <div className="relative z-10 shrink-0 self-center flex flex-col sm:flex-row items-center gap-1 pr-0.5">
-        {typeof rating === "number" && (
-          <div className="hidden sm:block pointer-events-none pr-1">
+      {/* Score on top, actions at the bottom, both flush with the row's right
+          edge. Beside the title the score ended wherever the text column did,
+          so it never lined up with the buttons below it. */}
+      <div className="relative z-10 shrink-0 self-stretch flex flex-col items-end justify-between gap-2 py-0.5 pr-0.5">
+        {typeof rating === "number" ? (
+          <span className="pointer-events-none">
             <ScoreBadge value={rating} surface="plain" />
-          </div>
+          </span>
+        ) : (
+          <span />
         )}
 
-        {/* The same two controls the poster card uses, from the same module.
+        <div className="flex items-center gap-1">
+          {/* The same two controls the poster card uses, from the same module.
             A row with its own heart would be a second answer to a question
             already settled. */}
-        {onToggleFavorite && (
-          <FavButton
-            active={isFav}
-            onClick={(e) => {
-              e.stopPropagation();
-              const next = !isFav;
-              setFav(next);
-              onToggleFavorite(anime, next);
-            }}
-          />
-        )}
+          {onToggleFavorite && (
+            <FavButton
+              active={isFav}
+              onClick={(e) => {
+                e.stopPropagation();
+                const next = !isFav;
+                setFav(next);
+                onToggleFavorite(anime, next);
+              }}
+            />
+          )}
 
-        {onAddToList && (
-          <ActionButton
-            variant="soft"
-            size="sm"
-            icon={<Icon name="Plus" size={14} />}
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddToList(anime);
-            }}
-          >
-            {listCount > 0 ? (
-              listCount
-            ) : (
-              // Icon-only on a phone, but still named: `sr-only` rather than
-              // `hidden`, which would remove the word from the accessibility
-              // tree along with the pixels.
-              <span className="sr-only sm:not-sr-only">Añadir</span>
-            )}
-          </ActionButton>
-        )}
+          {/* A square the size of the heart, with the list count as a small
+            badge on its corner, like the bell's: "+ 1" as text made this button
+            twice as wide as the one beside it. */}
+          {onAddToList && (
+            <span className="relative">
+              <ActionButton
+                variant="soft"
+                size="sm"
+                iconOnly
+                ariaLabel={
+                  listCount > 0
+                    ? `Añadir a una lista (está en ${listCount})`
+                    : "Añadir a una lista"
+                }
+                icon={<Icon name="Plus" size={14} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToList(anime);
+                }}
+              >
+                Añadir a una lista
+              </ActionButton>
+              {listCount > 0 ? (
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-neutral-700 px-1 text-[10px] font-bold leading-none text-white tabular-nums ring-2 ring-neutral-950"
+                >
+                  {listCount}
+                </span>
+              ) : null}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
