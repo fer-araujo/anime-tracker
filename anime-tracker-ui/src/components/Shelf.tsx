@@ -91,6 +91,8 @@ export function MinimalShelf({
           ref={ref}
           role="list"
           aria-label={`Carrusel de ${title}`}
+          // Tooltips of the cards stay inside the track, clear of the arrows.
+          data-tooltip-boundary
           className="flex gap-3 md:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory px-1 md:px-4
                    [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
