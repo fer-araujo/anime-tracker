@@ -5,6 +5,13 @@ import React, { useState, useEffect } from "react";
 import { ProviderBadge } from "./ProviderBadge";
 import { uniqueNormalizedProviders } from "@/lib/providers";
 import { cn, handleImageLoad } from "@/lib/utils";
+import {
+  CARD_FOCUS,
+  CARD_HOVER_SHADOW,
+  CARD_SURFACE,
+  CHIP_ON_IMAGE_BASE,
+  IMAGE_HOVER_ZOOM,
+} from "@/lib/cardStyles";
 import { formatAiringCaption } from "@/lib/episodes";
 import type { AnimeCardProps } from "@/types/anime";
 import { Pill } from "./common/Pills";
@@ -65,7 +72,7 @@ export function AnimeCard({
       // 220 px in a three-column tablet grid, and a breakpoint cannot tell those
       // apart — the "Detalles · Añadir (n) · ♥" row, about 250 px, overflowed
       // the narrower one.
-      className="@container group relative w-full select-none"
+      className="@container group group/card relative w-full select-none"
       onMouseEnter={prefetchDetail}
       onTouchStart={prefetchDetail}
     >
@@ -75,10 +82,11 @@ export function AnimeCard({
         aria-label={`Ver detalles de ${anime.title}`}
         onKeyDown={handleKeyDown}
         className={cn(
-          "relative w-full p-0 isolate rounded-md cursor-pointer",
+          "relative w-full p-0 isolate cursor-pointer",
           variant === "compact" ? "aspect-[3/4]" : "aspect-[2/3]",
-          "border border-white/10 bg-neutral-950 transition-shadow duration-300 ease-out md:hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.5)]",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
+          CARD_SURFACE,
+          CARD_HOVER_SHADOW,
+          CARD_FOCUS,
         )}
         onClick={() => {
           onOpen?.(anime);
@@ -92,7 +100,7 @@ export function AnimeCard({
               alt={`Póster de ${anime.title}`}
               fill
               sizes="(max-width:980px) 100vw, 33vw"
-              className="object-cover [image-rendering:auto]"
+              className={cn("object-cover [image-rendering:auto]", IMAGE_HOVER_ZOOM)}
               priority={false}
               onLoad={(e) => handleImageLoad(e, setOverlayMode, autoContrast)}
             />
@@ -117,7 +125,7 @@ export function AnimeCard({
 
           {/* Score badge when completed */}
           {animeEntry?.status === "completed" && animeEntry.score != null && (
-            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+            <span className={cn(CHIP_ON_IMAGE_BASE, "text-emerald-300")}>
               {animeEntry.score}/10
             </span>
           )}

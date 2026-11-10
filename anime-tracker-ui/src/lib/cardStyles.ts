@@ -23,9 +23,25 @@ export const IMAGE_HOVER_ZOOM =
 export const SCRIM_BOTTOM =
   "bg-[linear-gradient(to_top,rgba(0,0,0,0.90)_20%,rgba(0,0,0,0.55)_60%,rgba(0,0,0,0)_100%)]";
 
-/** Small label laid over art; the blur keeps it readable whatever the poster shows behind it. */
-export const CHIP_ON_IMAGE =
-  "rounded bg-black/60 px-1.5 py-0.5 text-xs font-semibold text-white backdrop-blur-sm";
+/**
+ * Small label laid over art; the blur keeps it readable whatever the poster shows behind it.
+ * Fixed height with centred, leading-none text rather than vertical padding: padding is
+ * added to the font's line box, whose extra room sits under the baseline, so the label
+ * rode low inside the chip.
+ * Carries no text colour: chips whose colour means something add their own, and cn() cannot
+ * resolve two text colours on one element.
+ */
+export const CHIP_ON_IMAGE_BASE =
+  "inline-flex h-5 items-center rounded bg-black/60 px-2 text-xs font-semibold leading-none backdrop-blur-sm";
+
+export const CHIP_ON_IMAGE = `${CHIP_ON_IMAGE_BASE} text-white`;
+
+/**
+ * The same chip for a flat, already-dark surface such as a list row. There a black fill reads
+ * as a hole rather than a label, and the blur has nothing behind it to soften.
+ */
+export const CHIP_ON_SURFACE_BASE =
+  "inline-flex h-5 items-center rounded border border-white/10 bg-white/5 px-2 text-xs font-semibold leading-none";
 
 /** One thickness for the tracking-status line so cards on different pages agree. */
 export const STATUS_LINE = "h-0.5";

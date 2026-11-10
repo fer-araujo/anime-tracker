@@ -152,7 +152,7 @@ export function AnimeListRow({
       <div className="relative z-10 shrink-0 self-center flex flex-col sm:flex-row items-center gap-1 pr-0.5">
         {typeof rating === "number" && (
           <div className="hidden sm:block pointer-events-none pr-1">
-            <ScoreBadge value={rating} />
+            <ScoreBadge value={rating} surface="plain" />
           </div>
         )}
 
