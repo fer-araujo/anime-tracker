@@ -11,6 +11,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import Icon from "@/components/custom/Icon";
 import type { Anime, StreamingEpisode } from "@/types/anime";
 import { cn, formatNextAiring } from "@/lib/utils";
+import { IMAGE_HOVER_ZOOM } from "@/lib/cardStyles";
 import { ActionButton } from "@/components/common/Buttons";
 import { GalleryLightbox } from "./common/Gallery";
 import { TrackingShelf } from "@/components/common/TrackingShelf";
@@ -204,7 +205,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
               {/* ===== COLUMNA IZQUIERDA (Restaurada a su gloria sticky) ===== */}
               <div className="md:col-span-3 lg:col-span-3 relative">
                 <div className="sticky top-28 space-y-6">
-                  <div className="relative aspect-[2/3] w-full rounded-xl overflow-hidden shadow-2xl border border-white/10 group bg-background">
+                  <div className="relative aspect-[2/3] w-full rounded-md overflow-hidden shadow-2xl border border-white/10 group bg-background">
                     {anime.images.poster ? (
                       <Image
                         src={anime.images.poster}
@@ -593,7 +594,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                               type="button"
                               onClick={() => setLightboxIndex(i)}
                               aria-label={`Ver imagen ${i + 1}`}
-                              className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-white/5 group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                              className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-white/5 group group/card cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                             >
                               {img.url_original ? (
                                 <Image
@@ -601,7 +602,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                                   alt="Artwork"
                                   fill
                                   sizes="(max-width: 768px) 50vw, 400px"
-                                  className="object-cover transition-transform duration-500 group-hover:scale-110"
+                                  className={cn("object-cover", IMAGE_HOVER_ZOOM)}
                                 />
                               ) : (
                                 <ImagePlaceholder />
