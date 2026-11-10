@@ -27,7 +27,7 @@ import {
   type SortKey,
 } from "@/lib/season";
 import { TrackableAnimeCard } from "@/components/season/TrackableAnimeCard";
-import { SeasonFormatChips } from "@/components/season/SeasonFormatChips";
+import { FilterChips } from "@/components/common/FilterChips";
 import { TrackableAnimeListRow } from "@/components/common/TrackableAnimeListRow";
 import { ViewToggle } from "@/components/common/ViewToggle";
 import { useBatchAnimeEntries } from "@/hooks/useBatchAnimeEntries";
@@ -333,10 +333,11 @@ export default function SeasonPage({
             los controles que el panel lleva dentro. Los tres comparten el
             borde izquierdo del contenedor, así que la página conserva una sola
             línea vertical en lugar de dos separadas por el padding del panel. */}
-        <SeasonFormatChips
+        <FilterChips
           chips={formatChips}
           active={activeFormat}
           onChange={handleFormatChange}
+          ariaLabel="Filtrar por formato"
           className="mb-6"
         />
 

@@ -1,3 +1,4 @@
+import type { TrackingStatus } from "@/types/anime";
 import type { EpisodeRange } from "@/types/notifications";
 
 /** Weeks away from the current one; the range the API answers. */
@@ -18,6 +19,19 @@ export type CalendarDay = {
   /** `unavailable` means the day's data failed to load, not that it is empty. */
   status: "ok" | "unavailable";
   items: CalendarEntry[];
+};
+
+/** The status the calendar is narrowed to, or all of them. */
+export type CalendarStatusFilter = TrackingStatus | "all";
+
+/** An entry with its place on the time grid; minutes are since CDMX midnight. */
+export type PlacedEntry = {
+  entry: CalendarEntry;
+  startMinute: number;
+  /** Which side-by-side column it takes among the entries it overlaps. */
+  lane: number;
+  /** How many columns that group of overlapping entries needs. */
+  lanes: number;
 };
 
 /** What the calendar page is showing; one at a time, in this order of precedence. */

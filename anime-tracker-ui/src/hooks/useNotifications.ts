@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 import { useUserListsContext } from "@/providers/UserListsProvider";
 import { API_BASE } from "@/lib/api";
+import { useNow } from "@/hooks/useNow";
 import { isPending, normalizeNotification } from "@/lib/episodes";
 import type { EpisodeNotification } from "@/types/notifications";
 
@@ -56,7 +57,7 @@ export function useNotifications() {
   const { watchingIds } = useUserListsContext();
   const [items, setItems] = useState<EpisodeNotification[]>([]);
   const [seenAt, setSeenAt] = useState<string | null>(null);
-  const [now, setNow] = useState(() => Date.now());
+  const [now, syncNow] = useNow(CLOCK_MS);
   // Bumped to ask again: by the poll, by the tab coming back, by a retry.
   const [refresh, setRefresh] = useState(0);
   const retries = useRef(0);
@@ -69,8 +70,6 @@ export function useNotifications() {
   const watchingKey = watchingIds.join(",");
 
   useEffect(() => {
-    const clock = setInterval(() => setNow(Date.now()), CLOCK_MS);
-
     // Only while someone can see it: a background tab polling all night is
     // load on a free tier for a badge nobody is looking at.
     const poll = setInterval(() => {
@@ -79,13 +78,11 @@ export function useNotifications() {
 
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
-      setNow(Date.now());
       setRefresh((r) => r + 1);
     };
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
-      clearInterval(clock);
       clearInterval(poll);
       document.removeEventListener("visibilitychange", onVisible);
     };
@@ -162,7 +159,7 @@ export function useNotifications() {
         };
         if (cancelled) return;
         retries.current = 0;
-        setNow(Date.now());
+        syncNow();
         setItems((json.data ?? []).map(normalizeNotification));
       } catch {
         // Silent on screen — nothing the user asked for is blocked by the

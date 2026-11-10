@@ -1,38 +1,35 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { SeasonFormatCount, SeasonFormatKey } from "@/types/season";
-
-type Props = {
-  chips: SeasonFormatCount[];
-  active: SeasonFormatKey;
-  onChange: (key: SeasonFormatKey) => void;
-  className?: string;
-};
+import type { FilterChipOption } from "@/types/view";
 
 /**
- * Format filter for the season page.
+ * A single-choice filter shown as chips with counts, as on the season page and
+ * the calendar.
  *
- * A filter rather than section headings, because pagination has to keep meaning
- * something: it always walks one flat list, so it recomputes against whatever
- * chip is selected. Headings would split a bucket across page boundaries.
- *
- * The counts are the reason the row earns its space — seeing "Películas 2"
- * reports the shape of the season without reorganising the page to show it.
+ * The counts are the reason the row earns its space: "Películas 2" reports the
+ * shape of what is there without reorganising the page to show it.
  */
-export function SeasonFormatChips({
+export function FilterChips<K extends string>({
   chips,
   active,
   onChange,
+  ariaLabel,
   className,
-}: Props) {
+}: {
+  chips: FilterChipOption<K>[];
+  active: K;
+  onChange: (key: K) => void;
+  ariaLabel: string;
+  className?: string;
+}) {
   // One chip is not a filter, it is a label for the only thing there is.
   if (chips.length <= 1) return null;
 
   return (
     <div
       role="group"
-      aria-label="Filtrar por formato"
+      aria-label={ariaLabel}
       className={cn("flex flex-wrap gap-2", className)}
     >
       {chips.map((chip) => {
@@ -44,8 +41,8 @@ export function SeasonFormatChips({
             aria-pressed={selected}
             onClick={() => onChange(chip.key)}
             className={cn(
-              // h-10 and rounded-xl are not arbitrary: they are what every
-              // other control in this panel already uses. A pill among
+              // h-10 and rounded-xl are not arbitrary: they are what the other
+              // controls around these rows already use. A pill among
               // rectangles reads as belonging to a different toolbar.
               "inline-flex h-10 items-center gap-1.5 rounded-xl border px-4",
               "text-sm font-medium transition-colors cursor-pointer",
@@ -55,6 +52,12 @@ export function SeasonFormatChips({
                 : "bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10",
             )}
           >
+            {chip.swatch ? (
+              <span
+                aria-hidden="true"
+                className={cn("size-2.5 rounded-full", chip.swatch)}
+              />
+            ) : null}
             {chip.label}
             <span
               className={cn(

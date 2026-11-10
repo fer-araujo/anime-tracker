@@ -15,6 +15,10 @@ const { lib, router, nav } = vi.hoisted(() => ({
   nav: { params: new URLSearchParams() },
 }));
 
+// 15:00 in CDMX on 2026-10-22, inside the hours the fixtures below occupy.
+const NOW = Date.parse("2026-10-22T21:00:00Z");
+vi.mock("@/hooks/useNow", () => ({ useNow: () => [NOW, () => {}] }));
+
 vi.mock("@/providers/AuthProvider", () => ({
   useAuth: () => ({ user: lib.user, loading: false }),
 }));
@@ -125,8 +129,12 @@ describe("AiringCalendarPage", () => {
     const sections = (await grid()).querySelectorAll("section");
 
     expect(sections[4]).toHaveAttribute("aria-current", "date");
-    expect(sections[4].className).not.toContain("saturate-50");
-    expect(sections[3].className).toContain("saturate-50");
+    expect(sections[4]).not.toHaveAttribute("data-dimmed");
+    expect(sections[3]).toHaveAttribute("data-dimmed");
+    // The attribute only labels it; this is what actually turns the day down.
+    const body = (s: Element) => s.querySelector("[data-testid=day-body]")!;
+    expect(body(sections[3]).className).toContain("opacity-55");
+    expect(body(sections[4]).className).not.toContain("opacity-55");
   });
 
   it("dims nothing in a week that does not contain today", async () => {
@@ -135,7 +143,7 @@ describe("AiringCalendarPage", () => {
     render(<AiringCalendarPage />);
     const sections = (await grid()).querySelectorAll("section");
 
-    expect(sections[0].className).not.toContain("saturate-50");
+    expect(sections[0]).not.toHaveAttribute("data-dimmed");
   });
 
   it("lists the selected day on a phone, starting from today", async () => {
@@ -302,5 +310,117 @@ describe("AiringCalendarPage across changes", () => {
     expect(
       screen.queryByText("Nada de lo que sigues se emite esta semana."),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("AiringCalendarPage filters and time", () => {
+  const twoStatuses = () => {
+    lib.statuses = new Map<number, TrackingStatus>([
+      [1, "watching"],
+      [2, "dropped"],
+    ]);
+    fetchAiringCalendar.mockResolvedValue(
+      calendar(DATES[4], { [DATES[4]]: [entry(1, "Uno"), entry(2, "Dos")] }),
+    );
+  };
+
+  it("filters by status through the URL", async () => {
+    twoStatuses();
+    const user = userEvent.setup();
+
+    const { rerender } = render(<AiringCalendarPage />);
+    await grid();
+    await user.click(screen.getByRole("button", { name: /Abandonado/ }));
+    expect(router.replace).toHaveBeenCalledWith("/calendar?status=dropped", {
+      scroll: false,
+    });
+
+    nav.params = new URLSearchParams("status=dropped");
+    rerender(<AiringCalendarPage />);
+    const view = within(screen.getByTestId("week-grid"));
+
+    expect(view.queryByText("Uno")).not.toBeInTheDocument();
+    expect(view.getByText("Dos")).toBeInTheDocument();
+  });
+
+  it("keeps the filter when changing week", async () => {
+    twoStatuses();
+    nav.params = new URLSearchParams("status=watching");
+    const user = userEvent.setup();
+
+    render(<AiringCalendarPage />);
+    await grid();
+    await user.click(screen.getByRole("button", { name: "Semana siguiente" }));
+
+    expect(router.replace).toHaveBeenCalledWith(
+      "/calendar?week=1&status=watching",
+      { scroll: false },
+    );
+  });
+
+  it("keeps a filter the week on screen cannot show", async () => {
+    // Shown as everything here, but the next week may well have it.
+    nav.params = new URLSearchParams("status=dropped");
+    fetchAiringCalendar.mockResolvedValue(
+      calendar(DATES[4], { [DATES[4]]: [entry(1, "Uno")] }),
+    );
+    const user = userEvent.setup();
+
+    render(<AiringCalendarPage />);
+    await grid();
+    await user.click(screen.getByRole("button", { name: "Semana siguiente" }));
+
+    expect(router.replace).toHaveBeenCalledWith(
+      "/calendar?week=1&status=dropped",
+      { scroll: false },
+    );
+  });
+
+  it("keeps the filter when the week changes while loading", async () => {
+    nav.params = new URLSearchParams("status=watching");
+    fetchAiringCalendar.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+
+    render(<AiringCalendarPage />);
+    await user.click(screen.getByRole("button", { name: "Semana siguiente" }));
+
+    expect(router.replace).toHaveBeenCalledWith(
+      "/calendar?week=1&status=watching",
+      { scroll: false },
+    );
+  });
+
+  it("ignores a filter for a status with nothing this week", async () => {
+    nav.params = new URLSearchParams("status=dropped");
+    fetchAiringCalendar.mockResolvedValue(
+      calendar(DATES[4], { [DATES[4]]: [entry(1, "Uno")] }),
+    );
+
+    render(<AiringCalendarPage />);
+    const view = within(await grid());
+
+    expect(view.getByText("Uno")).toBeInTheDocument();
+  });
+
+  it("draws the current time in the column for today only", async () => {
+    fetchAiringCalendar.mockResolvedValue(
+      calendar(DATES[4], { [DATES[4]]: [entry(1, "Uno")] }),
+    );
+
+    render(<AiringCalendarPage />);
+    const sections = (await grid()).querySelectorAll("section");
+
+    expect(sections[4].querySelector("[data-testid=now-line]")).not.toBeNull();
+    expect(sections[3].querySelector("[data-testid=now-line]")).toBeNull();
+  });
+
+  it("draws no current time in a week without today", async () => {
+    fetchAiringCalendar.mockResolvedValue(
+      calendar(null, { [DATES[4]]: [entry(1, "Uno")] }),
+    );
+
+    render(<AiringCalendarPage />);
+
+    expect((await grid()).querySelector("[data-testid=now-line]")).toBeNull();
   });
 });

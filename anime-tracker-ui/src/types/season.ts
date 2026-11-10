@@ -1,4 +1,5 @@
 import type { Anime } from "@/types/anime";
+import type { FilterChipOption } from "@/types/view";
 
 /**
  * Shared shapes for the season surface, kept out of the component so the page,
@@ -19,11 +20,7 @@ import type { Anime } from "@/types/anime";
 export type SeasonFormatKey = "all" | "tv" | "movie" | "ova" | "leftovers";
 
 /** One chip: what to call it, and how many titles sit behind it. */
-export type SeasonFormatCount = {
-  key: SeasonFormatKey;
-  label: string;
-  count: number;
-};
+export type SeasonFormatCount = FilterChipOption<SeasonFormatKey>;
 
 /** Both halves of a season response, so callers pass one object around. */
 export type SeasonCatalogue = {
