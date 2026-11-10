@@ -9,6 +9,7 @@ import providerRoutes from "./provider.routes.js";
 import animeDetails from "./anime.routes.js";
 import recommendationRoutes from "./recommendations.routes.js";
 import notificationRoutes from "./notifications.routes.js";
+import calendarRoutes from "./calendar.routes.js";
 
 const router = Router();
 
@@ -18,6 +19,7 @@ router.use("/season", seasonRoutes);
 router.use("/schedule", scheduleRoutes);
 router.use("/recommendations", recommendationRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/calendar", calendarRoutes);
 
 router.use("/anime", animeDetails);
 
