@@ -14,7 +14,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { fetchAnimeBatch } from "@/lib/fetchAnimeBatch";
 import { buildStatusBreakdown } from "@/lib/lists";
 import type { ListStatusSlice } from "@/types/lists";
-import type { TrackingStatus } from "@/types/anime";
+import type { StatusByAnimeId, TrackingStatus } from "@/types/anime";
 import type { RecommendationLibrary, Seed } from "@/types/recommendations";
 
 /** A score at or above this is a signal on its own, matching the API's rule. */
@@ -70,7 +70,7 @@ export type UserListsContextValue = {
    * meaningful: this is what the user has actually placed somewhere. It decides
    * whether the calendar exists for them and which colour each entry takes.
    */
-  statusByAnimeId: ReadonlyMap<number, TrackingStatus>;
+  statusByAnimeId: StatusByAnimeId;
 };
 
 const UserListsContext = createContext<UserListsContextValue | null>(null);

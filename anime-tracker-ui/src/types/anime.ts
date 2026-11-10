@@ -210,3 +210,6 @@ export type ArtworkCandidate = {
   url_orig?: string | null;
   url_original?: string | null;
 };
+
+/** Status per anime id. Only rows with a status are in it: a bare favourite is not. */
+export type StatusByAnimeId = ReadonlyMap<number, TrackingStatus>;

@@ -23,8 +23,10 @@ export function formatEpisodeRange(range: EpisodeRange): string {
  * and the same string has to come out of the server render and the browser,
  * or the card hydrates with a mismatch.
  */
+export const CDMX_TIME_ZONE = "America/Mexico_City";
+
 const CDMX_TIME = new Intl.DateTimeFormat("es-MX", {
-  timeZone: "America/Mexico_City",
+  timeZone: CDMX_TIME_ZONE,
   hour: "2-digit",
   minute: "2-digit",
   // `h23`, not `hour12: false`: the latter is h24 in some engines and prints

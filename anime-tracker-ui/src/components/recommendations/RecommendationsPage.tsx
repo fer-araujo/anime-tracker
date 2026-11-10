@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SurfaceBackdrop } from "@/components/common/SurfaceBackdrop";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { useUserLists } from "@/hooks/useUserLists";
@@ -15,6 +14,7 @@ import { TrackableAnimeListRow } from "@/components/common/TrackableAnimeListRow
 import { ViewToggle } from "@/components/common/ViewToggle";
 import GridSkeleton from "@/components/Loaders/GridSkeleton";
 import Icon from "@/components/custom/Icon";
+import { EmptyState } from "@/components/common/EmptyState";
 import { cn } from "@/lib/utils";
 import type { Anime } from "@/types/anime";
 import type { ViewMode } from "@/types/view";
@@ -397,34 +397,6 @@ function UndoTile({
       >
         Deshacer
       </button>
-    </div>
-  );
-}
-
-function EmptyState({
-  icon,
-  title,
-  body,
-  action,
-}: {
-  icon: "Heart" | "User" | "AlertCircle" | "Check";
-  title: string;
-  body: string;
-  action?: { href: string; label: string };
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center text-center min-h-[40vh] border border-dashed border-white/10 rounded-2xl bg-white/5 px-6 py-14">
-      <Icon name={icon} size={40} className="text-white/25 mb-5" />
-      <h2 className="text-xl font-bold text-white mb-2 text-balance">{title}</h2>
-      <p className="text-white/55 max-w-md mb-6 text-balance">{body}</p>
-      {action && (
-        <Link
-          href={action.href}
-          className="h-11 px-6 inline-flex items-center bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors"
-        >
-          {action.label}
-        </Link>
-      )}
     </div>
   );
 }
