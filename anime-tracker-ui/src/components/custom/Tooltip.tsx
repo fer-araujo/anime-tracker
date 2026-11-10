@@ -127,9 +127,14 @@ export default function Tooltip({
     const estimatedHeight = 40;
     const estimatedWidth = 200;
 
-    setPosition(
-      computePosition(triggerRect, estimatedHeight, estimatedWidth, side),
-    );
+    // Measured at the left edge, invisible. A fixed element can only grow up
+    // to the viewport's right edge, so measuring it where it would finally go
+    // (near that edge, for the last card in a row) read it narrower than it
+    // is; placed with that false width it then widened past its bounds.
+    setPosition({
+      ...computePosition(triggerRect, estimatedHeight, estimatedWidth, side),
+      left: 0,
+    });
     setTooltipState("measuring");
   }, [side, computePosition]);
 
