@@ -157,7 +157,7 @@ export default function SearchOverlay({
       aria-label="Resultados de búsqueda"
     >
       {/* Header del dropdown */}
-      <div className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-white/40 border-b border-white/5 bg-white/5">
+      <div className="px-4 py-3 text-2xs font-bold uppercase tracking-widest text-white/40 border-b border-white/5 bg-white/5">
         {loading
           ? "Buscando..."
           : items.length

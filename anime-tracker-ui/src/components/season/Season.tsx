@@ -309,7 +309,7 @@ export default function SeasonPage({
           ~1400 px on a wide monitor, which is the look worth keeping, and ~270 px
           on a phone, which squeezed the whole page into a column a third of the
           screen wide. The pixel cap keeps the first and never causes the second. */}
-      <main className="relative z-10 max-w-[1400px] mx-auto px-4 md:px-10 lg:px-16 pt-32 md:pt-40">
+      <main className="relative z-10 max-w-page mx-auto px-4 md:px-10 lg:px-16 pt-32 md:pt-40">
         
         {/* ===== 2. TÍTULO ===== */}
         <motion.div 
@@ -417,7 +417,7 @@ export default function SeasonPage({
                 <Icon name="Filter" size={16} />
                 Géneros
                 {selectedGenres.size > 0 && (
-                  <span className="ml-1 text-[10px] bg-primary/30 px-1.5 py-0.5 rounded-full text-white">
+                  <span className="ml-1 text-2xs bg-primary/30 px-1.5 py-0.5 rounded-full text-white">
                     {selectedGenres.size}
                   </span>
                 )}

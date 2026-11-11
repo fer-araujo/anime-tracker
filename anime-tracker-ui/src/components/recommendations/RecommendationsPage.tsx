@@ -128,7 +128,7 @@ export function RecommendationsPage() {
           ~1400 px on a wide monitor, which is the look worth keeping, and ~270 px
           on a phone, which squeezed the whole page into a column a third of the
           screen wide. The pixel cap keeps the first and never causes the second. */}
-      <main className="relative z-10 max-w-[1400px] mx-auto px-4 md:px-10 lg:px-16 pt-32 md:pt-40">
+      <main className="relative z-10 max-w-page mx-auto px-4 md:px-10 lg:px-16 pt-32 md:pt-40">
         <div className="mb-8 md:mb-10">
           <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight">
             Recomendaciones

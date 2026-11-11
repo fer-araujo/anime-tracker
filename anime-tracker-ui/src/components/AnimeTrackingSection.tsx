@@ -220,7 +220,7 @@ export default function AnimeTrackingSection({
 
         {/* Community rating badge */}
         {communityRating != null && communityVotes != null && communityVotes >= 10 && (
-          <span className="text-[10px] font-medium text-white/40">
+          <span className="text-2xs font-medium text-white/40">
             ⭐ {communityRating.toFixed(1)} ({communityVotes})
           </span>
         )}

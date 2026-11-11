@@ -31,7 +31,7 @@ export function CalendarLink() {
         className="flex w-5 h-5 flex-col overflow-hidden rounded-[4px] border-[1.5px] border-current"
       >
         <span className="h-1 shrink-0 bg-current" />
-        <span className="flex flex-1 items-center justify-center text-[10px] font-bold leading-none tabular-nums">
+        <span className="flex flex-1 items-center justify-center text-2xs font-bold leading-none tabular-nums">
           {cdmxDayOfMonth()}
         </span>
       </span>

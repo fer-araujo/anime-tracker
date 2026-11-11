@@ -67,7 +67,7 @@ export function CreateListDialog({
 
         {/* Name input */}
         <div>
-          <label className="text-[10px] font-bold text-white/40 uppercase tracking-wider block mb-2">
+          <label className="text-2xs font-bold text-white/40 uppercase tracking-wider block mb-2">
             Nombre
           </label>
           <input
@@ -83,7 +83,7 @@ export function CreateListDialog({
 
         {/* Color picker */}
         <div>
-          <label className="text-[10px] font-bold text-white/40 uppercase tracking-wider block mb-2">
+          <label className="text-2xs font-bold text-white/40 uppercase tracking-wider block mb-2">
             Color
           </label>
           <div className="flex gap-2">

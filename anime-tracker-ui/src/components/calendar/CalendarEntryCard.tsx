@@ -103,7 +103,7 @@ export function CalendarEntryCard({
       </span>
 
       <span className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 px-2.5 pb-2.5">
-        <span className="text-[13px] font-semibold leading-tight text-white line-clamp-2 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+        <span className="text-sm font-semibold leading-tight text-white line-clamp-2 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
           {entry.title}
         </span>
         <span className="text-xs text-white/75 truncate">

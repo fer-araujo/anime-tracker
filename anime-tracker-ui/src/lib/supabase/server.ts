@@ -16,15 +16,16 @@ export async function createClient() {
           // Next only allows cookie writes from Server Actions and Route
           // Handlers, so this throws during a Server Component render — and an
           // uncaught throw here turns a routine token rotation into a failed
-          // page. Swallowing it is safe only because the middleware refreshes
-          // the session on every request and writes the cookies there; without
-          // that, this catch would silently discard the new token instead.
+          // page. Swallowing it is safe only because the proxy (src/proxy.ts)
+          // refreshes the session on every request and writes the cookies
+          // there; without that, this catch would silently discard the new
+          // token instead.
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options),
             );
           } catch {
-            // Rendering a Server Component. The middleware already handled it.
+            // Rendering a Server Component. The proxy already handled it.
           }
         },
       },

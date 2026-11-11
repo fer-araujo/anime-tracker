@@ -221,7 +221,7 @@ export function AddToListModal({
           aria-label="Estado de visualización"
           className="space-y-3"
         >
-          <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">
+          <label className="text-2xs font-bold text-white/40 uppercase tracking-widest ml-1">
             Estado Principal
           </label>
 
@@ -268,13 +268,13 @@ export function AddToListModal({
         {/* --- 2. CUSTOM COLLECTIONS --- */}
         <div className="space-y-3">
           <div className="flex items-center justify-between ml-1">
-            <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+            <label className="text-2xs font-bold text-white/40 uppercase tracking-widest">
               Mis listas
             </label>
             <button
               type="button"
               onClick={() => setShowCreateList(true)}
-              className="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 cursor-pointer"
+              className="text-2xs font-bold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 cursor-pointer"
             >
               <Icon name="Plus" size={12} />
               Nueva

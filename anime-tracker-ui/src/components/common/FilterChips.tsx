@@ -61,7 +61,7 @@ export function FilterChips<K extends string>({
             {chip.label}
             <span
               className={cn(
-                "text-[10px] tabular-nums rounded-full px-1.5 py-0.5",
+                "text-2xs tabular-nums rounded-full px-1.5 py-0.5",
                 selected
                   ? "bg-primary/30 text-white"
                   : "bg-white/10 text-white/50",

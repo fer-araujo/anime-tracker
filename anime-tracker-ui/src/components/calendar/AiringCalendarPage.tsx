@@ -92,7 +92,7 @@ export function AiringCalendarPage() {
   return (
     <div className="relative min-h-screen pb-16">
       <SurfaceBackdrop />
-      <main className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-10 lg:px-16 xl:px-10 pt-24 md:pt-32 flex flex-col gap-6">
+      <main className="relative z-10 max-w-week mx-auto px-4 md:px-10 lg:px-16 xl:px-10 pt-24 md:pt-32 flex flex-col gap-6">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-3xl md:text-4xl font-bold text-white">

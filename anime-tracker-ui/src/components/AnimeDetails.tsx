@@ -221,7 +221,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
 
                   <div className="p-5 rounded-xl border border-white/5 bg-white/[0.02] backdrop-blur-md">
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">
+                      <span className="text-2xs font-bold text-white/40 uppercase tracking-[0.2em]">
                         Score
                       </span>
                       <div className="flex items-center gap-1.5">
@@ -318,7 +318,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                 </div>
 
                 <section className="space-y-4 text-left">
-                  <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-[0.3em]">
+                  <h3 className="text-white/40 text-2xs font-bold uppercase tracking-[0.3em]">
                     Sinopsis
                   </h3>
                   <div className="relative">
@@ -358,7 +358,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                     {(anime.meta?.genres || []).map((g) => (
                       <span
                         key={g}
-                        className="px-4 py-1.5 rounded-md border border-white/10 text-[10px] font-medium text-white/50 uppercase tracking-widest cursor-default hover:border-primary/30 hover:text-primary/80 transition-colors"
+                        className="px-4 py-1.5 rounded-md border border-white/10 text-2xs font-medium text-white/50 uppercase tracking-widest cursor-default hover:border-primary/30 hover:text-primary/80 transition-colors"
                       >
                         {g}
                       </span>
@@ -434,7 +434,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                             size={20}
                             className="text-primary mb-6"
                           />
-                          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
+                          <p className="text-2xs font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
                             Total Eps.
                           </p>
                           <p className="text-xl font-light text-white">
@@ -447,7 +447,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                             size={20}
                             className="text-primary mb-6"
                           />
-                          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
+                          <p className="text-2xs font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
                             Duración
                           </p>
                           <p className="text-xl font-light text-white">
@@ -462,7 +462,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                             size={20}
                             className="text-primary mb-6"
                           />
-                          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
+                          <p className="text-2xs font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
                             {anime.meta?.ranking?.type === "RATED"
                               ? "Mejor Valorado"
                               : "Más Popular"}
@@ -492,7 +492,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                                       <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                                     </span>
-                                    <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">
+                                    <p className="text-2xs font-bold text-white/30 uppercase tracking-[0.2em]">
                                       Próx. Ep. {airingInfo.ep}
                                     </p>
                                   </div>
@@ -500,7 +500,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                                     <p className="text-xl font-light text-white">
                                       {airingInfo.main}
                                     </p>
-                                    <p className="text-[10px] font-medium text-white/40 uppercase tracking-widest mt-0.5">
+                                    <p className="text-2xs font-medium text-white/40 uppercase tracking-widest mt-0.5">
                                       {airingInfo.sub}
                                     </p>
                                   </div>
@@ -515,7 +515,7 @@ export default function AnimeDetailsPage({ anime }: { anime: Anime }) {
                               size={20}
                               className="text-primary mb-6"
                             />
-                            <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
+                            <p className="text-2xs font-bold text-white/30 uppercase tracking-[0.2em] mb-1">
                               Año
                             </p>
                             <p className="text-xl font-light text-white">
