@@ -4,8 +4,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 // setup.ts stubs the provider for every other suite; this one tests it.
 vi.unmock("@/providers/UserListsProvider");
 
+// One object for every render, as the real provider does between auth events:
+// a fresh `user` each time would re-run `refetch` on every state change.
+const { user } = vi.hoisted(() => ({ user: { id: "u1" } }));
 vi.mock("@/providers/AuthProvider", () => ({
-  useAuth: () => ({ user: { id: "u1" }, session: null, loading: false }),
+  useAuth: () => ({ user, session: null, loading: false }),
 }));
 
 vi.mock("@/lib/fetchAnimeBatch", () => ({
@@ -36,6 +39,7 @@ import {
   UserListsProvider,
   useUserListsContext,
 } from "@/providers/UserListsProvider";
+import { fetchAnimeBatch } from "@/lib/fetchAnimeBatch";
 
 function Probe() {
   const { watchingIds, statusByAnimeId, lists, loading, error } =
@@ -114,5 +118,28 @@ describe("UserListsProvider", () => {
     await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
     expect(screen.getByTestId("error")).toHaveTextContent("boom");
     expect(screen.getByTestId("watching")).toHaveTextContent(/^10$/);
+  });
+
+  it("publishes watchingIds while the posters are still loading", async () => {
+    // The bell reads watchingIds. It used to wait on this batch request, which
+    // can run to its 15 s timeout on a cold API, for covers it never shows.
+    type Posters = Awaited<ReturnType<typeof fetchAnimeBatch>>;
+    let releasePosters: (value: Posters) => void = () => {};
+    vi.mocked(fetchAnimeBatch).mockReturnValueOnce(
+      new Promise((resolve) => {
+        releasePosters = resolve;
+      }),
+    );
+    renderProvider();
+
+    await waitFor(() => expect(screen.getByTestId("watching")).toHaveTextContent(/^10$/));
+    expect(screen.getByTestId("statuses")).toHaveTextContent(/^10:watching,20:plan_to_watch$/);
+    // Lists wait for their covers, so cards do not flash placeholders first.
+    expect(screen.getByTestId("loading")).toHaveTextContent("true");
+    expect(screen.getByTestId("lists")).toHaveTextContent(/^$/);
+
+    releasePosters(new Map());
+    await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
+    expect(screen.getByTestId("lists")).toHaveTextContent("list-1");
   });
 });

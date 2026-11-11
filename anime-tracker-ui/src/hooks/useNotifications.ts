@@ -7,7 +7,16 @@ import { useUserListsContext } from "@/providers/UserListsProvider";
 import { API_BASE } from "@/lib/api";
 import { useNow } from "@/hooks/useNow";
 import { isPending, normalizeNotification } from "@/lib/episodes";
-import type { EpisodeNotification } from "@/types/notifications";
+import {
+  clearLastGood,
+  notificationsCacheKey,
+  readLastGood,
+  writeLastGood,
+} from "@/lib/lastGood";
+import type {
+  CachedNotifications,
+  EpisodeNotification,
+} from "@/types/notifications";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -54,20 +63,51 @@ const MAX_RETRIES = 3;
  */
 export function useNotifications() {
   const { user } = useAuth();
-  const { watchingIds } = useUserListsContext();
+  const { watchingIds, loading } = useUserListsContext();
   const [items, setItems] = useState<EpisodeNotification[]>([]);
   const [seenAt, setSeenAt] = useState<string | null>(null);
   const [now, syncNow] = useNow(CLOCK_MS);
   // Bumped to ask again: by the poll, by the tab coming back, by a retry.
   const [refresh, setRefresh] = useState(0);
   const retries = useRef(0);
+  // Whose cache is on screen, so signing out can drop it.
+  const cachedUserId = useRef<string | null>(null);
 
   // Primitives, not objects. AuthProvider hands out a new `user` on every auth
   // event, and Supabase emits TOKEN_REFRESHED whenever the window regains focus
   // — so an effect keyed on the object re-ran each time the pointer came back
   // to the page. The id and a joined key change only when the facts do.
   const userId = user?.id ?? null;
-  const watchingKey = watchingIds.join(",");
+  // `null` while the lists are loading and nothing is known yet. The provider
+  // starts with `[]`, and treating that as "watches nothing" would empty the
+  // bell — and overwrite its cache — before the real ids arrive.
+  const watchingKey =
+    loading && watchingIds.length === 0 ? null : watchingIds.join(",");
+
+  useEffect(() => {
+    if (!userId) {
+      if (cachedUserId.current) {
+        clearLastGood(notificationsCacheKey(cachedUserId.current));
+        cachedUserId.current = null;
+      }
+      return;
+    }
+
+    // The last answer, shown at once. The real one sits behind the lists,
+    // a Supabase read and an API that may be waking from sleep — up to a
+    // minute in which the badge used to read 0 on every reload. Keyed on the
+    // user alone: re-hydrating on each poll would roll back a `markRead`.
+    cachedUserId.current = userId;
+    const cached = readLastGood<CachedNotifications>(
+      notificationsCacheKey(userId),
+    );
+    const valid =
+      cached !== null &&
+      Array.isArray(cached.items) &&
+      typeof cached.seenAt === "string";
+    setItems(valid ? cached.items : []);
+    setSeenAt(valid ? cached.seenAt : null);
+  }, [userId]);
 
   useEffect(() => {
     // Only while someone can see it: a background tab polling all night is
@@ -94,7 +134,9 @@ export function useNotifications() {
       setSeenAt(null);
       return;
     }
+    if (watchingKey === null) return;
 
+    const cacheKey = notificationsCacheKey(userId);
     let cancelled = false;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -136,6 +178,7 @@ export function useNotifications() {
       const ids = watchingKey ? watchingKey.split(",").map(Number) : [];
       if (ids.length === 0) {
         setItems([]);
+        writeLastGood(cacheKey, { items: [], seenAt: seen });
         return;
       }
 
@@ -160,7 +203,9 @@ export function useNotifications() {
         if (cancelled) return;
         retries.current = 0;
         syncNow();
-        setItems((json.data ?? []).map(normalizeNotification));
+        const fresh = (json.data ?? []).map(normalizeNotification);
+        setItems(fresh);
+        writeLastGood(cacheKey, { items: fresh, seenAt: seen });
       } catch {
         // Silent on screen — nothing the user asked for is blocked by the
         // bell — but not given up on: see RETRY_DELAY_MS.
@@ -180,6 +225,12 @@ export function useNotifications() {
 
     const at = new Date().toISOString();
     setSeenAt(at);
+
+    // Otherwise a reload right after reading would hydrate the old instant
+    // and light the badge again until the prefs read lands.
+    const cacheKey = notificationsCacheKey(userId);
+    const cached = readLastGood<CachedNotifications>(cacheKey);
+    if (cached) writeLastGood(cacheKey, { ...cached, seenAt: at });
 
     const supabase = createClient();
     await supabase

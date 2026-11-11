@@ -1,14 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 
-const mockUser = { id: "user-1" };
+let mockUser: { id: string } | null = { id: "user-1" };
 vi.mock("@/providers/AuthProvider", () => ({
   useAuth: () => ({ user: mockUser }),
 }));
 
 let watchingIds: number[] = [];
+let listsLoading = false;
 vi.mock("@/providers/UserListsProvider", () => ({
-  useUserListsContext: () => ({ watchingIds }),
+  useUserListsContext: () => ({ watchingIds, loading: listsLoading }),
 }));
 
 /**
@@ -52,6 +53,11 @@ const episode = (animeId: number, hoursAgo: number) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // jsdom keeps one localStorage per file: without this, a cached bell from
+  // one case would show up in the next one before any fetch.
+  localStorage.clear();
+  mockUser = { id: "user-1" };
+  listsLoading = false;
   watchingIds = [154587];
   prefsRow.value = { notifications_seen_at: HOURS_AGO(24) };
   prefsError.value = null;
@@ -184,5 +190,110 @@ describe("useNotifications with today's pending episodes", () => {
 
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("useNotifications last-good cache", () => {
+  const KEY = "notifications:v1:user-1";
+
+  const cachedEpisode = (animeId: number, hoursAgo: number) => ({
+    ...episode(animeId, hoursAgo),
+    range: { from: 4, to: 4, total: null },
+    upcoming: false,
+  });
+
+  const seedCache = (animeId: number) =>
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({ items: [cachedEpisode(animeId, 3)], seenAt: HOURS_AGO(24) }),
+    );
+
+  const readCache = () => JSON.parse(localStorage.getItem(KEY) ?? "null");
+
+  // Restored one by one: restoreAllMocks would also strip `mockUpdate`'s return
+  // value, which later cases depend on.
+  let storageSpies: { mockRestore: () => void }[] = [];
+  afterEach(() => {
+    storageSpies.forEach((s) => s.mockRestore());
+    storageSpies = [];
+  });
+
+  it("shows the cached bell before the request answers", async () => {
+    // The real answer sits behind the lists, a prefs read and an API that may
+    // be asleep; the badge used to read 0 for all of that.
+    seedCache(154587);
+    vi.mocked(fetch).mockReturnValue(new Promise<Response>(() => {}));
+
+    const { result } = renderHook(() => useNotifications());
+
+    expect(result.current.items).toHaveLength(1);
+    expect(result.current.unreadCount).toBe(1);
+  });
+
+  it("overwrites the cache with a successful answer", async () => {
+    seedCache(999);
+
+    const { result } = renderHook(() => useNotifications());
+
+    await waitFor(() => expect(result.current.items[0]?.animeId).toBe(154587));
+    const cached = readCache();
+    expect(cached.items.map((n: { animeId: number }) => n.animeId)).toEqual([154587]);
+    expect(cached.seenAt).toBe(prefsRow.value?.notifications_seen_at);
+  });
+
+  it("drops the cache on sign-out", async () => {
+    // A shared browser must not show one account's episodes to the next.
+    const { result, rerender } = renderHook(() => useNotifications());
+    await waitFor(() => expect(readCache()).not.toBeNull());
+
+    mockUser = null;
+    rerender();
+
+    expect(localStorage.getItem(KEY)).toBeNull();
+    expect(result.current.items).toEqual([]);
+  });
+
+  it("keeps the cache while the lists are still loading", async () => {
+    // The provider starts with no watching ids. Read as "watches nothing", it
+    // would empty the bell and its cache before the real ids arrived.
+    seedCache(154587);
+    listsLoading = true;
+    watchingIds = [];
+
+    const { result } = renderHook(() => useNotifications());
+
+    await act(async () => {});
+    expect(result.current.items).toHaveLength(1);
+    expect(readCache().items).toHaveLength(1);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps the cached instant in step with markRead", async () => {
+    // Otherwise a reload right after reading lights the badge again.
+    const { result } = renderHook(() => useNotifications());
+    await waitFor(() => expect(result.current.unreadCount).toBe(1));
+
+    await act(async () => {
+      await result.current.markRead();
+    });
+
+    expect(Date.parse(readCache().seenAt)).toBeGreaterThan(Date.now() - 5000);
+  });
+
+  it("still works when storage throws", async () => {
+    // Private mode and blocked site data: the bell degrades to no cache.
+    storageSpies = [
+      vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+        throw new Error("SecurityError");
+      }),
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new Error("QuotaExceededError");
+      }),
+    ];
+
+    const { result } = renderHook(() => useNotifications());
+
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    expect(result.current.unreadCount).toBe(1);
   });
 });

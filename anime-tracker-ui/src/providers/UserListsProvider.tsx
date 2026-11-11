@@ -198,21 +198,6 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
       },
     );
 
-    // Batch fetch poster images
-    const allIds = [...new Set(mapped.flatMap((l) => l.poster_anime_ids))];
-    if (allIds.length > 0) {
-      try {
-        const batchData = await fetchAnimeBatch(allIds);
-        for (const list of mapped) {
-          list.poster_urls = list.poster_anime_ids.map(
-            (id) => batchData.get(id)?.poster ?? null,
-          );
-        }
-      } catch {
-        // Posters fail silently — cards show placeholders
-      }
-    }
-
     const seeds: Seed[] = tracked
       .filter(
         (row) =>
@@ -253,6 +238,24 @@ export function UserListsProvider({ children }: { children: ReactNode }) {
           .filter((row) => row.status === "watching")
           .map((row) => row.anime_id),
       );
+    }
+
+    // Published before the posters, not after: the bell, the statuses and the
+    // recommendations need none of them, and they used to wait on a batch
+    // request that can take its full 15 s timeout on a cold API. The lists
+    // themselves still wait, so cards do not flash placeholders first.
+    const allIds = [...new Set(mapped.flatMap((l) => l.poster_anime_ids))];
+    if (allIds.length > 0) {
+      try {
+        const batchData = await fetchAnimeBatch(allIds);
+        for (const list of mapped) {
+          list.poster_urls = list.poster_anime_ids.map(
+            (id) => batchData.get(id)?.poster ?? null,
+          );
+        }
+      } catch {
+        // Posters fail silently — cards show placeholders
+      }
     }
 
     if (!fetchError) setLists(mapped);
