@@ -28,7 +28,7 @@ export default function RecommendationsRoute() {
       fallback={
         <div className="relative min-h-screen">
           <SurfaceBackdrop />
-          <main className="relative z-10 max-w-[1400px] mx-auto px-4 md:px-10 lg:px-16 pt-32 md:pt-40">
+          <main className="relative z-10 max-w-page mx-auto px-4 md:px-10 lg:px-16 pt-32 md:pt-40">
             <div className="h-14 w-72 bg-white/5 rounded-lg animate-pulse mb-10" />
             <GridSkeleton variant="grid" count={10} />
           </main>

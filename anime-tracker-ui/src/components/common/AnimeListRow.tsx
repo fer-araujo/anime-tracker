@@ -203,7 +203,7 @@ export function AnimeListRow({
               {listCount > 0 ? (
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-neutral-700 px-1 text-[10px] font-bold leading-none text-white tabular-nums ring-2 ring-neutral-950"
+                  className="pointer-events-none absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-neutral-700 px-1 text-2xs font-bold leading-none text-white tabular-nums ring-2 ring-neutral-950"
                 >
                   {listCount}
                 </span>

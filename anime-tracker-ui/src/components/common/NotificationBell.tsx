@@ -67,7 +67,7 @@ export default function NotificationBell() {
         <Icon name="Bell" className="w-5 h-5" />
         {unreadCount > 0 && (
           <span
-            className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-primary text-[10px] font-bold text-black flex items-center justify-center"
+            className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-primary text-2xs font-bold text-black flex items-center justify-center"
             // The count is already in the button's label, so repeating it here
             // would make a screen reader say the number twice.
             aria-hidden="true"

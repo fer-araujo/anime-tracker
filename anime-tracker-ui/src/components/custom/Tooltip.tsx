@@ -263,7 +263,7 @@ export default function Tooltip({
             >
               {content}
               {synopsisLang && synopsisLang !== "es" && (
-                <div className="flex items-center gap-1 mt-3 pt-2 border-t border-white/10 text-[11px] text-white/40">
+                <div className="flex items-center gap-1 mt-3 pt-2 border-t border-white/10 text-xs text-white/40">
                   🇬🇧 Solo disponible en inglés
                 </div>
               )}
