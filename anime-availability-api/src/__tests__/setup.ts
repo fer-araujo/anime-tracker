@@ -7,7 +7,9 @@ process.env.STREAMING_AVAILABILITY_KEY = "";
 process.env.STREAMING_AVAIL_KEY = "";
 process.env.RAPIDAPI_KEY = "";
 process.env.REDIS_URL = "";
-process.env.FANART_TV_KEY = "55f7d6df186e9785f1b1fb85f89df381"; // Test mock key — not a real credential
+// Non-empty so the fanart service takes its request path in tests. Obviously
+// fake: a realistic-looking key in the repo reads as a leaked credential.
+process.env.FANART_TV_KEY = "test-fanart-key";
 
 beforeAll(() => {
   process.env.DISABLE_CIRCUIT_BREAKER = "true";
