@@ -15,15 +15,18 @@ export const Pill = ({
   tone,
   children,
   ariaLabel,
+  title,
 }: {
   tone: keyof typeof TONE_TEXT;
   children: React.ReactNode;
   ariaLabel?: string;
+  title?: string;
 }) => {
   return (
     <span
       className={cn("inline-flex items-center gap-1", CHIP_ON_IMAGE_BASE, TONE_TEXT[tone])}
       aria-label={ariaLabel}
+      title={title}
     >
       {children}
     </span>

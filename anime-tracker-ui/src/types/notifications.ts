@@ -10,8 +10,18 @@ export type EpisodeRange = {
   total: number | null;
 };
 
+/**
+ * Whether the source has postponed a broadcast. Mirrors the API's type; an
+ * API or a cached payload older than it has neither field, read as not delayed.
+ */
+export type BroadcastDelay = {
+  delayed: boolean;
+  /** ISO-8601 of the new date, or null when the source states none usable. */
+  delayedUntil: string | null;
+};
+
 /** Episodes of something the user is watching: released, or due later today. */
-export type EpisodeNotification = {
+export type EpisodeNotification = BroadcastDelay & {
   animeId: number;
   /** The last episode of the release, same as `range.to`. */
   episode: number;
@@ -26,6 +36,19 @@ export type EpisodeNotification = {
   title: string;
   poster: string | null;
 };
+
+/**
+ * A notification as any API version, or any cached payload, may have sent it:
+ * the fields added after the first version may be missing.
+ * `normalizeNotification` fills them in.
+ */
+export type RawEpisodeNotification = Omit<
+  EpisodeNotification,
+  "range" | "upcoming" | "delayed" | "delayedUntil"
+> &
+  Partial<
+    Pick<EpisodeNotification, "range" | "upcoming" | "delayed" | "delayedUntil">
+  >;
 
 /**
  * What the bell keeps between reloads. Every field is already a string or a

@@ -2,11 +2,20 @@
 
 import Link from "next/link";
 import { CARD_FOCUS } from "@/lib/cardStyles";
-import { formatCdmxTime, formatEpisodeRange, timeAgo } from "@/lib/episodes";
+import {
+  formatCdmxTime,
+  formatDelayLabel,
+  formatEpisodeRange,
+  timeAgo,
+} from "@/lib/episodes";
 import { cn } from "@/lib/utils";
 import type { EpisodeNotification } from "@/types/notifications";
 
-/** One release in the bell: out already (with its unread dot), or due today. */
+/**
+ * One release in the bell: out already (with its unread dot), due today, or
+ * postponed — which replaces the time, since neither "hace 2 h" nor "sale a
+ * las 21:30" is true of an episode that did not air in its slot.
+ */
 export function NotificationRow({
   n,
   upcoming,
@@ -29,9 +38,9 @@ export function NotificationRow({
           "flex items-center gap-4 px-5 py-3.5 hover:bg-white/10 transition-colors",
           CARD_FOCUS,
           // Dimmed, not removed: a read episode is still the answer to "which
-          // one came out today". A pending one is not dimmed — it has not been
-          // read, it has not happened.
-          !upcoming && !unread && "opacity-60",
+          // one came out today". A pending or delayed one is not dimmed — it
+          // has not been read, it has not happened.
+          !upcoming && !unread && !n.delayed && "opacity-60",
         )}
       >
         {/* 2:3, the poster's own ratio. */}
@@ -50,7 +59,11 @@ export function NotificationRow({
           </span>
           <span className="block mt-1 text-sm text-white/60">
             {formatEpisodeRange(n.range)} ·{" "}
-            {upcoming ? (
+            {n.delayed ? (
+              <span className="text-amber-300">
+                {formatDelayLabel(n.delayedUntil)}
+              </span>
+            ) : upcoming ? (
               <span className="text-sky-300">
                 Sale a las {formatCdmxTime(n.airedAt)}
               </span>

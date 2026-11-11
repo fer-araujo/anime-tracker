@@ -135,6 +135,26 @@ describe("useNotifications", () => {
     expect(result.current.items[0].range).toEqual({ from: 4, to: 4, total: null });
     expect(result.current.items[0].upcoming).toBe(false);
   });
+
+  it("never counts a delayed episode as unread, though its slot has passed", async () => {
+    // Its slot passing is when it did not come out: counting it announced an
+    // episode nobody could watch.
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          episode(154587, 3),
+          { ...episode(171018, 2), delayed: true, delayedUntil: null },
+        ],
+      }),
+    } as Response);
+
+    const { result } = renderHook(() => useNotifications());
+
+    await waitFor(() => expect(result.current.items).toHaveLength(2));
+    expect(result.current.unreadCount).toBe(1);
+    expect(result.current.isUnread(result.current.items[1])).toBe(false);
+  });
 });
 
 describe("useNotifications with today's pending episodes", () => {
@@ -227,6 +247,19 @@ describe("useNotifications last-good cache", () => {
     const { result } = renderHook(() => useNotifications());
 
     expect(result.current.items).toHaveLength(1);
+    expect(result.current.unreadCount).toBe(1);
+  });
+
+  it("reads a cached bell from before delays existed as not delayed", async () => {
+    seedCache(154587);
+    vi.mocked(fetch).mockReturnValue(new Promise<Response>(() => {}));
+
+    const { result } = renderHook(() => useNotifications());
+
+    expect(result.current.items[0]).toMatchObject({
+      delayed: false,
+      delayedUntil: null,
+    });
     expect(result.current.unreadCount).toBe(1);
   });
 

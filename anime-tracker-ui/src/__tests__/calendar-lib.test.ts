@@ -269,6 +269,37 @@ describe("isAiringCalendar", () => {
     expect(isAiringCalendar(JSON.parse(JSON.stringify(valid)))).toBe(true);
   });
 
+  it("accepts a week cached before delays existed, and one that carries them", () => {
+    // `valid` has no delay fields: the shape every cached week had until now.
+    expect(isAiringCalendar(valid)).toBe(true);
+    const delayed = {
+      ...valid,
+      data: [
+        {
+          ...valid.data[0],
+          items: [
+            { ...valid.data[0].items[0], delayed: true, delayedUntil: null },
+            {
+              ...valid.data[0].items[0],
+              delayed: true,
+              delayedUntil: "2026-10-25T20:00:00.000Z",
+            },
+          ],
+        },
+      ],
+    };
+    expect(isAiringCalendar(JSON.parse(JSON.stringify(delayed)))).toBe(true);
+  });
+
+  it("rejects delay fields of the wrong shape", () => {
+    const withItem = (extra: object) => ({
+      ...valid,
+      data: [{ ...valid.data[0], items: [{ ...valid.data[0].items[0], ...extra }] }],
+    });
+    expect(isAiringCalendar(withItem({ delayed: "yes" }))).toBe(false);
+    expect(isAiringCalendar(withItem({ delayedUntil: 5 }))).toBe(false);
+  });
+
   it("rejects anything the page could not draw", () => {
     expect(isAiringCalendar(null)).toBe(false);
     expect(isAiringCalendar([])).toBe(false);

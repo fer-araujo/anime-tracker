@@ -1,6 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
-import { formatCdmxTime, formatEpisodeRange } from "@/lib/episodes";
+import { Pill } from "@/components/common/Pills";
+import { DELAYED_LABEL } from "@/constants/broadcast";
+import {
+  formatCdmxTime,
+  formatDelayLabel,
+  formatEpisodeRange,
+} from "@/lib/episodes";
 import { STATUS_LABELS } from "@/constants/tracking";
 import {
   CARD_FOCUS,
@@ -78,12 +84,23 @@ export function CalendarEntryCard({
         className={cn("absolute inset-x-0 bottom-0 h-3/5 -z-10", SCRIM_BOTTOM)}
       />
 
-      <time
-        dateTime={entry.airingAt}
-        className={cn("absolute left-2 top-2 tabular-nums", CHIP_ON_IMAGE)}
-      >
-        {formatCdmxTime(entry.airingAt)}
-      </time>
+      {/* One row, so the delay chip sits beside the time instead of over it. */}
+      <span className="absolute inset-x-2 top-2 flex flex-wrap gap-1">
+        <time
+          dateTime={entry.airingAt}
+          className={cn("tabular-nums", CHIP_ON_IMAGE)}
+        >
+          {formatCdmxTime(entry.airingAt)}
+        </time>
+        {entry.delayed ? (
+          // The date only in the title and for screen readers: the card is
+          // narrow, and "Retrasado" alone is what changes what the viewer does.
+          <Pill tone="amber" title={formatDelayLabel(entry.delayedUntil)}>
+            <span aria-hidden="true">{DELAYED_LABEL}</span>
+            <span className="sr-only">{formatDelayLabel(entry.delayedUntil)}</span>
+          </Pill>
+        ) : null}
+      </span>
 
       <span className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 px-2.5 pb-2.5">
         <span className="text-[13px] font-semibold leading-tight text-white line-clamp-2 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
