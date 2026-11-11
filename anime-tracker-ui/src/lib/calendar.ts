@@ -93,6 +93,96 @@ export function cdmxDayOfMonth(now: number = Date.now()): string {
   return CDMX_DAY_OF_MONTH.format(now);
 }
 
+/**
+ * How often the calendar re-reads the clock. Only the CDMX date is drawn from
+ * it, so a minute late at midnight is invisible; `useNow` also catches up the
+ * moment a backgrounded tab comes back.
+ */
+export const CALENDAR_CLOCK_MS = 60_000;
+
+const CDMX_DATE = new Intl.DateTimeFormat("en-US", {
+  timeZone: CDMX_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** Today's CDMX date as `YYYY-MM-DD`, the same form the API labels days with. */
+export function cdmxDateKey(now: number = Date.now()): string {
+  // Assembled from parts: no locale promises a `YYYY-MM-DD` layout.
+  const parts = Object.fromEntries(
+    CDMX_DATE.formatToParts(now).map((p) => [p.type, p.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+/**
+ * The Sunday that starts the week `week` weeks away from `today`, matching the
+ * API's Sunday-to-Saturday grid. Pure date arithmetic on a CDMX label, read
+ * as UTC for the same reason as `formatDate`.
+ */
+export function calendarWeekStart(today: string, week: CalendarWeek): string {
+  const date = new Date(`${today}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - date.getUTCDay() + week * 7);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Today, if the week on screen contains it. Read from the browser's clock
+ * rather than the answer's `meta.today`, which froze at the moment it was
+ * fetched: a cached week, or a tab left open past midnight, would keep
+ * highlighting yesterday.
+ */
+export function calendarToday(
+  meta: AiringCalendar["meta"],
+  today: string,
+): string | null {
+  return today >= meta.firstDate && today <= meta.lastDate ? today : null;
+}
+
+const isString = (v: unknown): v is string => typeof v === "string";
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null;
+
+function isCalendarEntry(v: unknown): boolean {
+  return (
+    isRecord(v) &&
+    typeof v.animeId === "number" &&
+    isString(v.title) &&
+    (v.poster === null || isString(v.poster)) &&
+    isString(v.airingAt) &&
+    isRecord(v.range) &&
+    typeof v.range.from === "number" &&
+    typeof v.range.to === "number"
+  );
+}
+
+function isCalendarDay(v: unknown): boolean {
+  return (
+    isRecord(v) &&
+    isString(v.date) &&
+    (v.status === "ok" || v.status === "unavailable") &&
+    Array.isArray(v.items) &&
+    v.items.every(isCalendarEntry)
+  );
+}
+
+/**
+ * Whether a stored value can be drawn as a calendar. Down to each entry,
+ * because the cards read `range` and `airingAt` unguarded: a payload from an
+ * older build, or edited by hand, must fall back to loading, not crash.
+ */
+export function isAiringCalendar(v: unknown): v is AiringCalendar {
+  return (
+    isRecord(v) &&
+    isRecord(v.meta) &&
+    isString(v.meta.firstDate) &&
+    isString(v.meta.lastDate) &&
+    Array.isArray(v.data) &&
+    v.data.every(isCalendarDay)
+  );
+}
+
 /** The day a phone opens on: today, or else the first one with something on it. */
 export function pickInitialDay(
   days: CalendarDay[],
@@ -114,14 +204,16 @@ export function isWeekEmpty(days: CalendarDay[]): boolean {
 export function resolveCalendarView(state: {
   loading: boolean;
   hasTrackedAnime: boolean;
-  failed: boolean;
   hasCalendar: boolean;
 }): CalendarView {
+  // Ahead of loading and of failure: a week in hand, even one remembered from
+  // the last visit, beats a skeleton while the API wakes and beats an error
+  // when it does not. `hasCalendar` is only true for the week on screen.
+  if (state.hasTrackedAnime && state.hasCalendar) return "ready";
   if (state.loading) return "loading";
   // Ahead of the error: with nothing tracked there was no request to fail.
   if (!state.hasTrackedAnime) return "untracked";
-  if (state.failed || !state.hasCalendar) return "error";
-  return "ready";
+  return "error";
 }
 
 /** The page's address for a week and a filter, leaving out the defaults. */

@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { calendarCachePrefix, clearLastGoodWhere } from "@/lib/lastGood";
 import { useRouter, usePathname } from "next/navigation";
 
 type AuthContextValue = {
@@ -43,6 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       setUser(s?.user ?? null);
       setLoading(false);
+
+      // Here rather than in the calendar hook, which is only mounted on
+      // /calendar: this event also fires for a sign-out from any page or
+      // another tab. Every account's weeks go, since the user who left is
+      // no longer known and the next visit simply loads cold.
+      if (event === "SIGNED_OUT") clearLastGoodWhere(calendarCachePrefix());
 
       if (event === "SIGNED_OUT" && pathname !== "/login" && pathname !== "/auth") {
         router.push("/login");

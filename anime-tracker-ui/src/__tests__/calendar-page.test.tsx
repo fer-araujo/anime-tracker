@@ -1,9 +1,10 @@
 import { StrictMode } from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AiringCalendar, CalendarDay } from "@/types/calendar";
 import type { TrackingStatus } from "@/types/anime";
+import { calendarCacheKey } from "@/lib/lastGood";
 
 const { lib, router, nav } = vi.hoisted(() => ({
   lib: {
@@ -67,12 +68,28 @@ const entry = (animeId: number, title: string) => ({
 
 const grid = () => screen.findByTestId("week-grid");
 
+/** Noon in CDMX on DATES[4], the Thursday the fixtures call today. */
+const THURSDAY_NOON = "2026-10-22T18:00:00Z";
+
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
+  // Only the date: "today" is read from the clock, while waitFor and
+  // userEvent still need real timers.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(THURSDAY_NOON));
+  Object.defineProperty(document, "visibilityState", {
+    value: "visible",
+    configurable: true,
+  });
   lib.user = { id: "u1" };
   lib.loading = false;
   lib.statuses = new Map([[1, "watching"]]);
   nav.params = new URLSearchParams();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("AiringCalendarPage", () => {
@@ -141,6 +158,9 @@ describe("AiringCalendarPage", () => {
   });
 
   it("dims nothing in a week that does not contain today", async () => {
+    // The fixtures' week, seen as last week from the Monday after.
+    vi.setSystemTime(new Date("2026-10-26T18:00:00Z"));
+    nav.params = new URLSearchParams("week=-1");
     fetchAiringCalendar.mockResolvedValue(calendar(null));
 
     render(<AiringCalendarPage />);
@@ -403,5 +423,196 @@ describe("AiringCalendarPage filters and time", () => {
     const view = within(await grid());
 
     expect(view.getByText("Uno")).toBeInTheDocument();
+  });
+});
+
+describe("AiringCalendarPage remembers the last answer", () => {
+  const remember = (data: unknown, userId = "u1", weekStart = DATES[0]) =>
+    localStorage.setItem(
+      calendarCacheKey(userId, weekStart),
+      typeof data === "string" ? data : JSON.stringify(data),
+    );
+  const remembered = () =>
+    calendar(DATES[4], { [DATES[4]]: [entry(1, "Guardado")] });
+
+  it("shows the remembered week before the API answers", async () => {
+    remember(remembered());
+    fetchAiringCalendar.mockReturnValue(new Promise(() => {}));
+
+    render(<AiringCalendarPage />);
+
+    expect(within(await grid()).getByText("Guardado")).toBeInTheDocument();
+  });
+
+  it("replaces it with the fresh answer, and remembers that one", async () => {
+    remember(remembered());
+    const fresh = calendar(DATES[4], { [DATES[4]]: [entry(1, "Fresco")] });
+    fetchAiringCalendar.mockResolvedValue(fresh);
+
+    render(<AiringCalendarPage />);
+    const view = within(await grid());
+
+    expect(await view.findByText("Fresco")).toBeInTheDocument();
+    expect(view.queryByText("Guardado")).not.toBeInTheDocument();
+    expect(
+      JSON.parse(localStorage.getItem(calendarCacheKey("u1", DATES[0]))!),
+    ).toEqual(fresh);
+  });
+
+  it("keeps the remembered week, without an error, when the API fails", async () => {
+    remember(remembered());
+    fetchAiringCalendar.mockRejectedValue(new Error("503"));
+
+    render(<AiringCalendarPage />);
+    await waitFor(() => expect(fetchAiringCalendar).toHaveBeenCalled());
+    // Lets the rejection settle before looking.
+    await act(async () => {});
+
+    expect(within(await grid()).getByText("Guardado")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Reintentar" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the error when the API fails and only another week is remembered", async () => {
+    remember(remembered());
+    nav.params = new URLSearchParams("week=1");
+    fetchAiringCalendar.mockRejectedValue(new Error("503"));
+
+    render(<AiringCalendarPage />);
+
+    expect(
+      await screen.findByRole("button", { name: "Reintentar" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Guardado")).not.toBeInTheDocument();
+  });
+
+  it("remembers the week under the date it starts, not its offset", async () => {
+    fetchAiringCalendar.mockResolvedValue(calendar(DATES[4]));
+
+    render(<AiringCalendarPage />);
+    await grid();
+
+    await waitFor(() =>
+      expect(localStorage.getItem("calendar:v1:u1:2026-10-18")).not.toBeNull(),
+    );
+  });
+
+  it.each([
+    ["not JSON", () => "{not json"],
+    ["the wrong shape", () => ({ meta: {}, data: 5 })],
+    [
+      "another week stored under this key",
+      () => ({
+        ...remembered(),
+        meta: { ...remembered().meta, firstDate: "2026-10-11" },
+      }),
+    ],
+  ])("ignores a remembered entry that is %s", (_, payload) => {
+    remember(payload());
+    fetchAiringCalendar.mockReturnValue(new Promise(() => {}));
+
+    render(<AiringCalendarPage />);
+
+    expect(screen.getByTestId("calendar-loading")).toBeInTheDocument();
+  });
+
+  it("never shows another account's week", () => {
+    remember(remembered(), "u2");
+    fetchAiringCalendar.mockReturnValue(new Promise(() => {}));
+
+    render(<AiringCalendarPage />);
+
+    expect(screen.getByTestId("calendar-loading")).toBeInTheDocument();
+  });
+});
+
+describe("AiringCalendarPage past midnight", () => {
+  /** 23:59 on Thursday in CDMX. */
+  const THURSDAY_LATE = "2026-10-23T05:59:00Z";
+
+  const crossMidnight = async () => {
+    vi.setSystemTime(new Date("2026-10-23T06:01:00Z"));
+    // How a tab left open overnight notices: it comes back into view.
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+  };
+
+  const week = () =>
+    calendar(DATES[4], {
+      [DATES[4]]: [entry(1, "Del jueves")],
+      [DATES[5]]: [entry(1, "Del viernes")],
+      [DATES[6]]: [entry(1, "Del sábado")],
+    });
+
+  const sections = () =>
+    screen.getByTestId("week-grid").querySelectorAll("section");
+
+  beforeEach(() => {
+    vi.setSystemTime(new Date(THURSDAY_LATE));
+    fetchAiringCalendar.mockResolvedValue(week());
+  });
+
+  it("moves today and asks again", async () => {
+    render(<AiringCalendarPage />);
+    await grid();
+    expect(sections()[4]).toHaveAttribute("aria-current", "date");
+
+    await crossMidnight();
+
+    expect(sections()[5]).toHaveAttribute("aria-current", "date");
+    expect(sections()[4]).toHaveAttribute("data-dimmed");
+    await waitFor(() => expect(fetchAiringCalendar).toHaveBeenCalledTimes(2));
+  });
+
+  it("asks again when midnight starts a new week", async () => {
+    // 23:59 on Saturday the 24th: Sunday is the first day of the next week.
+    vi.setSystemTime(new Date("2026-10-25T05:59:00Z"));
+    render(<AiringCalendarPage />);
+    await grid();
+
+    vi.setSystemTime(new Date("2026-10-25T06:01:00Z"));
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await waitFor(() => expect(fetchAiringCalendar).toHaveBeenCalledTimes(2));
+    expect(fetchAiringCalendar).toHaveBeenLastCalledWith([1], 0);
+  });
+
+  it("moves the phone to the new today when nothing was picked", async () => {
+    render(<AiringCalendarPage />);
+    const picker = within(await screen.findByTestId("day-picker"));
+    expect(picker.getByText("Del jueves")).toBeInTheDocument();
+
+    await crossMidnight();
+
+    expect(picker.getByText("Del viernes")).toBeInTheDocument();
+    expect(picker.queryByText("Del jueves")).not.toBeInTheDocument();
+  });
+
+  it("moves the phone on when today was picked by hand", async () => {
+    const user = userEvent.setup();
+    render(<AiringCalendarPage />);
+    const picker = within(await screen.findByTestId("day-picker"));
+    await user.click(picker.getByRole("button", { name: /22/ }));
+
+    await crossMidnight();
+
+    expect(picker.getByText("Del viernes")).toBeInTheDocument();
+  });
+
+  it("keeps another day the user picked", async () => {
+    const user = userEvent.setup();
+    render(<AiringCalendarPage />);
+    const picker = within(await screen.findByTestId("day-picker"));
+    await user.click(picker.getByRole("button", { name: /24/ }));
+    expect(picker.getByText("Del sábado")).toBeInTheDocument();
+
+    await crossMidnight();
+
+    expect(picker.getByText("Del sábado")).toBeInTheDocument();
+    expect(picker.queryByText("Del viernes")).not.toBeInTheDocument();
   });
 });
