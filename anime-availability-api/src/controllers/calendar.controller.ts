@@ -104,6 +104,7 @@ export async function getCalendar(
           animeId: b.anilistId,
           airingAt: new Date(b.airingAt * 1000).toISOString(),
           range: b.range,
+          ...b.delay,
           ...broadcastLabel(b, cards, records),
         }))
         .sort(compareCalendarEntries),

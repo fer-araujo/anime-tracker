@@ -1,4 +1,4 @@
-import type { EpisodeRange } from "../types/notifications.js";
+import type { BroadcastDelay, EpisodeRange } from "../types/notifications.js";
 import { logger } from "../utils/logger.js";
 import { hybridCache } from "../utils/cache.js";
 import { isoWeeksBetween } from "../utils/isoWeek.js";
@@ -33,7 +33,17 @@ export type AsTimetableEntry = {
   episodes?: number | null;
   lengthMin?: number | null;
   donghua?: boolean;
+  /** Seen live: `aired`, `unaired` and `delayed-air`. */
   airingStatus?: string | null;
+  /**
+   * Present on every row, but no delayed sample has been seen yet, so the
+   * format is assumed (ISO-8601, likely a zero date when unset) and checked
+   * before use. See `asBroadcastDelay`.
+   */
+  delayedFrom?: string | null;
+  delayedUntil?: string | null;
+  /** Free text in English; not shown, since its wording is unknown. */
+  delayedText?: string | null;
 };
 
 /** A series record, which is where the ids and the card metadata live. */
@@ -80,6 +90,37 @@ export function asEpisodeRange(row: AsTimetableEntry): EpisodeRange {
   const start = row.subtractedEpisodeNumber;
   const from = typeof start === "number" && start > 0 && start <= to ? start : to;
   return { from, to, total: row.episodes ?? null };
+}
+
+/**
+ * Earliest `delayedUntil` taken as a real date. A Go-style zero value
+ * (`0001-01-01T00:00:00Z`) parses fine, so "it parses" is not enough.
+ */
+const MIN_DELAY_DATE_MS = Date.UTC(2000, 0, 1);
+
+/**
+ * Whether a timetable row has been postponed, and to when.
+ *
+ * `airingStatus` is the only signal trusted: the delay fields exist on every
+ * row and their unset value has not been observed. A new date is passed on
+ * only when it is a real one after the original slot, because a wrong date in
+ * the bell is worse than "delayed" with none.
+ */
+export function asBroadcastDelay(row: AsTimetableEntry): BroadcastDelay {
+  if (row.airingStatus !== "delayed-air") {
+    return { delayed: false, delayedUntil: null };
+  }
+  const until = Date.parse(row.delayedUntil ?? "");
+  const slot = Date.parse(row.episodeDate);
+  const usable =
+    Number.isFinite(until) &&
+    until > MIN_DELAY_DATE_MS &&
+    Number.isFinite(slot) &&
+    until > slot;
+  return {
+    delayed: true,
+    delayedUntil: usable ? new Date(until).toISOString() : null,
+  };
 }
 
 function headers(): Record<string, string> | null {

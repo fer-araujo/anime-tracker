@@ -1,5 +1,5 @@
 import type { DayName } from "../utils/cdmxCalendar.js";
-import type { EpisodeRange } from "./notifications.js";
+import type { BroadcastDelay, EpisodeRange } from "./notifications.js";
 
 /** What the calendar's ordering rule reads from an entry. */
 export type CalendarSortable = {
@@ -16,7 +16,7 @@ export type CalendarRequest = {
   week: -1 | 0 | 1;
 };
 
-export type CalendarEntry = CalendarSortable & {
+export type CalendarEntry = CalendarSortable & BroadcastDelay & {
   /** Always known here: every row comes from a dated timetable. */
   airingAt: string;
   poster: string | null;

@@ -95,6 +95,39 @@ describe("POST /notifications", () => {
     });
   });
 
+  it("carries whether an episode is delayed, and to when", async () => {
+    mockTimetable.mockResolvedValue([
+      row("frieren", 4, 3),
+      row("dandadan", 6, 2, {
+        airingStatus: "delayed-air",
+        delayedUntil: "2026-10-29T14:00:00Z",
+      }),
+    ]);
+    mockIndex.mockResolvedValue(
+      indexed([
+        ["frieren", 154587],
+        ["dandadan", 171018],
+      ]),
+    );
+
+    const res = await post({ animeIds: [154587, 171018], since: DAY_AGO });
+
+    expect(res.body.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          animeId: 154587,
+          delayed: false,
+          delayedUntil: null,
+        }),
+        expect.objectContaining({
+          animeId: 171018,
+          delayed: true,
+          delayedUntil: "2026-10-29T14:00:00.000Z",
+        }),
+      ]),
+    );
+  });
+
   it("never lists an episode due after today's CDMX day ends", async () => {
     // 15 h ahead is 01:00 CDMX on Friday: tomorrow, however close.
     mockTimetable.mockResolvedValue([row("frieren", 5, -15)]);
