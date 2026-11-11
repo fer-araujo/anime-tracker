@@ -96,13 +96,18 @@ Names only; never commit real values.
 |---|---|
 | `TMDB_KEY` | TMDB API key (images, watch providers). |
 | `MAL_CLIENT_ID` | MyAnimeList API client id. |
-| `STREAMING_AVAILABILITY_KEY` | RapidAPI Streaming Availability key. |
+| `ANIMESCHEDULE_TOKEN` | animeSchedule token (timetables, delays, calendar and notifications). |
+| `FANART_TV_KEY` | fanart.tv key (title logos and backdrops). |
+| `STREAMING_AVAILABILITY_KEY` | RapidAPI Streaming Availability key. `STREAMING_AVAIL_KEY` and `RAPIDAPI_KEY` are read as fallbacks. |
+| `RAPIDAPI_DAILY_LIMIT` | Daily cap on RapidAPI calls, so the monthly quota is never exhausted. |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | Server-side Supabase access (stored provider verdicts). |
 | `REDIS_URL`, `REDIS_TOKEN` | Upstash Redis cache (optional; falls back to memory). |
-| `ANILIST_URL`, `DEFAULT_COUNTRY`, `PORT` | Optional overrides. |
+| `ALLOWED_ORIGINS` | Comma-separated CORS origins for the web app. |
+| `PORT`, `LOG_LEVEL` | Server port and log verbosity. |
+| `ANILIST_URL`, `DEFAULT_COUNTRY`, `PROVIDER_CACHE_DAYS` | Optional overrides. |
 | `CACHE_TTL_*`, `DISABLE_CIRCUIT_BREAKER` | Optional cache and resilience tuning. |
 
-Also read by the code but not yet in `.env.example`: `ANIMESCHEDULE_TOKEN`, `FANART_TV_KEY`, `RAPIDAPI_DAILY_LIMIT`, `ALLOWED_ORIGINS`, `PROVIDER_CACHE_DAYS`, `LOG_LEVEL`.
+`RENDER_EXTERNAL_URL` is set by Render itself and drives the keep-awake self-ping.
 
 **`anime-tracker-ui/.env.local`** (template: `.env.example`)
 
