@@ -26,3 +26,13 @@ export type EpisodeNotification = {
   title: string;
   poster: string | null;
 };
+
+/**
+ * What the bell keeps between reloads. Every field is already a string or a
+ * number — `airedAt` and `seenAt` are ISO strings, not Dates — so it survives
+ * a JSON round-trip as is.
+ */
+export type CachedNotifications = {
+  items: EpisodeNotification[];
+  seenAt: string;
+};
