@@ -14,6 +14,7 @@ import { useAiringCalendar } from "@/hooks/useAiringCalendar";
 import {
   calendarHref,
   calendarStatusChips,
+  calendarToday,
   filterCalendarByStatus,
   formatWeekRange,
   isWeekEmpty,
@@ -40,8 +41,14 @@ export function AiringCalendarPage() {
   const { user, loading: authLoading } = useAuth();
   const week = normalizeCalendarWeek(searchParams.get("week"));
   const requestedStatus = normalizeStatusFilter(searchParams.get("status"));
-  const { calendar, failed, loading, retry, hasTrackedAnime, statusByAnimeId } =
-    useAiringCalendar(week);
+  const {
+    calendar,
+    today: todayDate,
+    loading,
+    retry,
+    hasTrackedAnime,
+    statusByAnimeId,
+  } = useAiringCalendar(week);
   const [pickedDay, setPickedDay] = useState<string | null>(null);
 
   useEffect(() => {
@@ -53,12 +60,11 @@ export function AiringCalendarPage() {
   const view = resolveCalendarView({
     loading: authLoading || loading,
     hasTrackedAnime,
-    failed,
     hasCalendar: calendar !== null,
   });
   const shown = view === "ready" ? calendar : null;
   const allDays = shown?.data ?? [];
-  const today = shown?.meta.today ?? null;
+  const today = shown ? calendarToday(shown.meta, todayDate) : null;
 
   const chips = calendarStatusChips(allDays, statusByAnimeId);
   // A filter carried over from a week where that status had something: with no
@@ -180,7 +186,9 @@ export function AiringCalendarPage() {
               days={days}
               today={today}
               selected={selected}
-              onSelect={setPickedDay}
+              // Picking today means "follow today", so that past midnight
+              // the phone moves on with it; any other day is kept as chosen.
+              onSelect={(day) => setPickedDay(day === today ? null : day)}
               statuses={statusByAnimeId}
             />
           </>

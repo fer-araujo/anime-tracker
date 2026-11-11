@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
+  calendarCacheKey,
+  calendarCachePrefix,
   clearLastGood,
+  clearLastGoodWhere,
   notificationsCacheKey,
+  pruneCalendarCache,
   readLastGood,
   writeLastGood,
 } from "@/lib/lastGood";
@@ -59,5 +63,43 @@ describe("lastGood", () => {
   it("keys notifications per user, with a version", () => {
     expect(notificationsCacheKey("u1")).toBe("notifications:v1:u1");
     expect(notificationsCacheKey("u1")).not.toBe(notificationsCacheKey("u2"));
+  });
+});
+
+describe("calendar cache", () => {
+  it("keys a week per user on its start date, with a version", () => {
+    expect(calendarCacheKey("u1", "2026-10-18")).toBe(
+      "calendar:v1:u1:2026-10-18",
+    );
+    expect(calendarCacheKey("u1", "2026-10-18")).not.toBe(
+      calendarCacheKey("u2", "2026-10-18"),
+    );
+  });
+
+  it("prunes a user's weeks older than the oldest the page can ask for", () => {
+    for (const week of ["2026-10-04", "2026-10-11", "2026-10-18", "2026-10-25"]) {
+      writeLastGood(calendarCacheKey("u1", week), week);
+    }
+    writeLastGood(calendarCacheKey("u2", "2026-10-04"), "other user");
+
+    pruneCalendarCache("u1", "2026-10-11");
+
+    expect(readLastGood(calendarCacheKey("u1", "2026-10-04"))).toBeNull();
+    expect(readLastGood(calendarCacheKey("u1", "2026-10-11"))).toBe("2026-10-11");
+    expect(readLastGood(calendarCacheKey("u1", "2026-10-25"))).toBe("2026-10-25");
+    // Only the writer's own weeks: another account prunes on its own visit.
+    expect(readLastGood(calendarCacheKey("u2", "2026-10-04"))).toBe("other user");
+  });
+
+  it("clears every account's weeks and nothing else", () => {
+    writeLastGood(calendarCacheKey("u1", "2026-10-18"), 1);
+    writeLastGood(calendarCacheKey("u2", "2026-10-18"), 2);
+    writeLastGood(notificationsCacheKey("u1"), 3);
+
+    clearLastGoodWhere(calendarCachePrefix());
+
+    expect(readLastGood(calendarCacheKey("u1", "2026-10-18"))).toBeNull();
+    expect(readLastGood(calendarCacheKey("u2", "2026-10-18"))).toBeNull();
+    expect(readLastGood(notificationsCacheKey("u1"))).toBe(3);
   });
 });

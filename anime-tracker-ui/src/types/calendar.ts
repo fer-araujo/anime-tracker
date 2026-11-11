@@ -37,3 +37,12 @@ export type AiringCalendar = {
   };
   data: CalendarDay[];
 };
+
+/**
+ * A calendar tagged with the user and week it answers for, so one fetched or
+ * remembered for another week is never drawn under the current heading.
+ */
+export type CalendarSnapshot = {
+  key: string;
+  calendar: AiringCalendar;
+};

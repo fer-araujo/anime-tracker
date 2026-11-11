@@ -52,3 +52,53 @@ export function clearLastGood(key: string): void {
 export function notificationsCacheKey(userId: string): string {
   return `notifications:v1:${userId}`;
 }
+
+/**
+ * Removes every stored key under `prefix` that `matches` accepts. Keys are
+ * collected before any is removed, because removing shifts `Storage.key(i)`.
+ */
+export function clearLastGoodWhere(
+  prefix: string,
+  matches: (key: string) => boolean = () => true,
+): void {
+  try {
+    const store = storage();
+    if (!store) return;
+    const doomed: string[] = [];
+    for (let i = 0; i < store.length; i++) {
+      const key = store.key(i);
+      if (key?.startsWith(prefix) && matches(key)) doomed.push(key);
+    }
+    for (const key of doomed) store.removeItem(key);
+  } catch {
+    // Unreachable storage holds nothing to prune.
+  }
+}
+
+/** Without a user, the prefix of every account's calendars. */
+export function calendarCachePrefix(userId?: string): string {
+  return userId ? `calendar:v1:${userId}:` : "calendar:v1:";
+}
+
+/**
+ * Keyed on the CDMX date the week starts, not on the -1/0/1 the page asks
+ * with: "this week" names a different week every Sunday, and a relative key
+ * would show last week's episodes under this week's heading.
+ */
+export function calendarCacheKey(userId: string, weekStart: string): string {
+  return `${calendarCachePrefix(userId)}${weekStart}`;
+}
+
+/**
+ * Drops a user's weeks that start before `oldestWeekStart`. The page can only
+ * ask for last, this and next week, so anything older is never read again and
+ * would otherwise pile up one key per week for as long as the browser lives.
+ */
+export function pruneCalendarCache(
+  userId: string,
+  oldestWeekStart: string,
+): void {
+  const prefix = calendarCachePrefix(userId);
+  // `YYYY-MM-DD` sorts as text in date order.
+  clearLastGoodWhere(prefix, (key) => key.slice(prefix.length) < oldestWeekStart);
+}

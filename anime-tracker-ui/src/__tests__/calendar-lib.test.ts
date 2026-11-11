@@ -2,7 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   calendarHref,
   calendarStatusChips,
+  calendarToday,
+  calendarWeekStart,
+  cdmxDateKey,
   filterCalendarByStatus,
+  isAiringCalendar,
   normalizeStatusFilter,
   cdmxDayOfMonth,
   formatDayLabel,
@@ -108,7 +112,6 @@ describe("resolveCalendarView", () => {
   const base = {
     loading: false,
     hasTrackedAnime: true,
-    failed: false,
     hasCalendar: true,
   };
 
@@ -116,16 +119,27 @@ describe("resolveCalendarView", () => {
     expect(resolveCalendarView(base)).toBe("ready");
   });
 
-  it("puts loading ahead of everything", () => {
-    expect(resolveCalendarView({ ...base, loading: true, failed: true })).toBe(
+  it("keeps a week in hand on screen while the next answer loads", () => {
+    // A remembered week, or this one being asked again after midnight.
+    expect(resolveCalendarView({ ...base, loading: true })).toBe("ready");
+  });
+
+  it("loads while there is no week to show", () => {
+    expect(resolveCalendarView({ ...base, loading: true, hasCalendar: false })).toBe(
       "loading",
     );
   });
 
   it("says nothing is tracked before reporting a failure", () => {
     expect(
-      resolveCalendarView({ ...base, hasTrackedAnime: false, failed: true }),
+      resolveCalendarView({ ...base, hasTrackedAnime: false, hasCalendar: false }),
     ).toBe("untracked");
+  });
+
+  it("never shows a remembered week to someone who now tracks nothing", () => {
+    expect(resolveCalendarView({ ...base, hasTrackedAnime: false })).toBe(
+      "untracked",
+    );
   });
 
   it("treats a missing answer as an error", () => {
@@ -191,5 +205,80 @@ describe("status filter", () => {
     expect(calendarHref(-1, "watching")).toBe(
       "/calendar?week=-1&status=watching",
     );
+  });
+});
+
+describe("cdmxDateKey", () => {
+  it("names the CDMX date, which trails UTC by six hours", () => {
+    // 05:59 UTC on the 23rd is still 23:59 on the 22nd in Mexico.
+    expect(cdmxDateKey(Date.parse("2026-10-23T05:59:00Z"))).toBe("2026-10-22");
+    expect(cdmxDateKey(Date.parse("2026-10-23T06:00:00Z"))).toBe("2026-10-23");
+  });
+});
+
+describe("calendarWeekStart", () => {
+  it("starts the week on Sunday, as the API's grid does", () => {
+    expect(calendarWeekStart("2026-10-22", 0)).toBe("2026-10-18");
+    expect(calendarWeekStart("2026-10-18", 0)).toBe("2026-10-18");
+    expect(calendarWeekStart("2026-10-24", 0)).toBe("2026-10-18");
+  });
+
+  it("moves whole weeks, across a month", () => {
+    expect(calendarWeekStart("2026-10-22", -1)).toBe("2026-10-11");
+    expect(calendarWeekStart("2026-10-22", 1)).toBe("2026-10-25");
+    expect(calendarWeekStart("2026-11-01", -1)).toBe("2026-10-25");
+  });
+});
+
+describe("calendarToday", () => {
+  const meta = {
+    firstDate: "2026-10-18",
+    lastDate: "2026-10-24",
+    today: null,
+    week: 0 as const,
+  };
+
+  it("is today inside the week, and nothing outside it", () => {
+    expect(calendarToday(meta, "2026-10-18")).toBe("2026-10-18");
+    expect(calendarToday(meta, "2026-10-24")).toBe("2026-10-24");
+    expect(calendarToday(meta, "2026-10-25")).toBeNull();
+  });
+});
+
+describe("isAiringCalendar", () => {
+  const valid = {
+    meta: { firstDate: "2026-10-18", lastDate: "2026-10-24", today: null, week: 0 },
+    data: [
+      {
+        date: "2026-10-18",
+        status: "ok",
+        items: [
+          {
+            animeId: 1,
+            title: "Uno",
+            poster: null,
+            airingAt: "2026-10-18T20:00:00Z",
+            range: { from: 1, to: 1, total: null },
+          },
+        ],
+      },
+    ],
+  };
+
+  it("accepts what the API answers, after a JSON round trip", () => {
+    expect(isAiringCalendar(JSON.parse(JSON.stringify(valid)))).toBe(true);
+  });
+
+  it("rejects anything the page could not draw", () => {
+    expect(isAiringCalendar(null)).toBe(false);
+    expect(isAiringCalendar([])).toBe(false);
+    expect(isAiringCalendar({ ...valid, data: "nope" })).toBe(false);
+    expect(isAiringCalendar({ ...valid, meta: {} })).toBe(false);
+    expect(
+      isAiringCalendar({
+        ...valid,
+        data: [{ ...valid.data[0], items: [{ animeId: 1, title: "Uno" }] }],
+      }),
+    ).toBe(false);
   });
 });
