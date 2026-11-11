@@ -6,7 +6,11 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useUserListsContext } from "@/providers/UserListsProvider";
 import { API_BASE } from "@/lib/api";
 import { useNow } from "@/hooks/useNow";
-import { isPending, normalizeNotification } from "@/lib/episodes";
+import {
+  isPending,
+  isUnreadNotification,
+  normalizeNotification,
+} from "@/lib/episodes";
 import {
   clearLastGood,
   notificationsCacheKey,
@@ -16,6 +20,7 @@ import {
 import type {
   CachedNotifications,
   EpisodeNotification,
+  RawEpisodeNotification,
 } from "@/types/notifications";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -105,7 +110,9 @@ export function useNotifications() {
       cached !== null &&
       Array.isArray(cached.items) &&
       typeof cached.seenAt === "string";
-    setItems(valid ? cached.items : []);
+    // Normalized like a fresh answer: the cache may predate fields the
+    // components now read, such as `delayed`.
+    setItems(valid ? cached.items.map(normalizeNotification) : []);
     setSeenAt(valid ? cached.seenAt : null);
   }, [userId]);
 
@@ -198,7 +205,7 @@ export function useNotifications() {
         });
         if (!res.ok) return retryLater();
         const json = (await res.json()) as {
-          data?: Parameters<typeof normalizeNotification>[0][];
+          data?: RawEpisodeNotification[];
         };
         if (cancelled) return;
         retries.current = 0;
@@ -245,12 +252,7 @@ export function useNotifications() {
   );
 
   const isUnread = useCallback(
-    // Parsed, not compared as strings: Supabase answers `+00:00` where the API
-    // answers `Z`, and the two only sort alike while the seconds differ.
-    (n: EpisodeNotification) =>
-      seenAt !== null &&
-      !isPending(n, now) &&
-      Date.parse(n.airedAt) > Date.parse(seenAt),
+    (n: EpisodeNotification) => isUnreadNotification(n, seenAt, now),
     [seenAt, now],
   );
 

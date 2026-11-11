@@ -25,7 +25,12 @@ export function collapseSameDayDrops<T extends SameDayDrop>(rows: T[]): T[] {
   const groups = new Map<string, T>();
 
   for (const row of rows) {
-    const key = `${row.anilistId}:${cdmxDayIndex(row.airingAt)}`;
+    // A delayed episode is never merged with one that aired. One flag has to
+    // stand for the merged row, and either choice lies: the delayed one hides a
+    // real release from the bell, the aired one announces an episode that is
+    // not out. Two rows for the same day is the honest answer.
+    const delayed = row.delay?.delayed === true ? ":delayed" : "";
+    const key = `${row.anilistId}:${cdmxDayIndex(row.airingAt)}${delayed}`;
     const held = groups.get(key);
     if (!held) {
       groups.set(key, row);

@@ -23,6 +23,23 @@ export type SameDayDrop = {
   airingAt: number;
   /** Null when the source states a slot but no episode number (MAL). */
   range: EpisodeRange | null;
+  /** Absent on sources that cannot tell (the AniList shelf). */
+  delay?: BroadcastDelay;
+};
+
+/**
+ * Whether the source has postponed a broadcast, carried by both the calendar
+ * and the bell so a delayed episode reads the same in each.
+ */
+export type BroadcastDelay = {
+  /**
+   * True only when AnimeSchedule marks the row `delayed-air`. Without it a
+   * postponed episode looked like any other, and once its slot passed the
+   * bell announced an episode that had not come out.
+   */
+  delayed: boolean;
+  /** ISO-8601 of the new date, or null when the source states none usable. */
+  delayedUntil: string | null;
 };
 
 /** One timetable row matched to a series the user follows. */
@@ -31,10 +48,11 @@ export type TrackedBroadcast = SameDayDrop & {
   route: string;
   /** True while the broadcast is still ahead of the request's clock. */
   upcoming: boolean;
+  delay: BroadcastDelay;
 };
 
 /** Episodes of something the user is watching: released, or due later today. */
-export type EpisodeNotification = {
+export type EpisodeNotification = BroadcastDelay & {
   animeId: number;
   /**
    * The last episode of the release, same as `range.to`. Kept because it

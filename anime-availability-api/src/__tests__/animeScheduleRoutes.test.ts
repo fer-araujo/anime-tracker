@@ -14,6 +14,7 @@ vi.mock("../utils/cache.js", () => ({
 
 const {
   asAnimeForRoutes,
+  asBroadcastDelay,
   asEpisodeRange,
   asFetchRecentTimetable,
   asFetchTimetableRange,
@@ -192,5 +193,55 @@ describe("asEpisodeRange", () => {
       to: 3,
       total: null,
     });
+  });
+});
+
+describe("asBroadcastDelay", () => {
+  const row = (extra: object = {}) => ({
+    title: "x",
+    route: "x",
+    episodeDate: "2026-11-11T07:00:00Z",
+    episodeNumber: 6,
+    ...extra,
+  });
+
+  it("reads delayed-air as delayed", () => {
+    expect(asBroadcastDelay(row({ airingStatus: "delayed-air" }))).toEqual({
+      delayed: true,
+      delayedUntil: null,
+    });
+  });
+
+  it("reads aired, unaired and a missing status as not delayed", () => {
+    for (const airingStatus of ["aired", "unaired", undefined, null]) {
+      expect(
+        asBroadcastDelay(
+          row({ airingStatus, delayedUntil: "2026-11-18T07:00:00Z" }),
+        ),
+      ).toEqual({ delayed: false, delayedUntil: null });
+    }
+  });
+
+  it("drops a zero, unparseable or earlier new date", () => {
+    for (const delayedUntil of [
+      "0001-01-01T00:00:00Z",
+      "",
+      "soon",
+      null,
+      "2026-11-04T07:00:00Z",
+      "2026-11-11T07:00:00Z",
+    ]) {
+      expect(
+        asBroadcastDelay(row({ airingStatus: "delayed-air", delayedUntil })),
+      ).toEqual({ delayed: true, delayedUntil: null });
+    }
+  });
+
+  it("keeps a real new date after the original slot", () => {
+    expect(
+      asBroadcastDelay(
+        row({ airingStatus: "delayed-air", delayedUntil: "2026-11-18T07:00:00Z" }),
+      ),
+    ).toEqual({ delayed: true, delayedUntil: "2026-11-18T07:00:00.000Z" });
   });
 });

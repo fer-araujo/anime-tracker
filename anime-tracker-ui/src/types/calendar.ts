@@ -1,10 +1,15 @@
 import type { TrackingStatus } from "@/types/anime";
-import type { EpisodeRange } from "@/types/notifications";
+import type { BroadcastDelay, EpisodeRange } from "@/types/notifications";
 
 /** Weeks away from the current one; the range the API answers. */
 export type CalendarWeek = -1 | 0 | 1;
 
-export type CalendarEntry = {
+/**
+ * The delay fields are optional because the calendar has no normalizer: a week
+ * answered by an older API, or remembered from before them, is drawn as is.
+ * Missing reads as not delayed.
+ */
+export type CalendarEntry = Partial<BroadcastDelay> & {
   animeId: number;
   title: string;
   poster: string | null;

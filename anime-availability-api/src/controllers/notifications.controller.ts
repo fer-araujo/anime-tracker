@@ -108,6 +108,7 @@ export async function getNotifications(
       range: m.range,
       airedAt: new Date(m.airingAt * 1000).toISOString(),
       upcoming: m.upcoming,
+      ...m.delay,
       ...broadcastLabel(m, cards, records),
     }));
 

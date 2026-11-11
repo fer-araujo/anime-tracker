@@ -161,6 +161,29 @@ describe("POST /calendar", () => {
     expect(res.status).toBe(503);
   });
 
+  it("carries whether each broadcast is delayed, and to when", async () => {
+    mockTimetable.mockResolvedValue([
+      row("a", "2026-10-22T20:00:00Z"),
+      {
+        ...row("b", "2026-10-22T21:00:00Z"),
+        airingStatus: "delayed-air",
+        delayedUntil: "2026-10-29T21:00:00Z",
+      },
+    ]);
+    mockRoutes.mockResolvedValue(records([["a", 1], ["b", 2]]));
+
+    const res = await post({ animeIds: [1, 2] });
+
+    expect(dayOf(res.body, "2026-10-22").items).toEqual([
+      expect.objectContaining({ animeId: 1, delayed: false, delayedUntil: null }),
+      expect.objectContaining({
+        animeId: 2,
+        delayed: true,
+        delayedUntil: "2026-10-29T21:00:00.000Z",
+      }),
+    ]);
+  });
+
   it("answers an empty id list with seven days and no upstream call", async () => {
     mockRoutes.mockResolvedValue(new Map());
 

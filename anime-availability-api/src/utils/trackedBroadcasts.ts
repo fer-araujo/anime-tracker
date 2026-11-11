@@ -1,6 +1,7 @@
 import {
   AS_IMAGE_BASE,
   asAnilistId,
+  asBroadcastDelay,
   asEpisodeRange,
   type AsAnime,
   type AsTimetableEntry,
@@ -33,6 +34,7 @@ export function matchTrackedBroadcasts(
       range: asEpisodeRange(row),
       route: row.route,
       upcoming: at > now,
+      delay: asBroadcastDelay(row),
     });
   }
   return matched;

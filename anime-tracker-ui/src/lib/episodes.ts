@@ -1,5 +1,10 @@
+import { DELAYED_LABEL } from "@/constants/broadcast";
 import type { AiringInfo } from "@/types/anime";
-import type { EpisodeNotification, EpisodeRange } from "@/types/notifications";
+import type {
+  EpisodeNotification,
+  EpisodeRange,
+  RawEpisodeNotification,
+} from "@/types/notifications";
 
 /**
  * "Episodio 5", "Episodios 1–12" or "Temporada completa".
@@ -36,6 +41,22 @@ const CDMX_TIME = new Intl.DateTimeFormat("es-MX", {
 
 export function formatCdmxTime(iso: string): string {
   return CDMX_TIME.format(new Date(iso));
+}
+
+const CDMX_SHORT_DATE = new Intl.DateTimeFormat("es-MX", {
+  timeZone: CDMX_TIME_ZONE,
+  day: "numeric",
+  month: "short",
+});
+
+/**
+ * "Retrasado", or "Retrasado hasta el 18 nov" when the new date is known. The
+ * day is the CDMX one, like every other date in the app, so a broadcast moved
+ * to 01:00 CDMX is not announced for the day before.
+ */
+export function formatDelayLabel(delayedUntil: string | null | undefined): string {
+  if (!delayedUntil) return DELAYED_LABEL;
+  return `${DELAYED_LABEL} hasta el ${CDMX_SHORT_DATE.format(new Date(delayedUntil))}`;
 }
 
 /**
@@ -77,19 +98,44 @@ export function isPending(n: EpisodeNotification, now: number): boolean {
 }
 
 /**
+ * Whether the bell counts an episode as new to the user.
+ *
+ * Never while pending: see `useNotifications` for why. Never while delayed
+ * either: its slot passing is exactly when it did *not* come out, and counting
+ * it announced an episode nobody could watch.
+ */
+export function isUnreadNotification(
+  n: EpisodeNotification,
+  seenAt: string | null,
+  now: number,
+): boolean {
+  // Parsed, not compared as strings: Supabase answers `+00:00` where the API
+  // answers `Z`, and the two only sort alike while the seconds differ.
+  return (
+    seenAt !== null &&
+    !n.delayed &&
+    !isPending(n, now) &&
+    Date.parse(n.airedAt) > Date.parse(seenAt)
+  );
+}
+
+/**
  * A notification as this client expects it, whatever API version answered.
  *
  * The UI (Vercel) and the API (Render) deploy separately, so for a while one
  * may be newer than the other. An older API sends no `range` and no `upcoming`
- * — and only ever sent released episodes — so both are recoverable.
+ * — and only ever sent released episodes — so both are recoverable. It sent no
+ * delay either, which is read as none: the bell behaves as it did before.
+ * Cached payloads come through here too, since they may predate any of these.
  */
 export function normalizeNotification(
-  raw: Omit<EpisodeNotification, "range" | "upcoming"> &
-    Partial<Pick<EpisodeNotification, "range" | "upcoming">>,
+  raw: RawEpisodeNotification,
 ): EpisodeNotification {
   return {
     ...raw,
     range: raw.range ?? { from: raw.episode, to: raw.episode, total: null },
     upcoming: raw.upcoming ?? false,
+    delayed: raw.delayed ?? false,
+    delayedUntil: raw.delayedUntil ?? null,
   };
 }

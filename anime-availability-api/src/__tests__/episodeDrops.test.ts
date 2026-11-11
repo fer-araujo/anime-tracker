@@ -28,6 +28,20 @@ describe("collapseSameDayDrops", () => {
     ]);
   });
 
+  it("keeps a delayed episode apart from one that aired the same day", () => {
+    const aired = { ...drop(1, "2026-10-20T02:00:00Z", 5), delay: { delayed: false, delayedUntil: null } };
+    const delayed = { ...drop(1, "2026-10-20T04:00:00Z", 6), delay: { delayed: true, delayedUntil: null } };
+
+    // Merged, one flag would stand for both: ep 6 announced as out, or ep 5
+    // hidden from the bell. Either order must leave two rows.
+    for (const rows of [[aired, delayed], [delayed, aired]]) {
+      const out = collapseSameDayDrops(rows);
+      expect(out).toHaveLength(2);
+      expect(out.find((r) => r.delay.delayed)?.range).toEqual({ from: 6, to: 6, total: null });
+      expect(out.find((r) => !r.delay.delayed)?.range).toEqual({ from: 5, to: 5, total: null });
+    }
+  });
+
   it("groups by CDMX day, not UTC day", () => {
     // 23:00 and 23:30 CDMX on the 20th are both the 21st in UTC; 05:00 UTC on
     // the 21st is still the 20th in CDMX. All three are one CDMX day.

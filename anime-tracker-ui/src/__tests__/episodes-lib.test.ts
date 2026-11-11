@@ -2,8 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   formatAiringCaption,
   formatCdmxTime,
+  formatDelayLabel,
   formatEpisodeRange,
   isPending,
+  isUnreadNotification,
+  normalizeNotification,
 } from "@/lib/episodes";
 
 describe("formatEpisodeRange", () => {
@@ -78,6 +81,8 @@ describe("isPending", () => {
     upcoming,
     title: "x",
     poster: null,
+    delayed: false,
+    delayedUntil: null,
   });
   const NOW = Date.parse("2026-10-22T16:00:00Z");
 
@@ -91,5 +96,86 @@ describe("isPending", () => {
 
   it("never treats a released episode as pending", () => {
     expect(isPending(n("2026-10-22T22:00:00Z", false), NOW)).toBe(false);
+  });
+});
+
+describe("isUnreadNotification", () => {
+  const NOW = Date.parse("2026-10-22T16:00:00Z");
+  const SEEN = "2026-10-22T00:00:00+00:00";
+  const n = (extra: object = {}) =>
+    normalizeNotification({
+      animeId: 1,
+      episode: 6,
+      airedAt: "2026-10-22T14:00:00Z",
+      title: "x",
+      poster: null,
+      ...extra,
+    });
+
+  it("counts an episode released after the last visit", () => {
+    expect(isUnreadNotification(n(), SEEN, NOW)).toBe(true);
+  });
+
+  it("never counts a delayed episode, though its slot has passed", () => {
+    expect(isUnreadNotification(n({ delayed: true }), SEEN, NOW)).toBe(false);
+  });
+
+  it("never counts one still pending, or one before the last visit", () => {
+    expect(
+      isUnreadNotification(
+        n({ upcoming: true, airedAt: "2026-10-22T22:00:00Z" }),
+        SEEN,
+        NOW,
+      ),
+    ).toBe(false);
+    expect(
+      isUnreadNotification(n({ airedAt: "2026-10-21T22:00:00Z" }), SEEN, NOW),
+    ).toBe(false);
+    expect(isUnreadNotification(n(), null, NOW)).toBe(false);
+  });
+});
+
+describe("normalizeNotification", () => {
+  it("reads a payload without delay fields as not delayed", () => {
+    expect(
+      normalizeNotification({
+        animeId: 1,
+        episode: 6,
+        airedAt: "2026-10-22T14:00:00Z",
+        title: "x",
+        poster: null,
+      }),
+    ).toMatchObject({ delayed: false, delayedUntil: null, upcoming: false });
+  });
+
+  it("keeps the delay the API sent", () => {
+    expect(
+      normalizeNotification({
+        animeId: 1,
+        episode: 6,
+        airedAt: "2026-10-22T14:00:00Z",
+        title: "x",
+        poster: null,
+        delayed: true,
+        delayedUntil: "2026-10-29T14:00:00.000Z",
+      }),
+    ).toMatchObject({ delayed: true, delayedUntil: "2026-10-29T14:00:00.000Z" });
+  });
+});
+
+describe("formatDelayLabel", () => {
+  it("says only that it is delayed when no date is known", () => {
+    expect(formatDelayLabel(null)).toBe("Retrasado");
+    expect(formatDelayLabel(undefined)).toBe("Retrasado");
+  });
+
+  it("names the new CDMX day when known", () => {
+    expect(formatDelayLabel("2026-11-18T20:00:00Z")).toBe(
+      "Retrasado hasta el 18 nov",
+    );
+    // 01:00 UTC on the 19th is still the 18th in CDMX.
+    expect(formatDelayLabel("2026-11-19T01:00:00Z")).toBe(
+      "Retrasado hasta el 18 nov",
+    );
   });
 });

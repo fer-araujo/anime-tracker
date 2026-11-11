@@ -153,7 +153,12 @@ function isCalendarEntry(v: unknown): boolean {
     isString(v.airingAt) &&
     isRecord(v.range) &&
     typeof v.range.from === "number" &&
-    typeof v.range.to === "number"
+    typeof v.range.to === "number" &&
+    // Optional: a week cached before delays existed has neither field.
+    (v.delayed === undefined || typeof v.delayed === "boolean") &&
+    (v.delayedUntil === undefined ||
+      v.delayedUntil === null ||
+      isString(v.delayedUntil))
   );
 }
 
